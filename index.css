@@ -1,0 +1,25 @@
+/* Basic global styles */
+body {
+  font-family: 'Space Grotesk', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0F1214;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2A2E35;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #ec4913;
+}
