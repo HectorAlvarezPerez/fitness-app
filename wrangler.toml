@@ -1,0 +1,6 @@
+name = "fitness-app"
+main = "src/worker.tsx"
+compatibility_date = "2024-04-01"
+
+[site]
+bucket = "./dist"
