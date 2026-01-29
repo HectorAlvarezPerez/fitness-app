@@ -398,8 +398,9 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
                         </div>
                         <input
                             type="number"
+                            step="0.5"
                             value={set.weight}
-                            onChange={(e) => updateSet(index, 'weight', parseInt(e.target.value) || 0)}
+                            onChange={(e) => updateSet(index, 'weight', parseFloat(e.target.value) || 0)}
                             className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border text-center font-bold text-sm"
                             placeholder="kg"
                         />

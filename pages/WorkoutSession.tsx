@@ -302,9 +302,10 @@ const WorkoutSession: React.FC = () => {
                                                         <div className="flex items-center gap-1">
                                                             <input
                                                                 type="number"
+                                                                step="0.5"
                                                                 value={set.weight}
-                                                                onChange={(e) => updateSetValue(exercise.exerciseId, setIndex, 'weight', parseInt(e.target.value) || 0)}
-                                                                className="w-14 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
+                                                                onChange={(e) => updateSetValue(exercise.exerciseId, setIndex, 'weight', parseFloat(e.target.value) || 0)}
+                                                                className="w-16 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
                                                             />
                                                             <span className="text-xs text-gray-500">kg</span>
                                                         </div>
