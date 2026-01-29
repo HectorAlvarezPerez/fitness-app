@@ -7,7 +7,7 @@ const LandingPage: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const [authMode, setAuthMode] = useState<'login' | 'register'>('register');
+    const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
     const [message, setMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null);
 
     const handleLogin = async (e: React.FormEvent) => {
