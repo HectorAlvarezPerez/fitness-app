@@ -66,7 +66,7 @@ const OnboardingStep2: React.FC = () => {
 
                     <div className="flex flex-col gap-3 mt-4">
                         <h1 className="text-4xl md:text-5xl font-black">Define Tu Camino</h1>
-                        <p className="text-gray-500 dark:text-[#c9a092] text-lg">Ayuda a nuestra IA a construir tu plan perfecto.</p>
+                        <p className="text-gray-500 dark:text-[#c9a092] text-lg">Configura tu perfil para comenzar.</p>
                     </div>
 
                     {/* Goals Cards */}
@@ -109,10 +109,7 @@ const OnboardingStep2: React.FC = () => {
                 </div>
                 {/* FAB */}
                 <div className="fixed bottom-6 right-6 md:right-10 z-40 flex items-center gap-4">
-                    <div className="hidden md:flex bg-background-dark/80 backdrop-blur-md px-4 py-2 rounded-full border border-gray-700 text-sm text-white">
-                        <span className="material-symbols-outlined text-primary text-sm mr-2 animate-pulse">auto_awesome</span> AI calibrando...
-                    </div>
-                    <Link to="/onboarding/step3" className="flex items-center justify-center gap-2 bg-primary hover:bg-[#d63f0e] text-white font-bold text-lg px-8 py-4 rounded-full shadow-lg shadow-primary/30 transition-all hover:scale-105">
+                    <Link to="/home" className="flex items-center justify-center gap-2 bg-primary hover:bg-[#d63f0e] text-white font-bold text-lg px-8 py-4 rounded-full shadow-lg shadow-primary/30 transition-all hover:scale-105">
                         Siguiente Paso <span className="material-symbols-outlined">arrow_forward</span>
                     </Link>
                 </div>

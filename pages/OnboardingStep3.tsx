@@ -68,7 +68,7 @@ const OnboardingStep3: React.FC = () => {
             <main className="flex-grow w-full px-4 md:px-8 py-8 flex justify-center">
                 <div className="max-w-[960px] w-full flex flex-col gap-10">
                     <header className="flex flex-col gap-4">
-                        <h1 className="text-4xl md:text-5xl font-black leading-tight tracking-tight">Personaliza tu Fitness App AI</h1>
+                        <h1 className="text-4xl md:text-5xl font-black leading-tight tracking-tight">Personaliza tu experiencia</h1>
                         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800/50 w-fit">
                             <span className="material-symbols-outlined text-green-700 dark:text-green-400 text-[18px]">lock</span>
                             <span className="text-xs font-semibold text-green-800 dark:text-green-300 uppercase tracking-wide">Datos Encriptados</span>
