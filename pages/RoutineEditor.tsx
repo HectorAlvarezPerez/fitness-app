@@ -397,10 +397,13 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
                             </span>
                         </div>
                         <input
-                            type="number"
-                            step="0.5"
+                            type="text"
+                            inputMode="decimal"
                             value={set.weight || ''}
-                            onChange={(e) => updateSet(index, 'weight', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                            onChange={(e) => {
+                                const val = e.target.value.replace(',', '.');
+                                updateSet(index, 'weight', val === '' ? 0 : parseFloat(val) || 0);
+                            }}
                             className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border text-center font-bold text-sm"
                             placeholder="kg"
                         />

@@ -301,10 +301,13 @@ const WorkoutSession: React.FC = () => {
                                                         {/* Weight */}
                                                         <div className="flex items-center gap-1">
                                                             <input
-                                                                type="number"
-                                                                step="0.5"
+                                                                type="text"
+                                                                inputMode="decimal"
                                                                 value={set.weight || ''}
-                                                                onChange={(e) => updateSetValue(exercise.exerciseId, setIndex, 'weight', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value.replace(',', '.');
+                                                                    updateSetValue(exercise.exerciseId, setIndex, 'weight', val === '' ? 0 : parseFloat(val) || 0);
+                                                                }}
                                                                 className="w-16 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
                                                             />
                                                             <span className="text-xs text-gray-500">kg</span>
