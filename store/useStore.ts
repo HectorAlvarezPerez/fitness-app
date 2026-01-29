@@ -80,10 +80,21 @@ export interface ActiveWorkout {
   exercises: ActiveWorkoutExercise[];
 }
 
+export interface RoutineFolder {
+  id: string;
+  user_id: string;
+  name: string;
+  color?: string;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Routine {
   id: string;
   user_id: string;
   name: string;
+  folder_id?: string | null;
   exercises: Exercise[];
   created_at: string;
   updated_at: string;
@@ -136,6 +147,15 @@ interface AppState {
   savedRoutines: Routine[];
   currentRoutineId: string | null;
 
+  // Routine Folders
+  routineFolders: RoutineFolder[];
+  loadFolders: () => Promise<void>;
+  createFolder: (name: string, color?: string) => Promise<RoutineFolder | null>;
+  updateFolder: (id: string, updates: Partial<RoutineFolder>) => Promise<void>;
+  deleteFolder: (id: string) => Promise<void>;
+  moveRoutineToFolder: (routineId: string, folderId: string | null) => Promise<void>;
+  duplicateRoutine: (routineId: string) => Promise<Routine | null>;
+
   // Exercise Library
   exerciseLibrary: ExerciseLibraryItem[];
   selectedMuscleFilter: string | null;
@@ -175,7 +195,7 @@ interface AppState {
 
   // Routine CRUD
   loadRoutines: () => Promise<void>;
-  saveRoutine: (name: string, exercises: Exercise[], id?: string) => Promise<Routine | null>;
+  saveRoutine: (name: string, exercises: Exercise[], id?: string, folderId?: string | null) => Promise<Routine | null>;
   deleteRoutine: (id: string) => Promise<void>;
   setCurrentRoutineId: (id: string | null) => void;
 
@@ -232,6 +252,9 @@ export const useStore = create<AppState>()(
       },
       savedRoutines: [],
       currentRoutineId: null,
+
+      // Routine Folders
+      routineFolders: [],
 
       // Exercise Library
       exerciseLibrary: [],
@@ -306,16 +329,20 @@ export const useStore = create<AppState>()(
         }
       },
 
-      saveRoutine: async (name: string, exercises: Exercise[], id?: string) => {
+      saveRoutine: async (name: string, exercises: Exercise[], id?: string, folderId?: string | null) => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return null;
 
-        const routineData = {
+        const routineData: any = {
           user_id: user.id,
           name,
           exercises,
           updated_at: new Date().toISOString(),
         };
+
+        if (folderId !== undefined) {
+          routineData.folder_id = folderId;
+        }
 
         if (id) {
           // Update existing
@@ -352,6 +379,106 @@ export const useStore = create<AppState>()(
       },
 
       setCurrentRoutineId: (id: string | null) => set({ currentRoutineId: id }),
+
+      // --- Folder Management Functions ---
+      loadFolders: async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from('routine_folders')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('order_index', { ascending: true });
+
+        if (!error && data) {
+          set({ routineFolders: data });
+        }
+      },
+
+      createFolder: async (name: string, color?: string) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return null;
+
+        const folders = get().routineFolders;
+        const maxOrder = folders.length > 0 ? Math.max(...folders.map(f => f.order_index)) : 0;
+
+        const { data, error } = await supabase
+          .from('routine_folders')
+          .insert([{
+            user_id: user.id,
+            name,
+            color: color || '#3b82f6',
+            order_index: maxOrder + 1
+          }])
+          .select()
+          .single();
+
+        if (!error && data) {
+          await get().loadFolders();
+          return data;
+        }
+        return null;
+      },
+
+      updateFolder: async (id: string, updates: Partial<RoutineFolder>) => {
+        const { error } = await supabase
+          .from('routine_folders')
+          .update({ ...updates, updated_at: new Date().toISOString() })
+          .eq('id', id);
+
+        if (!error) {
+          await get().loadFolders();
+        }
+      },
+
+      deleteFolder: async (id: string) => {
+        // Move routines out of the folder before deleting
+        await supabase
+          .from('routines')
+          .update({ folder_id: null })
+          .eq('folder_id', id);
+
+        await supabase.from('routine_folders').delete().eq('id', id);
+        await get().loadFolders();
+        await get().loadRoutines();
+      },
+
+      moveRoutineToFolder: async (routineId: string, folderId: string | null) => {
+        const { error } = await supabase
+          .from('routines')
+          .update({ folder_id: folderId, updated_at: new Date().toISOString() })
+          .eq('id', routineId);
+
+        if (!error) {
+          await get().loadRoutines();
+        }
+      },
+
+      duplicateRoutine: async (routineId: string) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return null;
+
+        const routine = get().savedRoutines.find(r => r.id === routineId);
+        if (!routine) return null;
+
+        const { data, error } = await supabase
+          .from('routines')
+          .insert([{
+            user_id: user.id,
+            name: `${routine.name} (copia)`,
+            exercises: routine.exercises,
+            folder_id: routine.folder_id
+          }])
+          .select()
+          .single();
+
+        if (!error && data) {
+          await get().loadRoutines();
+          return data;
+        }
+        return null;
+      },
 
       // Exercise Library Functions
       loadExerciseLibrary: async () => {
