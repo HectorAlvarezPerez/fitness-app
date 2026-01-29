@@ -303,8 +303,8 @@ const WorkoutSession: React.FC = () => {
                                                             <input
                                                                 type="number"
                                                                 step="0.5"
-                                                                value={set.weight}
-                                                                onChange={(e) => updateSetValue(exercise.exerciseId, setIndex, 'weight', parseFloat(e.target.value) || 0)}
+                                                                value={set.weight || ''}
+                                                                onChange={(e) => updateSetValue(exercise.exerciseId, setIndex, 'weight', e.target.value === '' ? 0 : parseFloat(e.target.value))}
                                                                 className="w-16 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
                                                             />
                                                             <span className="text-xs text-gray-500">kg</span>
