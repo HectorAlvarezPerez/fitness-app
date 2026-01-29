@@ -4,20 +4,24 @@ import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabaseClient';
 import { ActiveWorkoutFooter } from './ActiveWorkoutFooter';
 import AchievementNotification from './AchievementNotification';
+import MobileNav from './MobileNav';
 
 const MainLayout: React.FC = () => {
     const { pathname } = useLocation();
 
     // Mapping for title
-    // Mapping for title
     const getTitle = () => {
         if (pathname.includes('/home')) return 'Inicio';
+        if (pathname.includes('/routine/new')) return 'Nueva Rutina';
+        if (pathname.includes('/routine/edit')) return 'Editar Rutina';
+        if (pathname.includes('/routine') && pathname.includes('/workout')) return 'Entrenando';
         if (pathname.includes('/routine')) return 'Rutinas';
         if (pathname.includes('/dashboard')) return 'Estadísticas';
         if (pathname.includes('/progress')) return 'Progreso';
         if (pathname.includes('/achievements')) return 'Logros';
         if (pathname.includes('/history')) return 'Historial';
         if (pathname.includes('/settings')) return 'Configuración';
+        if (pathname.includes('/profile-data')) return 'Mis Datos';
         return 'Fitness App';
     };
 
@@ -29,6 +33,9 @@ const MainLayout: React.FC = () => {
         { path: '/history', label: 'Historial', icon: 'history' },
         { path: '/achievements', label: 'Logros', icon: 'emoji_events' },
     ];
+
+    // Check if we should hide bottom nav (during workout or editor)
+    const hideBottomNav = pathname.includes('/workout');
 
     return (
         <div className="flex flex-col h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display overflow-hidden">
@@ -58,33 +65,22 @@ const MainLayout: React.FC = () => {
                 <ProfileDropdown />
             </header>
 
-            {/* Mobile Header */}
-            <header className="md:hidden flex items-center justify-between px-4 py-3 bg-white dark:bg-[#111a22] border-b border-gray-200 dark:border-[#233648] shrink-0 z-20">
-                <h1 className="text-lg font-bold">{getTitle()}</h1>
+            {/* Mobile Header - Improved for smaller screens */}
+            <header className="md:hidden flex items-center justify-between px-4 py-3 bg-[#0a0c0e]/95 backdrop-blur-md border-b border-white/5 shrink-0 z-20">
+                <h1 className="text-lg font-bold truncate">{getTitle()}</h1>
                 <ProfileDropdown />
             </header>
 
-            {/* Main Content */}
-            <main className="flex-1 overflow-hidden">
+            {/* Main Content - Add padding for bottom nav on mobile */}
+            <main className="flex-1 overflow-hidden pb-[72px] md:pb-0">
                 <Outlet />
             </main>
 
             {/* Active Workout Footer (shows above bottom nav, but not on workout page) */}
             {!pathname.includes('/workout') && <ActiveWorkoutFooter />}
 
-            {/* Mobile Bottom Navigation */}
-            <nav className="md:hidden flex items-center justify-around bg-white dark:bg-[#111a22] border-t border-gray-200 dark:border-[#233648] p-2 shrink-0 z-20">
-                {navItems.map((item) => (
-                    <NavLink
-                        key={item.path}
-                        to={item.path}
-                        className={(navData) => `flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${navData.isActive ? 'text-primary' : 'text-gray-500 dark:text-gray-400'}`}
-                    >
-                        <span className="material-symbols-outlined text-[24px]">{item.icon}</span>
-                        <span className="text-[10px] font-bold">{item.label}</span>
-                    </NavLink>
-                ))}
-            </nav>
+            {/* New Mobile Bottom Navigation */}
+            {!hideBottomNav && <MobileNav />}
         </div>
     );
 };
@@ -121,7 +117,7 @@ const ProfileDropdown: React.FC = () => {
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="size-9 rounded-full bg-gradient-to-br from-primary to-orange-600 flex items-center justify-center text-white font-bold hover:scale-105 transition-transform overflow-hidden"
+                className="size-9 rounded-full bg-gradient-to-br from-primary to-orange-600 flex items-center justify-center text-white font-bold hover:scale-105 active:scale-95 transition-transform overflow-hidden"
             >
                 <img
                     src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${displayName}`}
@@ -131,8 +127,8 @@ const ProfileDropdown: React.FC = () => {
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-xl bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] shadow-xl overflow-hidden z-50">
-                    <div className="p-3 border-b border-gray-200 dark:border-[#233648]">
+                <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-[#1a1d21] border border-white/10 shadow-2xl overflow-hidden z-50">
+                    <div className="p-3 border-b border-white/5">
                         <div className="flex items-center gap-3">
                             <img
                                 src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${displayName}`}
@@ -140,8 +136,8 @@ const ProfileDropdown: React.FC = () => {
                                 className="size-10 rounded-full"
                             />
                             <div className="overflow-hidden">
-                                <p className="font-bold text-sm truncate">{displayName}</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{displayEmail}</p>
+                                <p className="font-bold text-sm truncate text-white">{displayName}</p>
+                                <p className="text-xs text-gray-400 truncate">{displayEmail}</p>
                             </div>
                         </div>
                     </div>
@@ -150,43 +146,43 @@ const ProfileDropdown: React.FC = () => {
                         <NavLink
                             to="/profile-data"
                             onClick={() => setIsOpen(false)}
-                            className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#0f1820] transition-colors"
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 active:bg-white/10 transition-colors"
                         >
-                            <span className="material-symbols-outlined text-[20px] text-gray-500">assignment_ind</span>
-                            <span className="text-sm font-medium">Mis Datos</span>
+                            <span className="material-symbols-outlined text-[20px] text-gray-400">assignment_ind</span>
+                            <span className="text-sm font-medium text-white">Mis Datos</span>
                         </NavLink>
 
                         <NavLink
                             to="/settings"
                             onClick={() => setIsOpen(false)}
-                            className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#0f1820] transition-colors"
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 active:bg-white/10 transition-colors"
                         >
-                            <span className="material-symbols-outlined text-[20px] text-gray-500">settings</span>
-                            <span className="text-sm font-medium">Configuración</span>
+                            <span className="material-symbols-outlined text-[20px] text-gray-400">settings</span>
+                            <span className="text-sm font-medium text-white">Configuración</span>
                         </NavLink>
 
                         <NavLink
-                            to="/history"
+                            to="/guide"
                             onClick={() => setIsOpen(false)}
-                            className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#0f1820] transition-colors"
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 active:bg-white/10 transition-colors"
                         >
-                            <span className="material-symbols-outlined text-[20px] text-gray-500">history</span>
-                            <span className="text-sm font-medium">Historial</span>
+                            <span className="material-symbols-outlined text-[20px] text-gray-400">help</span>
+                            <span className="text-sm font-medium text-white">Ayuda</span>
                         </NavLink>
                     </div>
 
-                    <div className="p-2 border-t border-gray-200 dark:border-[#233648]">
-                        <NavLink
-                            to="/"
+                    <div className="p-2 border-t border-white/5">
+                        <button
                             onClick={async () => {
                                 setIsOpen(false);
                                 await supabase.auth.signOut();
+                                window.location.href = '/';
                             }}
-                            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 transition-colors"
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-red-500/10 active:bg-red-500/20 text-red-400 transition-colors"
                         >
                             <span className="material-symbols-outlined text-[20px]">logout</span>
                             <span className="text-sm font-medium">Cerrar Sesión</span>
-                        </NavLink>
+                        </button>
                     </div>
                 </div>
             )}
