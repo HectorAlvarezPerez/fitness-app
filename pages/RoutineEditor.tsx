@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useStore } from '../store/useStore';
+import ExerciseLibrarySheet from '../components/ExerciseLibrarySheet';
 import {
     DndContext,
     closestCenter,
@@ -21,6 +22,7 @@ import { CSS } from '@dnd-kit/utilities';
 const RoutineEditor: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const [isLibraryOpen, setIsLibraryOpen] = useState(false);
     const {
         routineName,
         setRoutineName,
@@ -122,162 +124,187 @@ const RoutineEditor: React.FC = () => {
     };
 
     return (
-        <div className="h-full w-full flex overflow-hidden bg-slate-100 dark:bg-[#0a1218]">
-            <div className="flex-1 overflow-y-auto">
-                <div className="max-w-4xl mx-auto px-4 md:px-8 py-6 pb-32 flex flex-col gap-6">
-                    <div className="flex items-center justify-between">
-                        <button
-                            onClick={() => navigate('/routine')}
-                            className="flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-primary transition-colors"
-                        >
-                            <span className="material-symbols-outlined">arrow_back</span>
-                            <span className="font-medium">Volver</span>
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            className="px-6 py-2.5 bg-primary text-white rounded-full font-bold hover:bg-primary/90 transition-all flex items-center gap-2"
-                        >
-                            <span className="material-symbols-outlined text-[20px]">save</span>
-                            <span>Guardar</span>
-                        </button>
-                    </div>
-
-                    {/* Routine Name Input */}
-                    <div className="mb-2">
-                        <input
-                            type="text"
-                            value={routineName}
-                            onChange={(e) => setRoutineName(e.target.value)}
-                            placeholder="Nombre de la rutina"
-                            className="w-full text-2xl md:text-3xl font-black bg-transparent border-b-2 border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-primary dark:focus:border-primary outline-none transition-colors px-2 py-1 text-gray-900 dark:text-white"
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 md:flex gap-4 p-1 bg-white dark:bg-surface-dark/50 border border-gray-100 dark:border-surface-border rounded-2xl">
-                        <div className="flex-1 bg-gray-50 dark:bg-surface-dark rounded-xl border border-gray-100 dark:border-surface-border/50 p-3 px-5 flex items-center justify-between">
-                            <div className="flex flex-col"><span className="text-[10px] font-bold uppercase text-gray-500 dark:text-text-muted">Ejercicios</span><span className="text-xl font-bold text-slate-900 dark:text-white">{exercises.length}</span></div>
-                        </div>
-                        <div className="flex-1 bg-gray-50 dark:bg-surface-dark rounded-xl border border-gray-100 dark:border-surface-border/50 p-3 px-5 flex items-center justify-between">
-                            <div className="flex flex-col"><span className="text-[10px] font-bold uppercase text-gray-500 dark:text-text-muted">Volumen Est.</span><span className="text-xl font-bold text-primary dark:text-progress-teal">
-                                {(exercises.reduce((acc, curr) => {
-                                    // Handle both array and legacy number format for sets
-                                    if (Array.isArray(curr.sets)) {
-                                        return acc + curr.sets.reduce((sAcc, s) => sAcc + (s.weight * s.reps), 0);
-                                    } else {
-                                        // Legacy fallback
-                                        return acc + (curr.weight! * curr.reps! * (curr.sets as unknown as number));
-                                    }
-                                }, 0) / 1000).toFixed(1)}k
-                            </span></div>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col gap-5">
-                        <DndContext
-                            sensors={sensors}
-                            collisionDetection={closestCenter}
-                            onDragEnd={handleDragEnd}
-                        >
-                            <SortableContext
-                                items={exercises.map(e => e.id)}
-                                strategy={verticalListSortingStrategy}
+        <>
+            <div className="h-full w-full flex overflow-hidden bg-slate-100 dark:bg-[#0a1218]">
+                <div className="flex-1 overflow-y-auto">
+                    <div className="max-w-4xl mx-auto px-4 md:px-8 py-6 pb-32 flex flex-col gap-6">
+                        {/* Header with back and save buttons */}
+                        <div className="flex items-center justify-between gap-3">
+                            <button
+                                onClick={() => navigate('/routine')}
+                                className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-primary transition-colors py-2"
                             >
-                                {exercises.map((exercise) => (
-                                    <SortableExerciseItem
-                                        key={exercise.id}
-                                        exercise={exercise}
-                                        updateExercise={updateExercise}
-                                        removeExercise={removeExercise}
-                                    />
-                                ))}
-                            </SortableContext>
-                        </DndContext>
+                                <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+                                <span className="font-medium hidden sm:inline">Volver</span>
+                            </button>
+                            <button
+                                onClick={handleSave}
+                                className="px-5 py-2.5 bg-primary text-white rounded-full font-bold hover:bg-primary/90 transition-all flex items-center gap-2 shadow-lg shadow-primary/20"
+                            >
+                                <span className="material-symbols-outlined text-[18px]">save</span>
+                                <span>Guardar</span>
+                            </button>
+                        </div>
 
-                        {exercises.length === 0 && (
-                            <div className="h-32 rounded-2xl border-2 border-dashed border-gray-200 dark:border-surface-border flex flex-col gap-3 items-center justify-center bg-gray-50 dark:bg-surface-dark/10 text-gray-400 dark:text-text-muted">
-                                <span className="material-symbols-outlined text-2xl">fitness_center</span>
-                                <p className="font-medium text-sm">Tu rutina está vacía. Añade ejercicios desde la biblioteca.</p>
+                        {/* Routine Name Input */}
+                        <div className="mb-2">
+                            <input
+                                type="text"
+                                value={routineName}
+                                onChange={(e) => setRoutineName(e.target.value)}
+                                placeholder="Nombre de la rutina"
+                                className="w-full text-2xl md:text-3xl font-black bg-transparent border-b-2 border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-primary dark:focus:border-primary outline-none transition-colors px-1 py-1 text-gray-900 dark:text-white"
+                            />
+                        </div>
+
+                        {/* Stats cards */}
+                        <div className="grid grid-cols-2 gap-3 p-1 bg-white dark:bg-surface-dark/50 border border-gray-100 dark:border-surface-border rounded-2xl">
+                            <div className="bg-gray-50 dark:bg-surface-dark rounded-xl border border-gray-100 dark:border-surface-border/50 p-3 px-4 flex items-center justify-between">
+                                <div className="flex flex-col"><span className="text-[10px] font-bold uppercase text-gray-500 dark:text-text-muted">Ejercicios</span><span className="text-xl font-bold text-slate-900 dark:text-white">{exercises.length}</span></div>
                             </div>
-                        )}
+                            <div className="bg-gray-50 dark:bg-surface-dark rounded-xl border border-gray-100 dark:border-surface-border/50 p-3 px-4 flex items-center justify-between">
+                                <div className="flex flex-col"><span className="text-[10px] font-bold uppercase text-gray-500 dark:text-text-muted">Volumen Est.</span><span className="text-xl font-bold text-primary dark:text-progress-teal">
+                                    {(exercises.reduce((acc, curr) => {
+                                        // Handle both array and legacy number format for sets
+                                        if (Array.isArray(curr.sets)) {
+                                            return acc + curr.sets.reduce((sAcc, s) => sAcc + (s.weight * s.reps), 0);
+                                        } else {
+                                            // Legacy fallback
+                                            return acc + (curr.weight! * curr.reps! * (curr.sets as unknown as number));
+                                        }
+                                    }, 0) / 1000).toFixed(1)}k
+                                </span></div>
+                            </div>
+                        </div>
 
-                        <div className="h-32 rounded-2xl border-2 border-dasheddashed border-gray-200 dark:border-surface-border flex flex-col gap-3 items-center justify-center bg-gray-50 dark:bg-surface-dark/10 text-gray-400 dark:text-text-muted hover:border-primary dark:hover:border-progress-teal hover:text-primary dark:hover:text-white transition-all cursor-pointer">
-                            <span className="material-symbols-outlined text-2xl">add_task</span>
-                            <p className="font-medium text-sm">Arrastra para reordenar</p>
+                        {/* Exercise list */}
+                        <div className="flex flex-col gap-4">
+                            <DndContext
+                                sensors={sensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={handleDragEnd}
+                            >
+                                <SortableContext
+                                    items={exercises.map(e => e.id)}
+                                    strategy={verticalListSortingStrategy}
+                                >
+                                    {exercises.map((exercise) => (
+                                        <SortableExerciseItem
+                                            key={exercise.id}
+                                            exercise={exercise}
+                                            updateExercise={updateExercise}
+                                            removeExercise={removeExercise}
+                                        />
+                                    ))}
+                                </SortableContext>
+                            </DndContext>
+
+                            {exercises.length === 0 && (
+                                <div
+                                    onClick={() => setIsLibraryOpen(true)}
+                                    className="h-40 rounded-2xl border-2 border-dashed border-gray-200 dark:border-surface-border flex flex-col gap-3 items-center justify-center bg-gray-50 dark:bg-surface-dark/10 text-gray-400 dark:text-text-muted cursor-pointer hover:border-primary/50 hover:text-primary/70 transition-all active:scale-[0.99]"
+                                >
+                                    <span className="material-symbols-outlined text-3xl">add_circle</span>
+                                    <p className="font-medium text-sm">Toca aquí para añadir ejercicios</p>
+                                </div>
+                            )}
+
+                            {exercises.length > 0 && (
+                                <div className="h-20 rounded-2xl border-2 border-dashed border-gray-200 dark:border-surface-border flex flex-col gap-2 items-center justify-center bg-gray-50 dark:bg-surface-dark/10 text-gray-400 dark:text-text-muted">
+                                    <span className="material-symbols-outlined text-xl">swap_vert</span>
+                                    <p className="font-medium text-xs">Arrastra para reordenar</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
+
+                {/* Exercise Library Sidebar - Desktop only */}
+                <aside className="w-[360px] hidden lg:flex flex-col border-l border-gray-200 dark:border-surface-border bg-white dark:bg-background-dark h-full shrink-0 shadow-2xl z-10">
+                    <div className="px-6 pt-8 pb-4">
+                        <h3 className="text-slate-900 dark:text-white text-xl font-bold mb-6 flex items-center gap-2">
+                            <span className="material-symbols-outlined text-primary">library_books</span>
+                            Biblioteca
+                        </h3>
+
+                        {/* Search */}
+                        <div className="relative group mb-3">
+                            <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-text-muted group-focus-within:text-primary transition-colors">search</span>
+                            <input
+                                value={exerciseSearchQuery}
+                                onChange={(e) => setExerciseSearchQuery(e.target.value)}
+                                className="w-full bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border rounded-xl py-3 pl-11 pr-4 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-gray-400 dark:placeholder:text-text-muted/70 transition-all"
+                                placeholder="Buscar ejercicio..."
+                                type="text"
+                            />
+                        </div>
+
+                        {/* Muscle Filter */}
+                        <select
+                            className="w-full px-3 py-2.5 rounded-lg bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border text-sm mb-2 focus:outline-none focus:border-primary"
+                            value={selectedMuscleFilter || ''}
+                            onChange={(e) => setMuscleFilter(e.target.value || null)}
+                        >
+                            <option value="">Todos los músculos</option>
+                            {muscleGroups.map(muscle => (
+                                <option key={muscle} value={muscle}>{muscle}</option>
+                            ))}
+                        </select>
+
+                        {/* Equipment Filter */}
+                        <select
+                            className="w-full px-3 py-2.5 rounded-lg bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border text-sm focus:outline-none focus:border-primary"
+                            value={selectedEquipmentFilter || ''}
+                            onChange={(e) => setEquipmentFilter(e.target.value || null)}
+                        >
+                            <option value="">Todo el equipamiento</option>
+                            {equipmentTypes.map(eq => (
+                                <option key={eq} value={eq}>{eq}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-4 px-6 flex flex-col gap-3">
+                        {filteredLibrary.length === 0 ? (
+                            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">No se encontraron ejercicios</p>
+                        ) : (
+                            filteredLibrary.map((ex) => (
+                                <div key={ex.id} className="group flex items-center gap-3 p-2 pr-3 rounded-xl bg-gray-50 dark:bg-surface-dark/40 hover:bg-white dark:hover:bg-surface-dark border border-transparent hover:border-gray-200 dark:hover:border-surface-border cursor-pointer transition-all shadow-sm hover:shadow">
+                                    <div className="size-12 rounded-lg bg-gray-200 dark:bg-gray-700 shrink-0 border border-gray-200 dark:border-surface-border flex items-center justify-center">
+                                        <span className="text-xs text-slate-500 dark:text-white/40">{ex.name[0]}</span>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className="text-slate-900 dark:text-white text-sm font-bold truncate group-hover:text-primary transition-colors">{ex.name}</h4>
+                                        <p className="text-[10px] text-gray-500 dark:text-text-muted truncate mt-0.5">{ex.primary_muscle} • {ex.equipment}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => handleAddFromLibrary(ex)}
+                                        className="size-8 rounded-full bg-white dark:bg-background-dark border border-gray-200 dark:border-surface-border flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
+                                    >
+                                        <span className="material-symbols-outlined text-[18px]">add</span>
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </aside>
             </div>
 
-            {/* Exercise Library Sidebar with filters */}
-            <aside className="w-[360px] hidden lg:flex flex-col border-l border-gray-200 dark:border-surface-border bg-white dark:bg-background-dark h-full shrink-0 shadow-2xl z-10">
-                <div className="px-6 pt-8 pb-4">
-                    <h3 className="text-slate-900 dark:text-white text-xl font-bold mb-6 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-primary">library_books</span>
-                        Biblioteca
-                    </h3>
+            {/* Mobile FAB - Add Exercise */}
+            <button
+                onClick={() => setIsLibraryOpen(true)}
+                className="lg:hidden fixed bottom-24 right-4 z-40 size-14 rounded-full bg-gradient-to-br from-primary to-orange-600 text-white shadow-xl shadow-primary/30 flex items-center justify-center active:scale-95 transition-transform"
+            >
+                <span className="material-symbols-outlined text-[28px]">add</span>
+            </button>
 
-                    {/* Search */}
-                    <div className="relative group mb-3">
-                        <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-text-muted group-focus-within:text-primary transition-colors">search</span>
-                        <input
-                            value={exerciseSearchQuery}
-                            onChange={(e) => setExerciseSearchQuery(e.target.value)}
-                            className="w-full bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border rounded-xl py-3 pl-11 pr-4 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-gray-400 dark:placeholder:text-text-muted/70 transition-all"
-                            placeholder="Buscar ejercicio..."
-                            type="text"
-                        />
-                    </div>
-
-                    {/* Muscle Filter */}
-                    <select
-                        className="w-full px-3 py-2.5 rounded-lg bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border text-sm mb-2 focus:outline-none focus:border-primary"
-                        value={selectedMuscleFilter || ''}
-                        onChange={(e) => setMuscleFilter(e.target.value || null)}
-                    >
-                        <option value="">Todos los músculos</option>
-                        {muscleGroups.map(muscle => (
-                            <option key={muscle} value={muscle}>{muscle}</option>
-                        ))}
-                    </select>
-
-                    {/* Equipment Filter */}
-                    <select
-                        className="w-full px-3 py-2.5 rounded-lg bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border text-sm focus:outline-none focus:border-primary"
-                        value={selectedEquipmentFilter || ''}
-                        onChange={(e) => setEquipmentFilter(e.target.value || null)}
-                    >
-                        <option value="">Todo el equipamiento</option>
-                        {equipmentTypes.map(eq => (
-                            <option key={eq} value={eq}>{eq}</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-4 px-6 flex flex-col gap-3">
-                    {filteredLibrary.length === 0 ? (
-                        <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">No se encontraron ejercicios</p>
-                    ) : (
-                        filteredLibrary.map((ex) => (
-                            <div key={ex.id} className="group flex items-center gap-3 p-2 pr-3 rounded-xl bg-gray-50 dark:bg-surface-dark/40 hover:bg-white dark:hover:bg-surface-dark border border-transparent hover:border-gray-200 dark:hover:border-surface-border cursor-pointer transition-all shadow-sm hover:shadow">
-                                <div className="size-12 rounded-lg bg-gray-200 dark:bg-gray-700 shrink-0 border border-gray-200 dark:border-surface-border flex items-center justify-center">
-                                    <span className="text-xs text-slate-500 dark:text-white/40">{ex.name[0]}</span>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <h4 className="text-slate-900 dark:text-white text-sm font-bold truncate group-hover:text-primary transition-colors">{ex.name}</h4>
-                                    <p className="text-[10px] text-gray-500 dark:text-text-muted truncate mt-0.5">{ex.primary_muscle} • {ex.equipment}</p>
-                                </div>
-                                <button
-                                    onClick={() => handleAddFromLibrary(ex)}
-                                    className="size-8 rounded-full bg-white dark:bg-background-dark border border-gray-200 dark:border-surface-border flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
-                                >
-                                    <span className="material-symbols-outlined text-[18px]">add</span>
-                                </button>
-                            </div>
-                        ))
-                    )}
-                </div>
-            </aside>
-        </div>
+            {/* Mobile Exercise Library Sheet */}
+            <ExerciseLibrarySheet
+                isOpen={isLibraryOpen}
+                onClose={() => setIsLibraryOpen(false)}
+                onAddExercise={handleAddFromLibrary}
+            />
+        </>
     );
 };
 

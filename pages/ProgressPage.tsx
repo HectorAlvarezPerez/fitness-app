@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useStore, BodyMeasurement } from '../store/useStore';
 import { BodyHeatmap } from '../components/BodyHeatmap';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 export default function ProgressPage() {
     const {
@@ -113,8 +113,49 @@ export default function ProgressPage() {
                 normalizedData[key] = Math.min(muscleCounts[key] / 15, 1);
             });
         }
-        return normalizedData;
+        return { normalized: normalizedData, raw: muscleCounts };
     }, [workoutHistory, startOfSelectedWeek, endOfSelectedWeek]);
+
+    // Pie chart data for muscles trained
+    const MUSCLE_COLORS: { [key: string]: string } = {
+        pecho: '#ef4444',
+        espalda: '#3b82f6',
+        hombros: '#f59e0b',
+        biceps: '#10b981',
+        triceps: '#8b5cf6',
+        cuadriceps: '#ec4899',
+        isquios: '#06b6d4',
+        gemelos: '#84cc16',
+        gluteos: '#f97316',
+        abs: '#6366f1',
+        trapecios: '#14b8a6',
+        antebrazos: '#a855f7'
+    };
+
+    const MUSCLE_LABELS: { [key: string]: string } = {
+        pecho: 'Pecho',
+        espalda: 'Espalda',
+        hombros: 'Hombros',
+        biceps: 'Bíceps',
+        triceps: 'Tríceps',
+        cuadriceps: 'Cuádriceps',
+        isquios: 'Isquiotibiales',
+        gemelos: 'Gemelos',
+        gluteos: 'Glúteos',
+        abs: 'Abdominales',
+        trapecios: 'Trapecios',
+        antebrazos: 'Antebrazos'
+    };
+
+    const musclePieData = useMemo(() => {
+        return Object.entries(weeklyMuscleData.raw)
+            .map(([muscle, sets]: [string, number]) => ({
+                name: MUSCLE_LABELS[muscle] || muscle,
+                value: sets,
+                color: MUSCLE_COLORS[muscle] || '#6b7280'
+            }))
+            .sort((a, b) => b.value - a.value);
+    }, [weeklyMuscleData.raw]);
 
 
     // --- MEASUREMENTS HELPERS ---
@@ -227,13 +268,13 @@ export default function ProgressPage() {
 
                         {/* Heatmap Area */}
                         <div className="bg-white dark:bg-[#111a22] p-8 rounded-3xl shadow-lg border border-gray-100 dark:border-[#233648] flex justify-center min-h-[400px]">
-                            {Object.keys(weeklyMuscleData).length === 0 ? (
+                            {Object.keys(weeklyMuscleData.normalized).length === 0 ? (
                                 <div className="flex flex-col items-center justify-center text-gray-400">
                                     <span className="material-symbols-outlined text-4xl mb-2">fitness_center</span>
                                     <p>No hay datos de entrenamiento para esta semana.</p>
                                 </div>
                             ) : (
-                                <BodyHeatmap muscleData={weeklyMuscleData} />
+                                <BodyHeatmap muscleData={weeklyMuscleData.normalized} />
                             )}
                         </div>
 
@@ -260,6 +301,55 @@ export default function ProgressPage() {
                                 <span>Muy Alta</span>
                             </div>
                         </div>
+
+                        {/* Muscle Distribution Pie Chart */}
+                        {musclePieData.length > 0 && (
+                            <div className="bg-white dark:bg-[#111a22] p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-[#233648]">
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-primary">pie_chart</span>
+                                    Distribución por Músculo
+                                </h3>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <div className="h-[280px]">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={musclePieData}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    innerRadius={50}
+                                                    outerRadius={100}
+                                                    paddingAngle={2}
+                                                    dataKey="value"
+                                                >
+                                                    {musclePieData.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
+                                                    formatter={(value: number) => [`${value} series`, 'Total']}
+                                                />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        {musclePieData.slice(0, 8).map((entry, index) => (
+                                            <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-[#0f1820]">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }}></div>
+                                                    <span className="text-sm font-medium text-slate-700 dark:text-gray-300">{entry.name}</span>
+                                                </div>
+                                                <span className="text-sm font-bold text-slate-900 dark:text-white">{entry.value} series</span>
+                                            </div>
+                                        ))}
+                                        {musclePieData.length === 0 && (
+                                            <p className="text-gray-500 text-sm text-center py-4">No hay datos para mostrar</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     // --- MEASUREMENTS CONTENT ---
