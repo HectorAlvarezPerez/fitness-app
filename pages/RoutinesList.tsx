@@ -353,8 +353,13 @@ const RoutinesList: React.FC = () => {
                 {contextMenu && (
                     <div
                         ref={contextMenuRef}
-                        className="fixed z-50 bg-white dark:bg-[#1a2632] rounded-xl shadow-xl border border-gray-200 dark:border-[#233648] py-2 min-w-[180px] animate-in fade-in zoom-in duration-150"
-                        style={{ left: contextMenu.x, top: contextMenu.y }}
+                        className="fixed z-50 bg-white dark:bg-[#1a2632] rounded-xl shadow-xl border border-gray-200 dark:border-[#233648] py-2 min-w-[180px] animate-in fade-in zoom-in duration-150 origin-top-left"
+                        style={{
+                            top: contextMenu.y,
+                            left: contextMenu.x > window.innerWidth / 2 ? 'auto' : contextMenu.x,
+                            right: contextMenu.x > window.innerWidth / 2 ? (window.innerWidth - contextMenu.x) : 'auto',
+                            transformOrigin: contextMenu.x > window.innerWidth / 2 ? 'top right' : 'top left'
+                        }}
                     >
                         {contextMenu.type === 'routine' && (
                             <>
