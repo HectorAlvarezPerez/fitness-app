@@ -64,8 +64,8 @@ export const ActiveWorkoutFooter: React.FC = () => {
     };
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 md:bottom-0 bg-primary/95 backdrop-blur-md border-t border-primary-600 shadow-2xl z-30 transition-all">
-            <div className="max-w-4xl mx-auto px-4 py-3">
+        <div className="fixed left-0 right-0 bottom-[calc(72px+env(safe-area-inset-bottom))] md:bottom-0 bg-primary/95 backdrop-blur-md border-t border-primary-600 shadow-2xl z-30 transition-all">
+            <div className="max-w-4xl mx-auto px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                 <div className="flex items-center justify-between gap-3">
                     {/* Left: Info - Clickable */}
                     <div

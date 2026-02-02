@@ -36,10 +36,15 @@ const MainLayout: React.FC = () => {
     ];
 
     // Check if we should hide bottom nav (during workout or editor)
-    const hideBottomNav = pathname.includes('/workout');
+    const hideBottomNav = pathname.includes('/workout')
+        || pathname.includes('/routine/new')
+        || pathname.includes('/routine/edit');
+    const mainPadding = hideBottomNav
+        ? 'pb-0'
+        : 'pb-[calc(72px+env(safe-area-inset-bottom))] md:pb-0';
 
     return (
-        <div className="flex flex-col h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display overflow-hidden">
+        <div className="flex flex-col min-h-[100dvh] h-[100dvh] bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display overflow-hidden">
             <AchievementNotification />
             {/* Desktop Header */}
             <header className="hidden md:flex items-center justify-between px-8 py-4 bg-white/80 dark:bg-[#111a22]/90 backdrop-blur-md border-b border-gray-200 dark:border-[#233648] shrink-0 z-20">
@@ -73,7 +78,7 @@ const MainLayout: React.FC = () => {
             </header>
 
             {/* Main Content - Add padding for bottom nav on mobile */}
-            <main className="flex-1 overflow-hidden pb-[72px] md:pb-0">
+            <main className={`flex-1 min-h-0 overflow-hidden ${mainPadding}`}>
                 <Outlet />
             </main>
 

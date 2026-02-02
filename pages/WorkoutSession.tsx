@@ -184,8 +184,8 @@ const WorkoutSession: React.FC = () => {
     return (
         <div className="h-full w-full flex overflow-hidden bg-white dark:bg-background-dark">
             {/* Main Content Area */}
-            <div className="flex-1 overflow-y-auto">
-                <div className="flex flex-col max-w-3xl mx-auto pb-6">
+            <div className="flex-1 overflow-y-auto mobile-scroll">
+                <div className="flex flex-col max-w-3xl mx-auto pb-[calc(9rem+env(safe-area-inset-bottom))]">
                     {/* Header (Mobile Only for Sidebar items) */}
                     <div className="sticky top-0 z-10 bg-white dark:bg-background-dark border-b border-gray-200 dark:border-surface-border p-4 lg:p-6">
                         <div className="flex items-center justify-between mb-3">
@@ -280,66 +280,70 @@ const WorkoutSession: React.FC = () => {
                                                         : 'bg-white dark:bg-[#1a2632] border-gray-200 dark:border-[#233648]'
                                                         }`}
                                                 >
-                                                    <div className="flex items-center gap-2">
-                                                        {/* Checkbox */}
-                                                        <button
-                                                            onClick={() => toggleSetComplete(exercise.exerciseId, setIndex)}
-                                                            className={`size-8 rounded-full border-2 flex items-center justify-center transition-all ${set.completed
-                                                                ? 'bg-primary border-primary'
-                                                                : 'border-gray-300 dark:border-gray-600'
-                                                                }`}
-                                                        >
-                                                            {set.completed && (
-                                                                <span className="material-symbols-outlined text-white text-[18px]">check</span>
-                                                            )}
-                                                        </button>
+                                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+                                                        <div className="flex items-center gap-2">
+                                                            {/* Checkbox */}
+                                                            <button
+                                                                onClick={() => toggleSetComplete(exercise.exerciseId, setIndex)}
+                                                                className={`size-8 rounded-full border-2 flex items-center justify-center transition-all ${set.completed
+                                                                    ? 'bg-primary border-primary'
+                                                                    : 'border-gray-300 dark:border-gray-600'
+                                                                    }`}
+                                                            >
+                                                                {set.completed && (
+                                                                    <span className="material-symbols-outlined text-white text-[18px]">check</span>
+                                                                )}
+                                                            </button>
 
-                                                        <span className="text-sm font-bold text-gray-600 dark:text-gray-400 w-16">
-                                                            Serie {setIndex + 1}
-                                                        </span>
-
-                                                        {/* Weight */}
-                                                        <div className="flex items-center gap-1">
-                                                            <input
-                                                                type="text"
-                                                                inputMode="decimal"
-                                                                value={set.weight || ''}
-                                                                onChange={(e) => {
-                                                                    const val = e.target.value.replace(',', '.');
-                                                                    updateSetValue(exercise.exerciseId, setIndex, 'weight', val === '' ? 0 : parseFloat(val) || 0);
-                                                                }}
-                                                                className="w-16 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
-                                                            />
-                                                            <span className="text-xs text-gray-500">kg</span>
+                                                            <span className="text-sm font-bold text-gray-600 dark:text-gray-400 w-20 shrink-0">
+                                                                Serie {setIndex + 1}
+                                                            </span>
                                                         </div>
 
-                                                        {/* Reps */}
-                                                        <div className="flex items-center gap-1">
-                                                            <input
-                                                                type="number"
-                                                                value={set.reps}
-                                                                onChange={(e) => updateSetValue(exercise.exerciseId, setIndex, 'reps', parseInt(e.target.value) || 0)}
-                                                                className="w-14 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
-                                                            />
-                                                            <span className="text-xs text-gray-500">reps</span>
-                                                        </div>
+                                                        <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-2 sm:flex-1">
+                                                            {/* Weight */}
+                                                            <div className="flex items-center gap-1">
+                                                                <input
+                                                                    type="text"
+                                                                    inputMode="decimal"
+                                                                    value={set.weight || ''}
+                                                                    onChange={(e) => {
+                                                                        const val = e.target.value.replace(',', '.');
+                                                                        updateSetValue(exercise.exerciseId, setIndex, 'weight', val === '' ? 0 : parseFloat(val) || 0);
+                                                                    }}
+                                                                    className="w-full min-w-[60px] sm:w-16 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
+                                                                />
+                                                                <span className="text-xs text-gray-500">kg</span>
+                                                            </div>
 
-                                                        {/* Rest */}
-                                                        <div className="flex items-center gap-1">
-                                                            <input
-                                                                type="number"
-                                                                value={set.restSeconds}
-                                                                onChange={(e) => updateSetValue(exercise.exerciseId, setIndex, 'restSeconds', parseInt(e.target.value) || 0)}
-                                                                className="w-14 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
-                                                            />
-                                                            <span className="text-xs text-gray-500">seg</span>
+                                                            {/* Reps */}
+                                                            <div className="flex items-center gap-1">
+                                                                <input
+                                                                    type="number"
+                                                                    value={set.reps}
+                                                                    onChange={(e) => updateSetValue(exercise.exerciseId, setIndex, 'reps', parseInt(e.target.value) || 0)}
+                                                                    className="w-full min-w-[52px] sm:w-14 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
+                                                                />
+                                                                <span className="text-xs text-gray-500">reps</span>
+                                                            </div>
+
+                                                            {/* Rest */}
+                                                            <div className="flex items-center gap-1">
+                                                                <input
+                                                                    type="number"
+                                                                    value={set.restSeconds}
+                                                                    onChange={(e) => updateSetValue(exercise.exerciseId, setIndex, 'restSeconds', parseInt(e.target.value) || 0)}
+                                                                    className="w-full min-w-[52px] sm:w-14 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
+                                                                />
+                                                                <span className="text-xs text-gray-500">seg</span>
+                                                            </div>
                                                         </div>
 
                                                         {/* Delete Set */}
                                                         {exercise.sets.length > 1 && (
                                                             <button
                                                                 onClick={() => removeSet(exercise.exerciseId, setIndex)}
-                                                                className="ml-auto p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                                                                className="self-start sm:self-center sm:ml-auto p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
                                                             >
                                                                 <span className="material-symbols-outlined text-red-500 text-[18px]">close</span>
                                                             </button>
@@ -363,7 +367,7 @@ const WorkoutSession: React.FC = () => {
                     </div>
 
                     {/* Static Footer Container (Mobile Only) */}
-                    <div className="lg:hidden mt-8 bg-white dark:bg-background-dark border-t border-gray-200 dark:border-surface-border z-10 p-4">
+                    <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-background-dark border-t border-gray-200 dark:border-surface-border z-30 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
                         <div className="w-full space-y-3">
                             {/* Timer (if active) - Footer version */}
                             {activeRestTimer && (

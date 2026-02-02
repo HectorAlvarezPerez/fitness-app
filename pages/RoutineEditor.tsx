@@ -7,6 +7,7 @@ import {
     closestCenter,
     KeyboardSensor,
     PointerSensor,
+    TouchSensor,
     useSensor,
     useSensors,
 } from '@dnd-kit/core';
@@ -67,7 +68,12 @@ const RoutineEditor: React.FC = () => {
     }, [loadExerciseLibrary]);
 
     const sensors = useSensors(
-        useSensor(PointerSensor),
+        useSensor(PointerSensor, {
+            activationConstraint: { distance: 8 }
+        }),
+        useSensor(TouchSensor, {
+            activationConstraint: { distance: 8 }
+        }),
         useSensor(KeyboardSensor, {
             coordinateGetter: sortableKeyboardCoordinates,
         })
@@ -75,6 +81,8 @@ const RoutineEditor: React.FC = () => {
 
     function handleDragEnd(event: any) {
         const { active, over } = event;
+
+        if (!over) return;
 
         if (active.id !== over.id) {
             const oldIndex = exercises.findIndex(e => e.id === active.id);
@@ -126,8 +134,8 @@ const RoutineEditor: React.FC = () => {
     return (
         <>
             <div className="h-full w-full flex overflow-hidden bg-slate-100 dark:bg-[#0a1218]">
-                <div className="flex-1 overflow-y-auto">
-                    <div className="max-w-4xl mx-auto px-4 md:px-8 py-6 pb-32 flex flex-col gap-6">
+                <div className="flex-1 overflow-y-auto mobile-scroll">
+                    <div className="max-w-4xl mx-auto px-4 md:px-8 py-6 pb-[calc(8rem+env(safe-area-inset-bottom))] flex flex-col gap-6">
                         {/* Header with back and save buttons */}
                         <div className="flex items-center justify-between gap-3">
                             <button
@@ -369,7 +377,7 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
             className="rounded-2xl border border-slate-200 dark:border-[#233648] bg-white dark:bg-[#1a2632] p-4 md:p-5"
         >
             <div className="flex items-center gap-3 mb-4">
-                <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-gray-400 hover:text-primary">
+                <button {...attributes} {...listeners} className="cursor-grab touch-none active:cursor-grabbing p-1 text-gray-400 hover:text-primary">
                     <span className="material-symbols-outlined">drag_indicator</span>
                 </button>
                 <div className="flex-1">

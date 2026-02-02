@@ -48,7 +48,10 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({ isOpen, onC
 
     // Handle touch gestures
     const handleTouchStart = (e: React.TouchEvent) => {
-        if (e.touches[0].clientY < 80) { // Only drag from header area
+        if (!sheetRef.current) return;
+        const rect = sheetRef.current.getBoundingClientRect();
+        const offsetY = e.touches[0].clientY - rect.top;
+        if (offsetY < 80) { // Only drag from header area
             setIsDragging(true);
             setStartY(e.touches[0].clientY);
         }
@@ -56,6 +59,7 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({ isOpen, onC
 
     const handleTouchMove = (e: React.TouchEvent) => {
         if (isDragging) {
+            e.preventDefault();
             const diff = e.touches[0].clientY - startY;
             if (diff > 0) {
                 setCurrentY(diff);
@@ -85,7 +89,7 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({ isOpen, onC
         <>
             {/* Backdrop */}
             <div
-                className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                className={`fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
                     }`}
                 onClick={onClose}
             />
@@ -93,7 +97,7 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({ isOpen, onC
             {/* Sheet */}
             <div
                 ref={sheetRef}
-                className={`fixed inset-x-0 bottom-0 z-50 bg-[#0f1214] rounded-t-[28px] max-h-[85vh] flex flex-col transition-transform duration-300 ease-out ${isOpen ? 'translate-y-0' : 'translate-y-full'
+                className={`fixed inset-x-0 bottom-0 z-[60] bg-[#0f1214] rounded-t-[28px] max-h-[85vh] flex flex-col transition-transform duration-300 ease-out ${isOpen ? 'translate-y-0' : 'translate-y-full'
                     }`}
                 style={{
                     transform: isOpen ? `translateY(${currentY}px)` : 'translateY(100%)',
@@ -104,7 +108,7 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({ isOpen, onC
                 onTouchEnd={handleTouchEnd}
             >
                 {/* Drag handle */}
-                <div className="flex justify-center pt-3 pb-2">
+                <div className="flex justify-center pt-3 pb-2 touch-none">
                     <div className="w-10 h-1 bg-white/20 rounded-full" />
                 </div>
 
