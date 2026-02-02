@@ -79,9 +79,10 @@ const WorkoutSession: React.FC = () => {
         updateWorkoutExerciseSets(exerciseId, updatedSets);
 
         // Start rest timer if completing a set (not uncompleting)
-        // Skip rest timer for dropset sets (no rest between dropsets)
+        // Skip rest timer if this set has dropsets (no rest between dropset sub-series)
         const currentSet = exercise.sets[setIndex];
-        if (!currentSet.completed && currentSet.restSeconds > 0 && !currentSet.isDropset) {
+        const hasDropsets = currentSet.dropsets && currentSet.dropsets.length > 0;
+        if (!currentSet.completed && currentSet.restSeconds > 0 && !hasDropsets) {
             setActiveRestTimer({
                 exerciseId,
                 setIndex,
@@ -304,8 +305,10 @@ const WorkoutSession: React.FC = () => {
                                                             </span>
 
                                                             {/* Dropset/Warmup badge */}
-                                                            {set.isDropset && (
-                                                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-500 text-white" title="Dropset - sin descanso">D</span>
+                                                            {set.dropsets && set.dropsets.length > 0 && (
+                                                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-500 text-white" title={`Dropset con ${set.dropsets.length} sub-series`}>
+                                                                    D+{set.dropsets.length}
+                                                                </span>
                                                             )}
                                                             {set.isWarmup && (
                                                                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500 text-white" title="Calentamiento">W</span>
@@ -361,6 +364,41 @@ const WorkoutSession: React.FC = () => {
                                                             </button>
                                                         )}
                                                     </div>
+
+                                                    {/* Dropset sub-series */}
+                                                    {set.dropsets && set.dropsets.length > 0 && (
+                                                        <div className="ml-6 mt-1 space-y-1">
+                                                            {set.dropsets.map((dropset: any, dIndex: number) => (
+                                                                <div
+                                                                    key={`${setIndex}-${dIndex}`}
+                                                                    className="flex items-center gap-2 p-2 pl-4 rounded-lg bg-orange-50/50 dark:bg-orange-900/10 border-l-2 border-orange-400"
+                                                                >
+                                                                    <span className="text-xs font-bold text-orange-600 dark:text-orange-400 w-8">
+                                                                        {setIndex + 1}.{dIndex + 1}
+                                                                    </span>
+                                                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-500 text-white">D</span>
+                                                                    <div className="flex items-center gap-1">
+                                                                        <input
+                                                                            type="number"
+                                                                            value={dropset.weight}
+                                                                            readOnly
+                                                                            className="w-12 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-orange-200 dark:border-orange-700 text-sm font-bold"
+                                                                        />
+                                                                        <span className="text-xs text-gray-500">kg</span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-1">
+                                                                        <input
+                                                                            type="number"
+                                                                            value={dropset.reps}
+                                                                            readOnly
+                                                                            className="w-12 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-orange-200 dark:border-orange-700 text-sm font-bold"
+                                                                        />
+                                                                        <span className="text-xs text-gray-500">reps</span>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))}
 

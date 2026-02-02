@@ -6,8 +6,9 @@ import { ACHIEVEMENTS, Achievement } from '../data/achievements';
 export interface RoutineSet {
   reps: number;
   weight: number;
-  isDropset?: boolean;
   isWarmup?: boolean;
+  // Sub-series para dropsets (3.1, 3.2, etc.) - cada una con peso/reps diferentes
+  dropsets?: Array<{ reps: number; weight: number }>;
 }
 
 export interface Exercise {
@@ -16,6 +17,7 @@ export interface Exercise {
   muscleGroup: string;
   notes?: string;
   sets: RoutineSet[];
+  restSeconds?: number; // Rest time in seconds for this exercise
   includesBodyweight?: boolean; // For exercises like dips, pull-ups where volume = bodyweight + added weight
   // Legacy fields for backward compatibility - optional or deprecated
   reps?: number;
@@ -70,8 +72,9 @@ export interface ActiveWorkoutExercise {
     weight: number;
     restSeconds: number;
     completed: boolean;
-    isDropset?: boolean;
     isWarmup?: boolean;
+    // Sub-series para dropsets (3.1, 3.2, etc.)
+    dropsets?: Array<{ reps: number; weight: number; completed?: boolean }>;
   }>;
 }
 
@@ -735,15 +738,15 @@ export const useStore = create<AppState>()(
 
           const exercises: ActiveWorkoutExercise[] = routine.exercises.map(ex => {
             // Handle new format (sets array) vs old format (sets number)
-            let parsedSets: { reps: number; weight: number; isDropset?: boolean; isWarmup?: boolean }[] = [];
+            let parsedSets: { reps: number; weight: number; isWarmup?: boolean; dropsets?: Array<{ reps: number; weight: number }> }[] = [];
 
             if (Array.isArray(ex.sets)) {
-              // New format - preserve isDropset and isWarmup
+              // New format - preserve dropsets and isWarmup
               parsedSets = ex.sets.map(s => ({
                 reps: s.reps,
                 weight: s.weight,
-                isDropset: s.isDropset,
-                isWarmup: s.isWarmup
+                isWarmup: s.isWarmup,
+                dropsets: s.dropsets
               }));
             } else if (typeof ex.sets === 'number') {
               // Backward compatibility for old format
@@ -782,8 +785,8 @@ export const useStore = create<AppState>()(
               }
             }
 
-            // Use routine's default_rest_seconds, fallback to user's default, then 90
-            const restSeconds = routine.default_rest_seconds || get().userData?.default_rest_seconds || 90;
+            // Use exercise's restSeconds, fallback to routine's default, then user's default, then 90
+            const restSeconds = ex.restSeconds || routine.default_rest_seconds || get().userData?.default_rest_seconds || 90;
 
             return {
               exerciseId: ex.id,
@@ -797,8 +800,8 @@ export const useStore = create<AppState>()(
                 weight: s.weight,
                 restSeconds,
                 completed: false,
-                isDropset: s.isDropset,
-                isWarmup: s.isWarmup
+                isWarmup: s.isWarmup,
+                dropsets: s.dropsets?.map(d => ({ ...d, completed: false }))
               }))
             };
           });
@@ -864,6 +867,16 @@ export const useStore = create<AppState>()(
                 ? set.weight + userWeight
                 : set.weight;
               totalVolume += effectiveWeight * set.reps;
+
+              // Also count dropset sub-series volume
+              if (set.dropsets && set.dropsets.length > 0) {
+                set.dropsets.forEach(dropset => {
+                  const dropsetWeight = ex.includesBodyweight
+                    ? dropset.weight + userWeight
+                    : dropset.weight;
+                  totalVolume += dropsetWeight * dropset.reps;
+                });
+              }
             }
           });
         });
