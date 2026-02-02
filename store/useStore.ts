@@ -6,6 +6,8 @@ import { ACHIEVEMENTS, Achievement } from '../data/achievements';
 export interface RoutineSet {
   reps: number;
   weight: number;
+  isDropset?: boolean;
+  isWarmup?: boolean;
 }
 
 export interface Exercise {
@@ -14,6 +16,7 @@ export interface Exercise {
   muscleGroup: string;
   notes?: string;
   sets: RoutineSet[];
+  includesBodyweight?: boolean; // For exercises like dips, pull-ups where volume = bodyweight + added weight
   // Legacy fields for backward compatibility - optional or deprecated
   reps?: number;
   weight?: number;
@@ -61,11 +64,14 @@ export interface ActiveWorkoutExercise {
   primaryMuscle: string;
   imageUrl?: string;
   notes?: string;
+  includesBodyweight?: boolean; // For exercises like dips where volume = bodyweight + added weight
   sets: Array<{
     reps: number;
     weight: number;
     restSeconds: number;
     completed: boolean;
+    isDropset?: boolean;
+    isWarmup?: boolean;
   }>;
 }
 
@@ -96,6 +102,7 @@ export interface Routine {
   name: string;
   folder_id?: string | null;
   exercises: Exercise[];
+  default_rest_seconds?: number;
   created_at: string;
   updated_at: string;
 }
@@ -195,7 +202,7 @@ interface AppState {
 
   // Routine CRUD
   loadRoutines: () => Promise<void>;
-  saveRoutine: (name: string, exercises: Exercise[], id?: string, folderId?: string | null) => Promise<Routine | null>;
+  saveRoutine: (name: string, exercises: Exercise[], id?: string, folderId?: string | null, defaultRestSeconds?: number) => Promise<Routine | null>;
   deleteRoutine: (id: string) => Promise<void>;
   setCurrentRoutineId: (id: string | null) => void;
 
@@ -329,7 +336,7 @@ export const useStore = create<AppState>()(
         }
       },
 
-      saveRoutine: async (name: string, exercises: Exercise[], id?: string, folderId?: string | null) => {
+      saveRoutine: async (name: string, exercises: Exercise[], id?: string, folderId?: string | null, defaultRestSeconds?: number) => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return null;
 
@@ -342,6 +349,10 @@ export const useStore = create<AppState>()(
 
         if (folderId !== undefined) {
           routineData.folder_id = folderId;
+        }
+
+        if (defaultRestSeconds !== undefined) {
+          routineData.default_rest_seconds = defaultRestSeconds;
         }
 
         if (id) {
@@ -724,11 +735,16 @@ export const useStore = create<AppState>()(
 
           const exercises: ActiveWorkoutExercise[] = routine.exercises.map(ex => {
             // Handle new format (sets array) vs old format (sets number)
-            let parsedSets: { reps: number; weight: number; }[] = [];
+            let parsedSets: { reps: number; weight: number; isDropset?: boolean; isWarmup?: boolean }[] = [];
 
             if (Array.isArray(ex.sets)) {
-              // New format
-              parsedSets = ex.sets.map(s => ({ reps: s.reps, weight: s.weight }));
+              // New format - preserve isDropset and isWarmup
+              parsedSets = ex.sets.map(s => ({
+                reps: s.reps,
+                weight: s.weight,
+                isDropset: s.isDropset,
+                isWarmup: s.isWarmup
+              }));
             } else if (typeof ex.sets === 'number') {
               // Backward compatibility for old format
               const setsCount = ex.sets;
@@ -756,6 +772,7 @@ export const useStore = create<AppState>()(
                   const lastSet = lastExercise.sets[index];
                   if (lastSet) {
                     return {
+                      ...defaultSet,
                       reps: lastSet.reps,
                       weight: lastSet.weight
                     };
@@ -765,17 +782,23 @@ export const useStore = create<AppState>()(
               }
             }
 
+            // Use routine's default_rest_seconds, fallback to user's default, then 90
+            const restSeconds = routine.default_rest_seconds || get().userData?.default_rest_seconds || 90;
+
             return {
               exerciseId: ex.id,
               name: ex.name,
               primaryMuscle: ex.muscleGroup,
               imageUrl: undefined,
               notes: ex.notes, // Copy notes from routine
+              includesBodyweight: ex.includesBodyweight, // Pass bodyweight flag
               sets: parsedSets.map(s => ({
                 reps: s.reps,
                 weight: s.weight,
-                restSeconds: get().userData?.default_rest_seconds || 90,
-                completed: false
+                restSeconds,
+                completed: false,
+                isDropset: s.isDropset,
+                isWarmup: s.isWarmup
               }))
             };
           });
@@ -830,11 +853,17 @@ export const useStore = create<AppState>()(
 
         let totalVolume = 0;
         const completedExercises = state.activeWorkout.exercises;
+        const userWeight = state.onboardingData?.weight || 0;
 
         completedExercises.forEach(ex => {
           ex.sets.forEach(set => {
-            if (set.completed) {
-              totalVolume += set.weight * set.reps;
+            // Only count completed sets that are NOT warmup sets
+            if (set.completed && !set.isWarmup) {
+              // For bodyweight exercises (like dips), add user's bodyweight to the weight
+              const effectiveWeight = ex.includesBodyweight
+                ? set.weight + userWeight
+                : set.weight;
+              totalVolume += effectiveWeight * set.reps;
             }
           });
         });

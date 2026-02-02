@@ -24,6 +24,7 @@ const RoutineEditor: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+    const [defaultRestSeconds, setDefaultRestSeconds] = useState<number>(90);
     const {
         routineName,
         setRoutineName,
@@ -54,13 +55,15 @@ const RoutineEditor: React.FC = () => {
             if (routine) {
                 setRoutineName(routine.name);
                 setExercises(routine.exercises);
+                setDefaultRestSeconds(routine.default_rest_seconds || 90);
             }
         } else {
             // Reset for new routine
             setRoutineName('Nueva Rutina');
             setExercises([]);
+            setDefaultRestSeconds(userData?.default_rest_seconds || 90);
         }
-    }, [id, savedRoutines, setRoutineName, setExercises]);
+    }, [id, savedRoutines, setRoutineName, setExercises, userData?.default_rest_seconds]);
 
     // Load exercise library
     useEffect(() => {
@@ -125,7 +128,7 @@ const RoutineEditor: React.FC = () => {
             return;
         }
 
-        const result = await saveRoutine(routineName, exercises, id);
+        const result = await saveRoutine(routineName, exercises, id, undefined, defaultRestSeconds);
         if (result) {
             navigate('/routine');
         }
@@ -166,7 +169,7 @@ const RoutineEditor: React.FC = () => {
                         </div>
 
                         {/* Stats cards */}
-                        <div className="grid grid-cols-2 gap-3 p-1 bg-white dark:bg-surface-dark/50 border border-gray-100 dark:border-surface-border rounded-2xl">
+                        <div className="grid grid-cols-3 gap-3 p-1 bg-white dark:bg-surface-dark/50 border border-gray-100 dark:border-surface-border rounded-2xl">
                             <div className="bg-gray-50 dark:bg-surface-dark rounded-xl border border-gray-100 dark:border-surface-border/50 p-3 px-4 flex items-center justify-between">
                                 <div className="flex flex-col"><span className="text-[10px] font-bold uppercase text-gray-500 dark:text-text-muted">Ejercicios</span><span className="text-xl font-bold text-slate-900 dark:text-white">{exercises.length}</span></div>
                             </div>
@@ -182,6 +185,22 @@ const RoutineEditor: React.FC = () => {
                                         }
                                     }, 0) / 1000).toFixed(1)}k
                                 </span></div>
+                            </div>
+                            <div className="bg-gray-50 dark:bg-surface-dark rounded-xl border border-gray-100 dark:border-surface-border/50 p-3 px-4 flex items-center justify-between">
+                                <div className="flex flex-col w-full">
+                                    <span className="text-[10px] font-bold uppercase text-gray-500 dark:text-text-muted">Descanso</span>
+                                    <div className="flex items-center gap-1">
+                                        <input
+                                            type="number"
+                                            value={defaultRestSeconds}
+                                            onChange={(e) => setDefaultRestSeconds(parseInt(e.target.value) || 60)}
+                                            className="w-14 text-xl font-bold text-slate-900 dark:text-white bg-transparent border-none outline-none p-0"
+                                            min={0}
+                                            max={600}
+                                        />
+                                        <span className="text-xs text-gray-500">seg</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -358,6 +377,22 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
         updateExercise(exercise.id, { sets: newSets });
     };
 
+    const toggleSetType = (index: number, type: 'isDropset' | 'isWarmup') => {
+        const newSets = [...sets];
+        const currentValue = newSets[index][type] || false;
+        // If toggling dropset ON, turn off warmup and vice versa
+        if (type === 'isDropset') {
+            newSets[index] = { ...newSets[index], isDropset: !currentValue, isWarmup: false };
+        } else {
+            newSets[index] = { ...newSets[index], isWarmup: !currentValue, isDropset: false };
+        }
+        updateExercise(exercise.id, { sets: newSets });
+    };
+
+    const toggleBodyweight = () => {
+        updateExercise(exercise.id, { includesBodyweight: !exercise.includesBodyweight });
+    };
+
     const addSet = () => {
         const lastSet = sets.length > 0 ? sets[sets.length - 1] : { reps: 10, weight: 20 };
         const newSets = [...sets, { ...lastSet }];
@@ -381,7 +416,19 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
                     <span className="material-symbols-outlined">drag_indicator</span>
                 </button>
                 <div className="flex-1">
-                    <h4 className="font-bold text-lg">{exercise.name}</h4>
+                    <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-lg">{exercise.name}</h4>
+                        <button
+                            onClick={toggleBodyweight}
+                            className={`text-xs px-2 py-0.5 rounded-full transition-colors ${exercise.includesBodyweight
+                                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                                    : 'bg-gray-100 text-gray-400 dark:bg-surface-dark dark:text-text-muted'
+                                }`}
+                            title="+Peso corporal (para ejercicios como fondos, dominadas...)"
+                        >
+                            +PC
+                        </button>
+                    </div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">{exercise.muscleGroup}</p>
                 </div>
                 <button
@@ -407,19 +454,48 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
             </div>
 
             <div className="flex flex-col gap-2">
-                <div className="grid grid-cols-[40px_1fr_1fr_40px] gap-2 items-center px-2 mb-1">
+                <div className="grid grid-cols-[40px_32px_1fr_1fr_40px] gap-2 items-center px-2 mb-1">
                     <span className="text-xs font-bold text-gray-400 text-center">#</span>
+                    <span className="text-xs font-bold text-gray-400 text-center">Tipo</span>
                     <span className="text-xs font-bold text-gray-400">Peso (kg)</span>
                     <span className="text-xs font-bold text-gray-400">Reps</span>
                     <span></span>
                 </div>
 
                 {sets.map((set: any, index: number) => (
-                    <div key={index} className="grid grid-cols-[40px_1fr_1fr_40px] gap-2 items-center">
+                    <div key={index} className={`grid grid-cols-[40px_32px_1fr_1fr_40px] gap-2 items-center ${set.isWarmup ? 'opacity-60' : ''}`}>
                         <div className="flex items-center justify-center">
-                            <span className="text-sm font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-surface-dark/50 w-6 h-6 rounded flex items-center justify-center">
+                            <span className={`text-sm font-bold w-6 h-6 rounded flex items-center justify-center ${set.isDropset
+                                    ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400'
+                                    : set.isWarmup
+                                        ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                        : 'text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-surface-dark/50'
+                                }`}>
                                 {index + 1}
                             </span>
+                        </div>
+                        <div className="flex items-center justify-center">
+                            <button
+                                onClick={() => {
+                                    if (!set.isDropset && !set.isWarmup) {
+                                        toggleSetType(index, 'isDropset');
+                                    } else if (set.isDropset) {
+                                        toggleSetType(index, 'isWarmup');
+                                    } else {
+                                        // isWarmup is true, cycle back to normal
+                                        toggleSetType(index, 'isWarmup');
+                                    }
+                                }}
+                                className={`w-7 h-7 rounded-lg text-xs font-bold transition-all ${set.isDropset
+                                        ? 'bg-orange-500 text-white'
+                                        : set.isWarmup
+                                            ? 'bg-emerald-500 text-white'
+                                            : 'bg-gray-100 dark:bg-surface-dark text-gray-400 hover:bg-gray-200 dark:hover:bg-surface-dark/80'
+                                    }`}
+                                title={set.isDropset ? 'Dropset (sin descanso)' : set.isWarmup ? 'Calentamiento' : 'Normal'}
+                            >
+                                {set.isDropset ? 'D' : set.isWarmup ? 'W' : '–'}
+                            </button>
                         </div>
                         <input
                             type="text"

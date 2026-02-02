@@ -79,11 +79,13 @@ const WorkoutSession: React.FC = () => {
         updateWorkoutExerciseSets(exerciseId, updatedSets);
 
         // Start rest timer if completing a set (not uncompleting)
-        if (!exercise.sets[setIndex].completed && exercise.sets[setIndex].restSeconds > 0) {
+        // Skip rest timer for dropset sets (no rest between dropsets)
+        const currentSet = exercise.sets[setIndex];
+        if (!currentSet.completed && currentSet.restSeconds > 0 && !currentSet.isDropset) {
             setActiveRestTimer({
                 exerciseId,
                 setIndex,
-                duration: exercise.sets[setIndex].restSeconds
+                duration: currentSet.restSeconds
             });
         }
     };
@@ -277,7 +279,9 @@ const WorkoutSession: React.FC = () => {
                                                     key={setIndex}
                                                     className={`p-3 rounded-lg border-2 transition-all ${set.completed
                                                         ? 'bg-primary/10 border-primary'
-                                                        : 'bg-white dark:bg-[#1a2632] border-gray-200 dark:border-[#233648]'
+                                                        : set.isWarmup
+                                                            ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-gray-200 dark:border-[#233648] opacity-75'
+                                                            : 'bg-white dark:bg-[#1a2632] border-gray-200 dark:border-[#233648]'
                                                         }`}
                                                 >
                                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
@@ -295,9 +299,17 @@ const WorkoutSession: React.FC = () => {
                                                                 )}
                                                             </button>
 
-                                                            <span className="text-sm font-bold text-gray-600 dark:text-gray-400 w-20 shrink-0">
+                                                            <span className="text-sm font-bold text-gray-600 dark:text-gray-400 w-16 shrink-0">
                                                                 Serie {setIndex + 1}
                                                             </span>
+
+                                                            {/* Dropset/Warmup badge */}
+                                                            {set.isDropset && (
+                                                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-500 text-white" title="Dropset - sin descanso">D</span>
+                                                            )}
+                                                            {set.isWarmup && (
+                                                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500 text-white" title="Calentamiento">W</span>
+                                                            )}
                                                         </div>
 
                                                         <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-2 sm:flex-1">
