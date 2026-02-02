@@ -327,6 +327,23 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
     const sets = Array.isArray(exercise.sets) ? exercise.sets :
         (typeof exercise.sets === 'number' ? Array(exercise.sets).fill({ reps: exercise.reps || 10, weight: exercise.weight || 20 }) : []);
 
+    const [weightDrafts, setWeightDrafts] = useState<Record<number, string>>({});
+    const [activeWeightIndex, setActiveWeightIndex] = useState<number | null>(null);
+
+    useEffect(() => {
+        setWeightDrafts((prev) => {
+            const next: Record<number, string> = {};
+            sets.forEach((set: any, idx: number) => {
+                if (activeWeightIndex === idx && prev[idx] !== undefined) {
+                    next[idx] = prev[idx];
+                    return;
+                }
+                next[idx] = set.weight ? String(set.weight) : '';
+            });
+            return next;
+        });
+    }, [sets, activeWeightIndex]);
+
     const updateSet = (index: number, field: 'reps' | 'weight', value: number) => {
         const newSets = [...sets];
         newSets[index] = { ...newSets[index], [field]: value };
@@ -399,10 +416,47 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
                         <input
                             type="text"
                             inputMode="decimal"
-                            value={set.weight || ''}
+                            value={weightDrafts[index] ?? (set.weight ? String(set.weight) : '')}
+                            onFocus={() => {
+                                setActiveWeightIndex(index);
+                                setWeightDrafts((prev) => ({
+                                    ...prev,
+                                    [index]: prev[index] ?? (set.weight ? String(set.weight) : '')
+                                }));
+                            }}
+                            onBlur={() => {
+                                setActiveWeightIndex(null);
+                                const raw = (weightDrafts[index] ?? '').trim();
+                                const normalized = raw.replace(',', '.');
+                                if (normalized === '' || normalized === '.') {
+                                    updateSet(index, 'weight', 0);
+                                    setWeightDrafts((prev) => ({ ...prev, [index]: '' }));
+                                    return;
+                                }
+                                const parsed = Number(normalized);
+                                if (Number.isNaN(parsed)) {
+                                    const fallback = set.weight ? String(set.weight) : '';
+                                    setWeightDrafts((prev) => ({ ...prev, [index]: fallback }));
+                                    return;
+                                }
+                                updateSet(index, 'weight', parsed);
+                                setWeightDrafts((prev) => ({ ...prev, [index]: String(parsed) }));
+                            }}
                             onChange={(e) => {
-                                const val = e.target.value.replace(',', '.');
-                                updateSet(index, 'weight', val === '' ? 0 : parseFloat(val) || 0);
+                                const raw = e.target.value;
+                                if (!/^[0-9]*[.,]?[0-9]*$/.test(raw)) {
+                                    return;
+                                }
+                                setWeightDrafts((prev) => ({ ...prev, [index]: raw }));
+                                const normalized = raw.replace(',', '.');
+                                if (normalized === '' || normalized === '.') {
+                                    updateSet(index, 'weight', 0);
+                                    return;
+                                }
+                                const parsed = Number(normalized);
+                                if (!Number.isNaN(parsed)) {
+                                    updateSet(index, 'weight', parsed);
+                                }
                             }}
                             className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border text-center font-bold text-sm"
                             placeholder="kg"
