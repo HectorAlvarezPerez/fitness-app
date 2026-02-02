@@ -131,9 +131,12 @@ const RoutineEditor: React.FC = () => {
         }
 
         console.log('Calling saveRoutine...');
-        const result = await saveRoutine(routineName, exercises, id, undefined, defaultRestSeconds);
-        console.log('saveRoutine result:', result);
-        if (result) {
+        const { data, error } = await saveRoutine(routineName, exercises, id, undefined, defaultRestSeconds);
+        console.log('saveRoutine result:', { data, error });
+
+        if (error) {
+            alert(error);
+        } else if (data) {
             navigate('/routine');
         }
     };

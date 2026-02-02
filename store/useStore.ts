@@ -205,7 +205,7 @@ interface AppState {
 
   // Routine CRUD
   loadRoutines: () => Promise<void>;
-  saveRoutine: (name: string, exercises: Exercise[], id?: string, folderId?: string | null, defaultRestSeconds?: number) => Promise<Routine | null>;
+  saveRoutine: (name: string, exercises: Exercise[], id?: string, folderId?: string | null, defaultRestSeconds?: number) => Promise<{ data: Routine | null; error: string | null }>;
   deleteRoutine: (id: string) => Promise<void>;
   setCurrentRoutineId: (id: string | null) => void;
 
@@ -311,6 +311,8 @@ export const useStore = create<AppState>()(
               default_weight_kg: profile?.default_weight_kg || 20,
             }
           });
+        } else {
+          set({ userData: null });
         }
       },
 
@@ -343,7 +345,7 @@ export const useStore = create<AppState>()(
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           console.error('saveRoutine: No authenticated user');
-          return null;
+          return { data: null, error: 'No se detectó un usuario autenticado. Por favor inicia sesión.' };
         }
 
         const routineData: any = {
@@ -372,11 +374,11 @@ export const useStore = create<AppState>()(
 
           if (error) {
             console.error('saveRoutine update error:', error);
-            return null;
+            return { data: null, error: `Error al actualizar: ${error.message}` };
           }
           if (data) {
             await get().loadRoutines();
-            return data;
+            return { data, error: null };
           }
         } else {
           // Create new
@@ -388,14 +390,14 @@ export const useStore = create<AppState>()(
 
           if (error) {
             console.error('saveRoutine insert error:', error);
-            return null;
+            return { data: null, error: `Error al crear: ${error.message}` };
           }
           if (data) {
             await get().loadRoutines();
-            return data;
+            return { data, error: null };
           }
         }
-        return null;
+        return { data: null, error: 'Error desconocido al guardar.' };
       },
 
       deleteRoutine: async (id: string) => {
