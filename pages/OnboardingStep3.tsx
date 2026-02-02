@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabaseClient';
+import logoUrl from '../logo-fitness.png';
 
 const OnboardingStep3: React.FC = () => {
     const navigate = useNavigate();
@@ -59,7 +60,7 @@ const OnboardingStep3: React.FC = () => {
             <nav className="sticky top-0 z-50 w-full border-b border-gray-200 dark:border-[#482c23] bg-white/80 dark:bg-[#221510]/80 backdrop-blur-md">
                 <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="size-8 text-primary"><span className="material-symbols-outlined text-3xl">fitness_center</span></div>
+                        <img src={logoUrl} alt="Fitness App" className="size-8 object-contain" />
                         <h2 className="text-xl md:text-2xl font-bold tracking-tight">Fitness App</h2>
                     </div>
                 </div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import logoUrl from '../logo-fitness.png';
 
 const OnboardingStep1: React.FC = () => {
   return (
@@ -7,7 +8,7 @@ const OnboardingStep1: React.FC = () => {
         {/* Navbar */}
         <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-gray-200 dark:border-surface-border px-6 lg:px-10 py-4 bg-white dark:bg-background-dark z-20 sticky top-0">
             <div className="flex items-center gap-4">
-                <div className="size-8 text-primary"><span className="material-symbols-outlined text-3xl">fitness_center</span></div>
+                <img src={logoUrl} alt="Fitness App" className="size-8 object-contain" />
                 <h2 className="text-xl font-bold leading-tight tracking-tight">Fitness App</h2>
             </div>
             <div className="hidden md:flex flex-1 justify-end gap-8 items-center">

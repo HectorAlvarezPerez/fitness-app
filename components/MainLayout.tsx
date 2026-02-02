@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabaseClient';
 import { ActiveWorkoutFooter } from './ActiveWorkoutFooter';
 import AchievementNotification from './AchievementNotification';
 import MobileNav from './MobileNav';
+import logoUrl from '../logo-fitness.png';
 
 const MainLayout: React.FC = () => {
     const { pathname } = useLocation();
@@ -43,8 +44,8 @@ const MainLayout: React.FC = () => {
             {/* Desktop Header */}
             <header className="hidden md:flex items-center justify-between px-8 py-4 bg-white/80 dark:bg-[#111a22]/90 backdrop-blur-md border-b border-gray-200 dark:border-[#233648] shrink-0 z-20">
                 <NavLink to="/home" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-orange-600 text-white shadow-lg shadow-primary/20">
-                        <span className="material-symbols-outlined text-[20px]">fitness_center</span>
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-orange-600 text-white shadow-lg shadow-primary/20 overflow-hidden">
+                        <img src={logoUrl} alt="Fitness App" className="h-full w-full object-contain" />
                     </div>
                     <span className="text-xl font-bold tracking-tight">Fitness App</span>
                 </NavLink>

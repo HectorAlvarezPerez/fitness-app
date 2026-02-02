@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
+import logoUrl from '../logo-fitness.png';
 
 const OnboardingStep2: React.FC = () => {
     const { onboardingData, updateOnboardingData } = useStore();
@@ -36,7 +37,7 @@ const OnboardingStep2: React.FC = () => {
             {/* Navbar */}
             <header className="flex items-center justify-between whitespace-nowrap border-b border-gray-200 dark:border-[#482c23] px-6 py-4 bg-background-light dark:bg-background-dark sticky top-0 z-50">
                 <div className="flex items-center gap-4">
-                    <div className="size-8 text-primary"><span className="material-symbols-outlined text-4xl">fitness_center</span></div>
+                    <img src={logoUrl} alt="Fitness App" className="size-8 object-contain" />
                     <h2 className="text-xl font-bold">Fitness App</h2>
                 </div>
                 <div className="hidden md:flex gap-8 items-center">

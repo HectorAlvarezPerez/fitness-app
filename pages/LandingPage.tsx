@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
+import logoUrl from '../logo-fitness.png';
 
 const LandingPage: React.FC = () => {
     const navigate = useNavigate();
@@ -51,8 +52,8 @@ const LandingPage: React.FC = () => {
             {/* Navigation */}
             <header className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-6 md:px-12">
                 <div className="flex items-center gap-3 text-white">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white">
-                        <span className="material-symbols-outlined">health_metrics</span>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white overflow-hidden">
+                        <img src={logoUrl} alt="Fitness App" className="h-full w-full object-contain" />
                     </div>
                     <h2 className="text-xl font-bold tracking-tight">Fitness App</h2>
                 </div>
