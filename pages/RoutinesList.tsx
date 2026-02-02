@@ -277,8 +277,8 @@ const RoutinesList: React.FC = () => {
 
                 {/* New Folder Input */}
                 {isCreatingFolder && (
-                    <div className="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-[#1a2632] border border-primary shadow-lg animate-in fade-in slide-in-from-top-4 duration-300">
-                        <div className="size-10 rounded-lg bg-blue-500 flex items-center justify-center">
+                    <div className="flex flex-col gap-3 p-4 rounded-xl bg-white dark:bg-[#1a2632] border border-primary shadow-lg animate-in fade-in slide-in-from-top-4 duration-300 sm:flex-row sm:items-center">
+                        <div className="size-10 rounded-lg bg-blue-500 flex items-center justify-center shrink-0">
                             <span className="material-symbols-outlined text-white text-[20px]">folder</span>
                         </div>
                         <input
@@ -291,20 +291,22 @@ const RoutinesList: React.FC = () => {
                             }}
                             placeholder="Nombre de la carpeta..."
                             autoFocus
-                            className="flex-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-[#0f1820] focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full min-w-0 px-3 py-2 rounded-lg bg-gray-100 dark:bg-[#0f1820] focus:outline-none focus:ring-2 focus:ring-primary sm:flex-1"
                         />
-                        <button
-                            onClick={handleCreateFolder}
-                            className="px-4 py-2 rounded-lg bg-primary text-white font-bold hover:bg-primary/90 transition-all"
-                        >
-                            Crear
-                        </button>
-                        <button
-                            onClick={() => setIsCreatingFolder(false)}
-                            className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-all"
-                        >
-                            Cancelar
-                        </button>
+                        <div className="flex w-full gap-2 sm:w-auto">
+                            <button
+                                onClick={handleCreateFolder}
+                                className="flex-1 px-4 py-2 rounded-lg bg-primary text-white font-bold hover:bg-primary/90 transition-all sm:flex-none"
+                            >
+                                Crear
+                            </button>
+                            <button
+                                onClick={() => setIsCreatingFolder(false)}
+                                className="flex-1 px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-all sm:flex-none"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
                     </div>
                 )}
 
