@@ -118,6 +118,8 @@ const RoutineEditor: React.FC = () => {
     const equipmentTypes = ['Barbell', 'Dumbbell', 'Cable', 'Machine', 'Bodyweight', 'Kettlebell', 'Other'];
 
     const handleSave = async () => {
+        console.log('handleSave called', { routineName, exercises, id, defaultRestSeconds });
+
         if (!routineName.trim()) {
             alert('Por favor, ingresa un nombre para la rutina');
             return;
@@ -128,7 +130,9 @@ const RoutineEditor: React.FC = () => {
             return;
         }
 
+        console.log('Calling saveRoutine...');
         const result = await saveRoutine(routineName, exercises, id, undefined, defaultRestSeconds);
+        console.log('saveRoutine result:', result);
         if (result) {
             navigate('/routine');
         }

@@ -341,7 +341,10 @@ export const useStore = create<AppState>()(
 
       saveRoutine: async (name: string, exercises: Exercise[], id?: string, folderId?: string | null, defaultRestSeconds?: number) => {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return null;
+        if (!user) {
+          console.error('saveRoutine: No authenticated user');
+          return null;
+        }
 
         const routineData: any = {
           user_id: user.id,
@@ -367,7 +370,11 @@ export const useStore = create<AppState>()(
             .select()
             .single();
 
-          if (!error && data) {
+          if (error) {
+            console.error('saveRoutine update error:', error);
+            return null;
+          }
+          if (data) {
             await get().loadRoutines();
             return data;
           }
@@ -379,7 +386,11 @@ export const useStore = create<AppState>()(
             .select()
             .single();
 
-          if (!error && data) {
+          if (error) {
+            console.error('saveRoutine insert error:', error);
+            return null;
+          }
+          if (data) {
             await get().loadRoutines();
             return data;
           }
