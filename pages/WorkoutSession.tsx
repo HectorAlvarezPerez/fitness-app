@@ -404,11 +404,11 @@ const WorkoutSession: React.FC = () => {
                     </div>
 
                     {/* Static Footer Container (Mobile Only) */}
-                    <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-background-dark border-t border-gray-200 dark:border-surface-border z-30 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-                        <div className="w-full space-y-3">
+                    <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-background-dark border-t border-gray-200 dark:border-surface-border z-30 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                        <div className="w-full space-y-2">
                             {/* Timer (if active) - Footer version */}
                             {activeRestTimer && (
-                                <div className="mb-4 border-b border-gray-200 dark:border-surface-border pb-4">
+                                <div className="mb-3 border-b border-gray-200 dark:border-surface-border pb-3">
                                     <RestTimer
                                         variant="footer"
                                         duration={activeRestTimer.duration}
@@ -418,21 +418,23 @@ const WorkoutSession: React.FC = () => {
                                 </div>
                             )}
 
-                            {/* Finish Button */}
-                            <button
-                                onClick={handleFinish}
-                                className="w-full py-4 rounded-full bg-gradient-to-r from-primary to-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all"
-                            >
-                                {progress === 100 ? '¡Entrenamiento Completo! 🎉' : 'Guardar progreso y salir'}
-                            </button>
+                            <div className="grid grid-cols-2 gap-2">
+                                {/* Finish Button */}
+                                <button
+                                    onClick={handleFinish}
+                                    className="py-3 rounded-xl bg-gradient-to-r from-primary to-orange-600 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all"
+                                >
+                                    {progress === 100 ? 'Finalizar' : 'Guardar progreso'}
+                                </button>
 
-                            {/* Cancel Button */}
-                            <button
-                                onClick={() => setCancelConfirmOpen(true)}
-                                className="w-full py-3 rounded-full border-2 border-red-500 text-red-500 dark:text-red-400 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
-                            >
-                                Cancelar Entrenamiento
-                            </button>
+                                {/* Cancel Button */}
+                                <button
+                                    onClick={() => setCancelConfirmOpen(true)}
+                                    className="py-3 rounded-xl border-2 border-red-500 text-red-500 dark:text-red-400 font-bold text-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
