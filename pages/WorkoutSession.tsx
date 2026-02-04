@@ -565,9 +565,14 @@ const SortableWorkoutSetRow: React.FC<{
                     {/* Reps */}
                     <div className="flex items-center gap-1">
                         <input
-                            type="number"
-                            value={set.reps}
-                            onChange={(e) => updateSetValue(exerciseId, setIndex, 'reps', parseInt(e.target.value) || 0)}
+                            type="text"
+                            inputMode="numeric"
+                            value={set.reps ? String(set.reps) : ''}
+                            onChange={(e) => {
+                                const raw = e.target.value;
+                                if (!/^[0-9]*$/.test(raw)) return;
+                                updateSetValue(exerciseId, setIndex, 'reps', raw === '' ? 0 : parseInt(raw, 10));
+                            }}
                             className="w-full min-w-[52px] sm:w-14 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
                         />
                         <span className="text-xs text-gray-500">reps</span>

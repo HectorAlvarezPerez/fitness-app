@@ -714,9 +714,14 @@ function SortableSetRow({
                     placeholder="kg"
                 />
                 <input
-                    type="number"
-                    value={set.reps}
-                    onChange={(e) => updateSet(index, 'reps', parseInt(e.target.value) || 0)}
+                    type="text"
+                    inputMode="numeric"
+                    value={set.reps ? String(set.reps) : ''}
+                    onChange={(e) => {
+                        const raw = e.target.value;
+                        if (!/^[0-9]*$/.test(raw)) return;
+                        updateSet(index, 'reps', raw === '' ? 0 : parseInt(raw, 10));
+                    }}
                     className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border text-center font-bold text-sm"
                     placeholder="Reps"
                 />
@@ -757,9 +762,14 @@ function SortableSetRow({
                         placeholder="kg"
                     />
                     <input
-                        type="number"
-                        value={dropset.reps}
-                        onChange={(e) => updateDropset(index, dIndex, 'reps', parseInt(e.target.value) || 0)}
+                        type="text"
+                        inputMode="numeric"
+                        value={dropset.reps ? String(dropset.reps) : ''}
+                        onChange={(e) => {
+                            const raw = e.target.value;
+                            if (!/^[0-9]*$/.test(raw)) return;
+                            updateDropset(index, dIndex, 'reps', raw === '' ? 0 : parseInt(raw, 10));
+                        }}
                         className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-surface-dark border border-orange-200 dark:border-orange-700 text-center font-bold text-sm"
                         placeholder="Reps"
                     />
