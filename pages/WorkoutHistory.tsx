@@ -2,12 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { isPartialWorkout } from '../lib/workoutUtils';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 const WorkoutHistory: React.FC = () => {
     const { workoutHistory, loadWorkoutHistory, savedRoutines, loadRoutines, deleteWorkoutSession, deleteWorkoutSessions } = useStore();
     const [expandedWorkouts, setExpandedWorkouts] = useState<Set<string>>(new Set());
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+    const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
     useEffect(() => {
         loadWorkoutHistory();
@@ -46,13 +49,7 @@ const WorkoutHistory: React.FC = () => {
 
     const handleBulkDelete = () => {
         if (selectedIds.size === 0) return;
-
-        const confirmed = confirm(`¿Estás seguro de que deseas eliminar ${selectedIds.size} entrenamiento(s)?`);
-        if (confirmed) {
-            deleteWorkoutSessions(Array.from(selectedIds));
-            setSelectedIds(new Set());
-            setIsSelectionMode(false);
-        }
+        setBulkDeleteOpen(true);
     };
 
     const formatDuration = (minutes: number) => {
@@ -218,10 +215,7 @@ const WorkoutHistory: React.FC = () => {
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation(); // Prevent toggle when clicking delete
-                                                            const confirmed = confirm('¿Eliminar este entrenamiento del historial?');
-                                                            if (confirmed) {
-                                                                deleteWorkoutSession(workout.id);
-                                                            }
+                                                            setDeleteTargetId(workout.id);
                                                         }}
                                                         className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors group"
                                                     >
@@ -350,6 +344,35 @@ const WorkoutHistory: React.FC = () => {
                         })}
                     </div>
                 )}
+
+                <ConfirmDialog
+                    isOpen={bulkDeleteOpen}
+                    title="Eliminar entrenamientos"
+                    description={`¿Estás seguro de que deseas eliminar ${selectedIds.size} entrenamiento(s)?`}
+                    confirmLabel="Eliminar"
+                    variant="danger"
+                    onCancel={() => setBulkDeleteOpen(false)}
+                    onConfirm={() => {
+                        deleteWorkoutSessions(Array.from(selectedIds));
+                        setSelectedIds(new Set());
+                        setIsSelectionMode(false);
+                        setBulkDeleteOpen(false);
+                    }}
+                />
+
+                <ConfirmDialog
+                    isOpen={!!deleteTargetId}
+                    title="Eliminar entrenamiento"
+                    description="¿Eliminar este entrenamiento del historial?"
+                    confirmLabel="Eliminar"
+                    variant="danger"
+                    onCancel={() => setDeleteTargetId(null)}
+                    onConfirm={() => {
+                        if (!deleteTargetId) return;
+                        deleteWorkoutSession(deleteTargetId);
+                        setDeleteTargetId(null);
+                    }}
+                />
             </div>
         </div>
     );

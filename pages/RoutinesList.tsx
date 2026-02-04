@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore, Routine, RoutineFolder } from '../store/useStore';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 const FOLDER_COLORS = [
     '#3b82f6', // Blue
@@ -41,6 +42,8 @@ const RoutinesList: React.FC = () => {
         y: number;
     } | null>(null);
     const [movingRoutine, setMovingRoutine] = useState<string | null>(null);
+    const [deleteRoutineTarget, setDeleteRoutineTarget] = useState<Routine | null>(null);
+    const [deleteFolderTarget, setDeleteFolderTarget] = useState<RoutineFolder | null>(null);
 
     const contextMenuRef = useRef<HTMLDivElement>(null);
 
@@ -92,15 +95,12 @@ const RoutinesList: React.FC = () => {
     };
 
     const handleDeleteFolder = async (folderId: string) => {
-        if (confirm('¿Eliminar esta carpeta? Las rutinas dentro se moverán fuera.')) {
-            await deleteFolder(folderId);
-        }
+        const target = routineFolders.find(f => f.id === folderId) || null;
+        setDeleteFolderTarget(target);
     };
 
-    const handleDeleteRoutine = async (id: string, name: string) => {
-        if (confirm(`¿Eliminar la rutina "${name}"?`)) {
-            await deleteRoutine(id);
-        }
+    const handleDeleteRoutine = async (routine: Routine) => {
+        setDeleteRoutineTarget(routine);
     };
 
     const handleDuplicateRoutine = async (routineId: string) => {
@@ -405,7 +405,7 @@ const RoutinesList: React.FC = () => {
                                 <button
                                     onClick={() => {
                                         const routine = savedRoutines.find(r => r.id === contextMenu.id);
-                                        if (routine) handleDeleteRoutine(contextMenu.id, routine.name);
+                                        if (routine) handleDeleteRoutine(routine);
                                         setContextMenu(null);
                                     }}
                                     className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors text-left"
@@ -444,6 +444,67 @@ const RoutinesList: React.FC = () => {
                                 </button>
                             </>
                         )}
+                    </div>
+                )}
+
+                <ConfirmDialog
+                    isOpen={!!deleteRoutineTarget}
+                    title="Eliminar rutina"
+                    description={deleteRoutineTarget ? `¿Eliminar la rutina "${deleteRoutineTarget.name}"?` : undefined}
+                    confirmLabel="Eliminar"
+                    variant="danger"
+                    onCancel={() => setDeleteRoutineTarget(null)}
+                    onConfirm={async () => {
+                        if (!deleteRoutineTarget) return;
+                        await deleteRoutine(deleteRoutineTarget.id);
+                        setDeleteRoutineTarget(null);
+                    }}
+                />
+
+                {/* Delete Folder Modal */}
+                {deleteFolderTarget && (
+                    <div
+                        className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+                        onClick={() => setDeleteFolderTarget(null)}
+                    >
+                        <div
+                            className="bg-white dark:bg-[#1a2632] rounded-2xl p-6 w-full max-w-md shadow-xl animate-in fade-in zoom-in duration-300"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="size-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-red-600 dark:text-red-400">delete</span>
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold">Eliminar carpeta</h2>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        Esta acción no se puede deshacer.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="rounded-xl border border-red-100 dark:border-red-900/30 bg-red-50/70 dark:bg-red-900/10 p-4 text-sm text-gray-600 dark:text-gray-300 mb-5">
+                                Se eliminará <span className="font-bold">{deleteFolderTarget.name}</span>. Las rutinas dentro se moverán a <span className="font-bold">Sin carpeta</span>.
+                            </div>
+
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setDeleteFolderTarget(null)}
+                                    className="flex-1 py-2.5 rounded-lg bg-gray-200 dark:bg-gray-700 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-all"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        await deleteFolder(deleteFolderTarget.id);
+                                        setDeleteFolderTarget(null);
+                                    }}
+                                    className="flex-1 py-2.5 rounded-lg bg-red-600 text-white font-bold hover:bg-red-700 transition-all"
+                                >
+                                    Eliminar
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
 

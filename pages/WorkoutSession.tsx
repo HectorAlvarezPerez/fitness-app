@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore';
 import WorkoutTimer from '../components/WorkoutTimer';
 import RestTimer from '../components/RestTimer';
 import { buildLastPerformanceMap } from '../lib/workoutUtils';
+import ConfirmDialog from '../components/ConfirmDialog';
 import {
     DndContext,
     closestCenter,
@@ -43,6 +44,8 @@ const WorkoutSession: React.FC = () => {
     const [expandedExercise, setExpandedExercise] = useState<string | null>(null);
     const [initializationError, setInitializationError] = useState<string | null>(null);
     const initializingRef = React.useRef(false);
+    const [finishConfirmOpen, setFinishConfirmOpen] = useState(false);
+    const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
 
     const setSensors = useSensors(
         useSensor(PointerSensor, {
@@ -244,20 +247,24 @@ const WorkoutSession: React.FC = () => {
     const progress = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
     const isPartial = totalSets > 0 && completedSets < totalSets;
 
-    const handleFinish = async () => {
-        const confirmed = confirm(
-            isPartial
-                ? '¿Guardar progreso y finalizar? Se guardará como parcial en tu historial.'
-                : '¿Finalizar entrenamiento? Se guardará en tu historial.'
-        );
-        if (confirmed) {
-            // Navigate first to unmount component, then finish
-            navigate('/dashboard');
-            // Small delay to ensure navigation starts
-            setTimeout(() => {
-                finishWorkout();
-            }, 100);
-        }
+    const handleFinish = () => {
+        setFinishConfirmOpen(true);
+    };
+
+    const confirmFinish = () => {
+        setFinishConfirmOpen(false);
+        navigate('/dashboard');
+        setTimeout(() => {
+            finishWorkout();
+        }, 100);
+    };
+
+    const confirmCancel = () => {
+        setCancelConfirmOpen(false);
+        navigate('/dashboard');
+        setTimeout(() => {
+            cancelWorkout();
+        }, 100);
     };
 
     return (
@@ -421,15 +428,7 @@ const WorkoutSession: React.FC = () => {
 
                             {/* Cancel Button */}
                             <button
-                                onClick={async () => {
-                                    const confirmed = confirm('¿Cancelar entrenamiento? Se perderá todo el progreso.');
-                                    if (confirmed) {
-                                        navigate('/dashboard');
-                                        setTimeout(() => {
-                                            cancelWorkout();
-                                        }, 100);
-                                    }
-                                }}
+                                onClick={() => setCancelConfirmOpen(true)}
                                 className="w-full py-3 rounded-full border-2 border-red-500 text-red-500 dark:text-red-400 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
                             >
                                 Cancelar Entrenamiento
@@ -488,15 +487,7 @@ const WorkoutSession: React.FC = () => {
                         </button>
 
                         <button
-                            onClick={async () => {
-                                const confirmed = confirm('¿Cancelar entrenamiento? Se perderá todo el progreso.');
-                                if (confirmed) {
-                                    navigate('/dashboard');
-                                    setTimeout(() => {
-                                        cancelWorkout();
-                                    }, 100);
-                                }
-                            }}
+                            onClick={() => setCancelConfirmOpen(true)}
                             className="w-full py-3 rounded-xl border-2 border-red-100 dark:border-red-900/30 text-red-500 dark:text-red-400 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 transition-all flex items-center justify-center gap-2"
                         >
                             <span className="material-symbols-outlined">close</span>
@@ -505,6 +496,28 @@ const WorkoutSession: React.FC = () => {
                     </div>
                 </div>
             </aside>
+
+            <ConfirmDialog
+                isOpen={finishConfirmOpen}
+                title={isPartial ? 'Guardar progreso' : 'Finalizar entrenamiento'}
+                description={isPartial
+                    ? '¿Guardar progreso y finalizar? Se guardará como parcial en tu historial.'
+                    : '¿Finalizar entrenamiento? Se guardará en tu historial.'}
+                confirmLabel={isPartial ? 'Guardar' : 'Finalizar'}
+                variant="danger"
+                onCancel={() => setFinishConfirmOpen(false)}
+                onConfirm={confirmFinish}
+            />
+
+            <ConfirmDialog
+                isOpen={cancelConfirmOpen}
+                title="Cancelar entrenamiento"
+                description="¿Cancelar entrenamiento? Se perderá todo el progreso."
+                confirmLabel="Cancelar entrenamiento"
+                variant="danger"
+                onCancel={() => setCancelConfirmOpen(false)}
+                onConfirm={confirmCancel}
+            />
         </div>
     );
 };

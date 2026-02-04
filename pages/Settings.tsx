@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useStore } from '../store/useStore';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 const Settings: React.FC = () => {
     const navigate = useNavigate();
@@ -12,13 +13,10 @@ const Settings: React.FC = () => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isChangingPassword, setIsChangingPassword] = useState(false);
     const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
     const handleLogout = async () => {
-        const confirmed = confirm('¿Cerrar sesión?');
-        if (confirmed) {
-            await supabase.auth.signOut();
-            navigate('/');
-        }
+        setLogoutConfirmOpen(true);
     };
 
     const handleChangePassword = async (e: React.FormEvent) => {
@@ -83,6 +81,20 @@ const Settings: React.FC = () => {
                         </div>
                     </div>
                 </div>
+
+                <ConfirmDialog
+                    isOpen={logoutConfirmOpen}
+                    title="Cerrar sesión"
+                    description="¿Cerrar sesión en este dispositivo?"
+                    confirmLabel="Cerrar sesión"
+                    variant="danger"
+                    onCancel={() => setLogoutConfirmOpen(false)}
+                    onConfirm={async () => {
+                        setLogoutConfirmOpen(false);
+                        await supabase.auth.signOut();
+                        navigate('/');
+                    }}
+                />
 
                 {/* Security Section (Password Change) */}
                 <div className="rounded-2xl border border-slate-200 dark:border-[#233648] bg-white dark:bg-[#1a2632] p-6">

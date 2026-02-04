@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
+import ConfirmDialog from './ConfirmDialog';
 
 export const ActiveWorkoutFooter: React.FC = () => {
     const { activeWorkout, pauseWorkout, resumeWorkout, finishWorkout } = useStore();
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
+    const [finishConfirmOpen, setFinishConfirmOpen] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -107,19 +109,7 @@ export const ActiveWorkoutFooter: React.FC = () => {
                     <div className="flex items-center gap-1">
                         {/* Finish Button */}
                         <button
-                            onClick={() => {
-                                const confirmed = confirm(
-                                    isPartial
-                                        ? '¿Guardar progreso y finalizar? Se guardará como parcial en tu historial.'
-                                        : '¿Finalizar entrenamiento? Se guardará en tu historial.'
-                                );
-                                if (confirmed) {
-                                    navigate('/dashboard');
-                                    setTimeout(() => {
-                                        finishWorkout();
-                                    }, 100);
-                                }
-                            }}
+                            onClick={() => setFinishConfirmOpen(true)}
                             className="p-2 hover:bg-white/20 rounded-lg transition-colors text-white"
                             title={isPartial ? 'Guardar progreso' : 'Finalizar entrenamiento'}
                         >
@@ -138,6 +128,24 @@ export const ActiveWorkoutFooter: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            <ConfirmDialog
+                isOpen={finishConfirmOpen}
+                title={isPartial ? 'Guardar progreso' : 'Finalizar entrenamiento'}
+                description={isPartial
+                    ? '¿Guardar progreso y finalizar? Se guardará como parcial en tu historial.'
+                    : '¿Finalizar entrenamiento? Se guardará en tu historial.'}
+                confirmLabel={isPartial ? 'Guardar' : 'Finalizar'}
+                variant="danger"
+                onCancel={() => setFinishConfirmOpen(false)}
+                onConfirm={() => {
+                    setFinishConfirmOpen(false);
+                    navigate('/dashboard');
+                    setTimeout(() => {
+                        finishWorkout();
+                    }, 100);
+                }}
+            />
         </div>
     );
 };
