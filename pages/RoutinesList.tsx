@@ -223,9 +223,25 @@ const RoutinesList: React.FC = () => {
                         </div>
                     )}
 
-                    <span className="material-symbols-outlined text-gray-400 transition-transform" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                        expand_more
-                    </span>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleContextMenu(e, 'folder', folder.id);
+                            }}
+                            className="size-8 rounded-lg flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                            title="Opciones de carpeta"
+                            aria-label="Opciones de carpeta"
+                        >
+                            <span className="material-symbols-outlined text-[18px] text-gray-400">more_vert</span>
+                        </button>
+                        <span
+                            className="material-symbols-outlined text-gray-400 transition-transform"
+                            style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                        >
+                            expand_more
+                        </span>
+                    </div>
                 </div>
 
                 {/* Folder contents */}
