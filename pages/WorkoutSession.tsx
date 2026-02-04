@@ -3,6 +3,23 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import WorkoutTimer from '../components/WorkoutTimer';
 import RestTimer from '../components/RestTimer';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    TouchSensor,
+    useSensor,
+    useSensors,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const WorkoutSession: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -23,6 +40,18 @@ const WorkoutSession: React.FC = () => {
     const [expandedExercise, setExpandedExercise] = useState<string | null>(null);
     const [initializationError, setInitializationError] = useState<string | null>(null);
     const initializingRef = React.useRef(false);
+
+    const setSensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: { distance: 6 }
+        }),
+        useSensor(TouchSensor, {
+            activationConstraint: { distance: 6 }
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
 
     useEffect(() => {
         loadRoutines();
@@ -102,6 +131,22 @@ const WorkoutSession: React.FC = () => {
         );
 
         updateWorkoutExerciseSets(exerciseId, updatedSets);
+    };
+
+    const handleSetDragEnd = (exerciseId: string, event: any) => {
+        if (!activeWorkout) return;
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+
+        const exercise = activeWorkout.exercises.find(ex => ex.exerciseId === exerciseId);
+        if (!exercise) return;
+
+        const oldIndex = exercise.sets.findIndex((set: any) => set.id === active.id);
+        const newIndex = exercise.sets.findIndex((set: any) => set.id === over.id);
+        if (oldIndex === -1 || newIndex === -1) return;
+
+        const reordered = arrayMove(exercise.sets, oldIndex, newIndex);
+        updateWorkoutExerciseSets(exerciseId, reordered);
     };
 
     const addSet = (exerciseId: string) => {
@@ -275,132 +320,29 @@ const WorkoutSession: React.FC = () => {
                                         </div>
 
                                         <div className="flex flex-col gap-2">
-                                            {exercise.sets.map((set, setIndex) => (
-                                                <div
-                                                    key={setIndex}
-                                                    className={`p-3 rounded-lg border-2 transition-all ${set.completed
-                                                        ? 'bg-primary/10 border-primary'
-                                                        : set.isWarmup
-                                                            ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-gray-200 dark:border-[#233648] opacity-75'
-                                                            : 'bg-white dark:bg-[#1a2632] border-gray-200 dark:border-[#233648]'
-                                                        }`}
+                                            <DndContext
+                                                sensors={setSensors}
+                                                collisionDetection={closestCenter}
+                                                onDragEnd={(event) => handleSetDragEnd(exercise.exerciseId, event)}
+                                            >
+                                                <SortableContext
+                                                    items={exercise.sets.map((set: any) => set.id)}
+                                                    strategy={verticalListSortingStrategy}
                                                 >
-                                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-                                                        <div className="flex items-center gap-2">
-                                                            {/* Checkbox */}
-                                                            <button
-                                                                onClick={() => toggleSetComplete(exercise.exerciseId, setIndex)}
-                                                                className={`size-8 rounded-full border-2 flex items-center justify-center transition-all ${set.completed
-                                                                    ? 'bg-primary border-primary'
-                                                                    : 'border-gray-300 dark:border-gray-600'
-                                                                    }`}
-                                                            >
-                                                                {set.completed && (
-                                                                    <span className="material-symbols-outlined text-white text-[18px]">check</span>
-                                                                )}
-                                                            </button>
-
-                                                            <span className="text-sm font-bold text-gray-600 dark:text-gray-400 w-16 shrink-0">
-                                                                Serie {setIndex + 1}
-                                                            </span>
-
-                                                            {/* Dropset/Warmup badge */}
-                                                            {set.dropsets && set.dropsets.length > 0 && (
-                                                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-500 text-white" title={`Dropset con ${set.dropsets.length} sub-series`}>
-                                                                    D+{set.dropsets.length}
-                                                                </span>
-                                                            )}
-                                                            {set.isWarmup && (
-                                                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500 text-white" title="Calentamiento">W</span>
-                                                            )}
-                                                        </div>
-
-                                                        <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-2 sm:flex-1">
-                                                            {/* Weight */}
-                                                            <div className="flex items-center gap-1">
-                                                                <input
-                                                                    type="text"
-                                                                    inputMode="decimal"
-                                                                    value={set.weight || ''}
-                                                                    onChange={(e) => {
-                                                                        const val = e.target.value.replace(',', '.');
-                                                                        updateSetValue(exercise.exerciseId, setIndex, 'weight', val === '' ? 0 : parseFloat(val) || 0);
-                                                                    }}
-                                                                    className="w-full min-w-[60px] sm:w-16 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
-                                                                />
-                                                                <span className="text-xs text-gray-500">kg</span>
-                                                            </div>
-
-                                                            {/* Reps */}
-                                                            <div className="flex items-center gap-1">
-                                                                <input
-                                                                    type="number"
-                                                                    value={set.reps}
-                                                                    onChange={(e) => updateSetValue(exercise.exerciseId, setIndex, 'reps', parseInt(e.target.value) || 0)}
-                                                                    className="w-full min-w-[52px] sm:w-14 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
-                                                                />
-                                                                <span className="text-xs text-gray-500">reps</span>
-                                                            </div>
-
-                                                            {/* Rest */}
-                                                            <div className="flex items-center gap-1">
-                                                                <input
-                                                                    type="number"
-                                                                    value={set.restSeconds}
-                                                                    onChange={(e) => updateSetValue(exercise.exerciseId, setIndex, 'restSeconds', parseInt(e.target.value) || 0)}
-                                                                    className="w-full min-w-[52px] sm:w-14 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
-                                                                />
-                                                                <span className="text-xs text-gray-500">seg</span>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Delete Set */}
-                                                        {exercise.sets.length > 1 && (
-                                                            <button
-                                                                onClick={() => removeSet(exercise.exerciseId, setIndex)}
-                                                                className="self-start sm:self-center sm:ml-auto p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                                                            >
-                                                                <span className="material-symbols-outlined text-red-500 text-[18px]">close</span>
-                                                            </button>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Dropset sub-series */}
-                                                    {set.dropsets && set.dropsets.length > 0 && (
-                                                        <div className="ml-6 mt-1 space-y-1">
-                                                            {set.dropsets.map((dropset: any, dIndex: number) => (
-                                                                <div
-                                                                    key={`${setIndex}-${dIndex}`}
-                                                                    className="flex items-center gap-2 p-2 pl-4 rounded-lg bg-orange-50/50 dark:bg-orange-900/10 border-l-2 border-orange-400"
-                                                                >
-                                                                    <span className="text-xs font-bold text-orange-600 dark:text-orange-400 w-8">
-                                                                        {setIndex + 1}.{dIndex + 1}
-                                                                    </span>
-                                                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-500 text-white">D</span>
-                                                                    <div className="flex items-center gap-1">
-                                                                        <input
-                                                                            type="number"
-                                                                            value={dropset.weight}
-                                                                            readOnly
-                                                                            className="w-12 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-orange-200 dark:border-orange-700 text-sm font-bold"
-                                                                        />
-                                                                        <span className="text-xs text-gray-500">kg</span>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-1">
-                                                                        <input
-                                                                            type="number"
-                                                                            value={dropset.reps}
-                                                                            readOnly
-                                                                            className="w-12 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-orange-200 dark:border-orange-700 text-sm font-bold"
-                                                                        />
-                                                                        <span className="text-xs text-gray-500">reps</span>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
+                                                    {exercise.sets.map((set, setIndex) => (
+                                                        <SortableWorkoutSetRow
+                                                            key={set.id}
+                                                            set={set}
+                                                            setIndex={setIndex}
+                                                            exerciseId={exercise.exerciseId}
+                                                            totalSets={exercise.sets.length}
+                                                            toggleSetComplete={toggleSetComplete}
+                                                            updateSetValue={updateSetValue}
+                                                            removeSet={removeSet}
+                                                        />
+                                                    ))}
+                                                </SortableContext>
+                                            </DndContext>
 
                                             {/* Add Set Button */}
                                             <button
@@ -525,6 +467,169 @@ const WorkoutSession: React.FC = () => {
                     </div>
                 </div>
             </aside>
+        </div>
+    );
+};
+
+const SortableWorkoutSetRow: React.FC<{
+    set: any;
+    setIndex: number;
+    exerciseId: string;
+    totalSets: number;
+    toggleSetComplete: (exerciseId: string, setIndex: number) => void;
+    updateSetValue: (exerciseId: string, setIndex: number, field: 'reps' | 'weight' | 'restSeconds', value: number) => void;
+    removeSet: (exerciseId: string, setIndex: number) => void;
+}> = ({ set, setIndex, exerciseId, totalSets, toggleSetComplete, updateSetValue, removeSet }) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: set.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.7 : 1,
+        zIndex: isDragging ? 5 : 'auto',
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={`p-3 rounded-lg border-2 transition-all ${set.completed
+                ? 'bg-primary/10 border-primary'
+                : set.isWarmup
+                    ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-gray-200 dark:border-[#233648] opacity-75'
+                    : 'bg-white dark:bg-[#1a2632] border-gray-200 dark:border-[#233648]'
+                }`}
+        >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+                <div className="flex items-center gap-2">
+                    <button
+                        {...attributes}
+                        {...listeners}
+                        className="cursor-grab touch-none active:cursor-grabbing text-gray-400 hover:text-primary flex items-center justify-center"
+                        title="Arrastrar serie"
+                        aria-label="Arrastrar serie"
+                    >
+                        <span className="material-symbols-outlined text-[18px]">drag_indicator</span>
+                    </button>
+                    {/* Checkbox */}
+                    <button
+                        onClick={() => toggleSetComplete(exerciseId, setIndex)}
+                        className={`size-8 rounded-full border-2 flex items-center justify-center transition-all ${set.completed
+                            ? 'bg-primary border-primary'
+                            : 'border-gray-300 dark:border-gray-600'
+                            }`}
+                    >
+                        {set.completed && (
+                            <span className="material-symbols-outlined text-white text-[18px]">check</span>
+                        )}
+                    </button>
+
+                    <span className="text-sm font-bold text-gray-600 dark:text-gray-400 w-16 shrink-0">
+                        Serie {setIndex + 1}
+                    </span>
+
+                    {/* Dropset/Warmup badge */}
+                    {set.dropsets && set.dropsets.length > 0 && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-500 text-white" title={`Dropset con ${set.dropsets.length} sub-series`}>
+                            D+{set.dropsets.length}
+                        </span>
+                    )}
+                    {set.isWarmup && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500 text-white" title="Calentamiento">W</span>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-2 sm:flex-1">
+                    {/* Weight */}
+                    <div className="flex items-center gap-1">
+                        <input
+                            type="text"
+                            inputMode="decimal"
+                            value={set.weight || ''}
+                            onChange={(e) => {
+                                const val = e.target.value.replace(',', '.');
+                                updateSetValue(exerciseId, setIndex, 'weight', val === '' ? 0 : parseFloat(val) || 0);
+                            }}
+                            className="w-full min-w-[60px] sm:w-16 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
+                        />
+                        <span className="text-xs text-gray-500">kg</span>
+                    </div>
+
+                    {/* Reps */}
+                    <div className="flex items-center gap-1">
+                        <input
+                            type="number"
+                            value={set.reps}
+                            onChange={(e) => updateSetValue(exerciseId, setIndex, 'reps', parseInt(e.target.value) || 0)}
+                            className="w-full min-w-[52px] sm:w-14 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
+                        />
+                        <span className="text-xs text-gray-500">reps</span>
+                    </div>
+
+                    {/* Rest */}
+                    <div className="flex items-center gap-1">
+                        <input
+                            type="number"
+                            value={set.restSeconds}
+                            onChange={(e) => updateSetValue(exerciseId, setIndex, 'restSeconds', parseInt(e.target.value) || 0)}
+                            className="w-full min-w-[52px] sm:w-14 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
+                        />
+                        <span className="text-xs text-gray-500">seg</span>
+                    </div>
+                </div>
+
+                {/* Delete Set */}
+                {totalSets > 1 && (
+                    <button
+                        onClick={() => removeSet(exerciseId, setIndex)}
+                        className="self-start sm:self-center sm:ml-auto p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                    >
+                        <span className="material-symbols-outlined text-red-500 text-[18px]">close</span>
+                    </button>
+                )}
+            </div>
+
+            {/* Dropset sub-series */}
+            {set.dropsets && set.dropsets.length > 0 && (
+                <div className="ml-6 mt-1 space-y-1">
+                    {set.dropsets.map((dropset: any, dIndex: number) => (
+                        <div
+                            key={`${setIndex}-${dIndex}`}
+                            className="flex items-center gap-2 p-2 pl-4 rounded-lg bg-orange-50/50 dark:bg-orange-900/10 border-l-2 border-orange-400"
+                        >
+                            <span className="text-xs font-bold text-orange-600 dark:text-orange-400 w-8">
+                                {setIndex + 1}.{dIndex + 1}
+                            </span>
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-500 text-white">D</span>
+                            <div className="flex items-center gap-1">
+                                <input
+                                    type="number"
+                                    value={dropset.weight}
+                                    readOnly
+                                    className="w-12 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-orange-200 dark:border-orange-700 text-sm font-bold"
+                                />
+                                <span className="text-xs text-gray-500">kg</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <input
+                                    type="number"
+                                    value={dropset.reps}
+                                    readOnly
+                                    className="w-12 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-orange-200 dark:border-orange-700 text-sm font-bold"
+                                />
+                                <span className="text-xs text-gray-500">reps</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };

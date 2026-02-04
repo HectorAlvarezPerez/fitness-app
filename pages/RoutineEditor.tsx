@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import ExerciseLibrarySheet from '../components/ExerciseLibrarySheet';
+import { createId } from '../lib/id';
 import {
     DndContext,
     closestCenter,
@@ -357,26 +358,67 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
         transition,
     };
 
-    // Helper to ensure sets is an array (backward compatibility)
-    const sets = Array.isArray(exercise.sets) ? exercise.sets :
-        (typeof exercise.sets === 'number' ? Array(exercise.sets).fill({ reps: exercise.reps || 10, weight: exercise.weight || 20 }) : []);
+    // Ensure sets are arrays with stable IDs (backward compatibility)
+    useEffect(() => {
+        if (Array.isArray(exercise.sets)) {
+            const missingId = exercise.sets.some((set: any) => !set.id);
+            if (missingId) {
+                const updated = exercise.sets.map((set: any) => set.id ? set : { ...set, id: createId('set') });
+                updateExercise(exercise.id, { sets: updated });
+            }
+            return;
+        }
 
-    const [weightDrafts, setWeightDrafts] = useState<Record<number, string>>({});
-    const [activeWeightIndex, setActiveWeightIndex] = useState<number | null>(null);
+        if (typeof exercise.sets === 'number') {
+            const baseSets = Array.from({ length: exercise.sets }, () => ({
+                id: createId('set'),
+                reps: exercise.reps || 10,
+                weight: exercise.weight || 20
+            }));
+            updateExercise(exercise.id, { sets: baseSets });
+        }
+    }, [exercise.id, exercise.reps, exercise.sets, exercise.weight, updateExercise]);
+
+    const sets = Array.isArray(exercise.sets) ? exercise.sets : [];
+
+    const [weightDrafts, setWeightDrafts] = useState<Record<string, string>>({});
+    const [activeWeightId, setActiveWeightId] = useState<string | null>(null);
 
     useEffect(() => {
         setWeightDrafts((prev) => {
-            const next: Record<number, string> = {};
-            sets.forEach((set: any, idx: number) => {
-                if (activeWeightIndex === idx && prev[idx] !== undefined) {
-                    next[idx] = prev[idx];
+            const next: Record<string, string> = {};
+            sets.forEach((set: any) => {
+                if (!set.id) return;
+                if (activeWeightId === set.id && prev[set.id] !== undefined) {
+                    next[set.id] = prev[set.id];
                     return;
                 }
-                next[idx] = set.weight ? String(set.weight) : '';
+                next[set.id] = set.weight ? String(set.weight) : '';
             });
             return next;
         });
-    }, [sets, activeWeightIndex]);
+    }, [sets, activeWeightId]);
+
+    const setSensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: { distance: 6 }
+        }),
+        useSensor(TouchSensor, {
+            activationConstraint: { distance: 6 }
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleSetDragEnd = (event: any) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+        const oldIndex = sets.findIndex((set: any) => set.id === active.id);
+        const newIndex = sets.findIndex((set: any) => set.id === over.id);
+        if (oldIndex === -1 || newIndex === -1) return;
+        updateExercise(exercise.id, { sets: arrayMove(sets, oldIndex, newIndex) });
+    };
 
     const updateSet = (index: number, field: 'reps' | 'weight', value: number) => {
         const newSets = [...sets];
@@ -434,7 +476,7 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
 
     const addSet = () => {
         const lastSet = sets.length > 0 ? sets[sets.length - 1] : { reps: 10, weight: 20 };
-        const newSets = [...sets, { reps: lastSet.reps, weight: lastSet.weight }]; // Don't copy dropsets
+        const newSets = [...sets, { id: createId('set'), reps: lastSet.reps, weight: lastSet.weight }]; // Don't copy dropsets
         updateExercise(exercise.id, { sets: newSets });
     };
 
@@ -504,7 +546,8 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
             </div>
 
             <div className="flex flex-col gap-2">
-                <div className="grid grid-cols-[40px_32px_1fr_1fr_40px] gap-2 items-center px-2 mb-1">
+                <div className="grid grid-cols-[28px_40px_32px_1fr_1fr_40px] gap-2 items-center px-2 mb-1">
+                    <span className="text-xs font-bold text-gray-400 text-center"></span>
                     <span className="text-xs font-bold text-gray-400 text-center">#</span>
                     <span className="text-xs font-bold text-gray-400 text-center">Tipo</span>
                     <span className="text-xs font-bold text-gray-400">Peso (kg)</span>
@@ -512,140 +555,35 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
                     <span></span>
                 </div>
 
-                {sets.map((set: any, index: number) => (
-                    <div key={index} className="flex flex-col gap-1">
-                        {/* Main set row */}
-                        <div className={`grid grid-cols-[40px_32px_1fr_1fr_40px] gap-2 items-center ${set.isWarmup ? 'opacity-60' : ''}`}>
-                            <div className="flex items-center justify-center">
-                                <span className={`text-sm font-bold w-6 h-6 rounded flex items-center justify-center ${set.dropsets?.length > 0
-                                    ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400'
-                                    : set.isWarmup
-                                        ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                        : 'text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-surface-dark/50'
-                                    }`}>
-                                    {index + 1}
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-center gap-0.5">
-                                <button
-                                    onClick={() => toggleWarmup(index)}
-                                    className={`w-6 h-6 rounded text-[10px] font-bold transition-all ${set.isWarmup
-                                        ? 'bg-emerald-500 text-white'
-                                        : 'bg-gray-100 dark:bg-surface-dark text-gray-400 hover:bg-gray-200'
-                                        }`}
-                                    title="Calentamiento"
-                                >
-                                    W
-                                </button>
-                            </div>
-                            <input
-                                type="text"
-                                inputMode="decimal"
-                                value={weightDrafts[index] ?? (set.weight ? String(set.weight) : '')}
-                                onFocus={() => {
-                                    setActiveWeightIndex(index);
-                                    setWeightDrafts((prev) => ({
-                                        ...prev,
-                                        [index]: prev[index] ?? (set.weight ? String(set.weight) : '')
-                                    }));
-                                }}
-                                onBlur={() => {
-                                    setActiveWeightIndex(null);
-                                    const raw = (weightDrafts[index] ?? '').trim();
-                                    const normalized = raw.replace(',', '.');
-                                    if (normalized === '' || normalized === '.') {
-                                        updateSet(index, 'weight', 0);
-                                        setWeightDrafts((prev) => ({ ...prev, [index]: '' }));
-                                        return;
-                                    }
-                                    const parsed = Number(normalized);
-                                    if (Number.isNaN(parsed)) {
-                                        const fallback = set.weight ? String(set.weight) : '';
-                                        setWeightDrafts((prev) => ({ ...prev, [index]: fallback }));
-                                        return;
-                                    }
-                                    updateSet(index, 'weight', parsed);
-                                    setWeightDrafts((prev) => ({ ...prev, [index]: String(parsed) }));
-                                }}
-                                onChange={(e) => {
-                                    const raw = e.target.value;
-                                    if (!/^[0-9]*[.,]?[0-9]*$/.test(raw)) {
-                                        return;
-                                    }
-                                    setWeightDrafts((prev) => ({ ...prev, [index]: raw }));
-                                    const normalized = raw.replace(',', '.');
-                                    if (normalized === '' || normalized === '.') {
-                                        updateSet(index, 'weight', 0);
-                                        return;
-                                    }
-                                    const parsed = Number(normalized);
-                                    if (!Number.isNaN(parsed)) {
-                                        updateSet(index, 'weight', parsed);
-                                    }
-                                }}
-                                className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border text-center font-bold text-sm"
-                                placeholder="kg"
+                <DndContext
+                    sensors={setSensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleSetDragEnd}
+                >
+                    <SortableContext
+                        items={sets.map((set: any) => set.id)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        {sets.map((set: any, index: number) => (
+                            <SortableSetRow
+                                key={set.id}
+                                set={set}
+                                index={index}
+                                totalSets={sets.length}
+                                weightDrafts={weightDrafts}
+                                setWeightDrafts={setWeightDrafts}
+                                activeWeightId={activeWeightId}
+                                setActiveWeightId={setActiveWeightId}
+                                updateSet={updateSet}
+                                toggleWarmup={toggleWarmup}
+                                addDropsetSubSerie={addDropsetSubSerie}
+                                removeSet={removeSet}
+                                updateDropset={updateDropset}
+                                removeDropsetSubSerie={removeDropsetSubSerie}
                             />
-                            <input
-                                type="number"
-                                value={set.reps}
-                                onChange={(e) => updateSet(index, 'reps', parseInt(e.target.value) || 0)}
-                                className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border text-center font-bold text-sm"
-                                placeholder="Reps"
-                            />
-                            <div className="flex gap-0.5">
-                                <button
-                                    onClick={() => addDropsetSubSerie(index)}
-                                    className="p-1 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded text-orange-500 transition-colors flex items-center justify-center"
-                                    title="Añadir sub-serie (dropset)"
-                                >
-                                    <span className="text-[10px] font-bold">+D</span>
-                                </button>
-                                <button
-                                    onClick={() => removeSet(index)}
-                                    className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-500 transition-colors flex items-center justify-center"
-                                    disabled={sets.length <= 1}
-                                    title="Eliminar serie"
-                                >
-                                    <span className="material-symbols-outlined text-[16px]">close</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Dropset sub-series */}
-                        {set.dropsets?.map((dropset: any, dIndex: number) => (
-                            <div key={`${index}-${dIndex}`} className="grid grid-cols-[40px_32px_1fr_1fr_40px] gap-2 items-center pl-4 border-l-2 border-orange-300 dark:border-orange-600 ml-3 bg-orange-50/50 dark:bg-orange-900/10 rounded-r-lg py-1">
-                                <div className="flex items-center justify-center">
-                                    <span className="text-xs font-bold text-orange-600 dark:text-orange-400">
-                                        {index + 1}.{dIndex + 1}
-                                    </span>
-                                </div>
-                                <div className="text-[10px] text-orange-500 font-bold text-center">D</div>
-                                <input
-                                    type="number"
-                                    value={dropset.weight}
-                                    onChange={(e) => updateDropset(index, dIndex, 'weight', parseFloat(e.target.value) || 0)}
-                                    className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-surface-dark border border-orange-200 dark:border-orange-700 text-center font-bold text-sm"
-                                    placeholder="kg"
-                                />
-                                <input
-                                    type="number"
-                                    value={dropset.reps}
-                                    onChange={(e) => updateDropset(index, dIndex, 'reps', parseInt(e.target.value) || 0)}
-                                    className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-surface-dark border border-orange-200 dark:border-orange-700 text-center font-bold text-sm"
-                                    placeholder="Reps"
-                                />
-                                <button
-                                    onClick={() => removeDropsetSubSerie(index, dIndex)}
-                                    className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-400 transition-colors flex items-center justify-center"
-                                    title="Eliminar sub-serie"
-                                >
-                                    <span className="material-symbols-outlined text-[14px]">close</span>
-                                </button>
-                            </div>
                         ))}
-                    </div>
-                ))}
+                    </SortableContext>
+                </DndContext>
 
                 <button
                     onClick={addSet}
@@ -655,6 +593,185 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
                     Añadir Serie
                 </button>
             </div>
+        </div>
+    );
+}
+
+function SortableSetRow({
+    set,
+    index,
+    totalSets,
+    weightDrafts,
+    setWeightDrafts,
+    activeWeightId,
+    setActiveWeightId,
+    updateSet,
+    toggleWarmup,
+    addDropsetSubSerie,
+    removeSet,
+    updateDropset,
+    removeDropsetSubSerie,
+}: any) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: set.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.7 : 1,
+        zIndex: isDragging ? 5 : 'auto',
+    };
+
+    const weightDraft = weightDrafts[set.id] ?? (set.weight ? String(set.weight) : '');
+
+    return (
+        <div ref={setNodeRef} style={style} className="flex flex-col gap-1">
+            {/* Main set row */}
+            <div className={`grid grid-cols-[28px_40px_32px_1fr_1fr_40px] gap-2 items-center ${set.isWarmup ? 'opacity-60' : ''}`}>
+                <button
+                    {...attributes}
+                    {...listeners}
+                    className="cursor-grab touch-none active:cursor-grabbing text-gray-400 hover:text-primary flex items-center justify-center"
+                    title="Arrastrar serie"
+                    aria-label="Arrastrar serie"
+                >
+                    <span className="material-symbols-outlined text-[18px]">drag_indicator</span>
+                </button>
+                <div className="flex items-center justify-center">
+                    <span className={`text-sm font-bold w-6 h-6 rounded flex items-center justify-center ${set.dropsets?.length > 0
+                        ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400'
+                        : set.isWarmup
+                            ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
+                            : 'text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-surface-dark/50'
+                        }`}>
+                        {index + 1}
+                    </span>
+                </div>
+                <div className="flex items-center justify-center gap-0.5">
+                    <button
+                        onClick={() => toggleWarmup(index)}
+                        className={`w-6 h-6 rounded text-[10px] font-bold transition-all ${set.isWarmup
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-gray-100 dark:bg-surface-dark text-gray-400 hover:bg-gray-200'
+                            }`}
+                        title="Calentamiento"
+                    >
+                        W
+                    </button>
+                </div>
+                <input
+                    type="text"
+                    inputMode="decimal"
+                    value={weightDraft}
+                    onFocus={() => {
+                        setActiveWeightId(set.id);
+                        setWeightDrafts((prev: Record<string, string>) => ({
+                            ...prev,
+                            [set.id]: prev[set.id] ?? (set.weight ? String(set.weight) : '')
+                        }));
+                    }}
+                    onBlur={() => {
+                        setActiveWeightId(null);
+                        const raw = (weightDrafts[set.id] ?? '').trim();
+                        const normalized = raw.replace(',', '.');
+                        if (normalized === '' || normalized === '.') {
+                            updateSet(index, 'weight', 0);
+                            setWeightDrafts((prev: Record<string, string>) => ({ ...prev, [set.id]: '' }));
+                            return;
+                        }
+                        const parsed = Number(normalized);
+                        if (Number.isNaN(parsed)) {
+                            const fallback = set.weight ? String(set.weight) : '';
+                            setWeightDrafts((prev: Record<string, string>) => ({ ...prev, [set.id]: fallback }));
+                            return;
+                        }
+                        updateSet(index, 'weight', parsed);
+                        setWeightDrafts((prev: Record<string, string>) => ({ ...prev, [set.id]: String(parsed) }));
+                    }}
+                    onChange={(e) => {
+                        const raw = e.target.value;
+                        if (!/^[0-9]*[.,]?[0-9]*$/.test(raw)) {
+                            return;
+                        }
+                        setWeightDrafts((prev: Record<string, string>) => ({ ...prev, [set.id]: raw }));
+                        const normalized = raw.replace(',', '.');
+                        if (normalized === '' || normalized === '.') {
+                            updateSet(index, 'weight', 0);
+                            return;
+                        }
+                        const parsed = Number(normalized);
+                        if (!Number.isNaN(parsed)) {
+                            updateSet(index, 'weight', parsed);
+                        }
+                    }}
+                    className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border text-center font-bold text-sm"
+                    placeholder="kg"
+                />
+                <input
+                    type="number"
+                    value={set.reps}
+                    onChange={(e) => updateSet(index, 'reps', parseInt(e.target.value) || 0)}
+                    className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border text-center font-bold text-sm"
+                    placeholder="Reps"
+                />
+                <div className="flex gap-0.5">
+                    <button
+                        onClick={() => addDropsetSubSerie(index)}
+                        className="p-1 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded text-orange-500 transition-colors flex items-center justify-center"
+                        title="Añadir sub-serie (dropset)"
+                    >
+                        <span className="text-[10px] font-bold">+D</span>
+                    </button>
+                    <button
+                        onClick={() => removeSet(index)}
+                        className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-500 transition-colors flex items-center justify-center"
+                        disabled={totalSets <= 1}
+                        title="Eliminar serie"
+                    >
+                        <span className="material-symbols-outlined text-[16px]">close</span>
+                    </button>
+                </div>
+            </div>
+
+            {/* Dropset sub-series */}
+            {set.dropsets?.map((dropset: any, dIndex: number) => (
+                <div key={`${index}-${dIndex}`} className="grid grid-cols-[28px_40px_32px_1fr_1fr_40px] gap-2 items-center pl-4 border-l-2 border-orange-300 dark:border-orange-600 ml-3 bg-orange-50/50 dark:bg-orange-900/10 rounded-r-lg py-1">
+                    <div />
+                    <div className="flex items-center justify-center">
+                        <span className="text-xs font-bold text-orange-600 dark:text-orange-400">
+                            {index + 1}.{dIndex + 1}
+                        </span>
+                    </div>
+                    <div className="text-[10px] text-orange-500 font-bold text-center">D</div>
+                    <input
+                        type="number"
+                        value={dropset.weight}
+                        onChange={(e) => updateDropset(index, dIndex, 'weight', parseFloat(e.target.value) || 0)}
+                        className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-surface-dark border border-orange-200 dark:border-orange-700 text-center font-bold text-sm"
+                        placeholder="kg"
+                    />
+                    <input
+                        type="number"
+                        value={dropset.reps}
+                        onChange={(e) => updateDropset(index, dIndex, 'reps', parseInt(e.target.value) || 0)}
+                        className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-surface-dark border border-orange-200 dark:border-orange-700 text-center font-bold text-sm"
+                        placeholder="Reps"
+                    />
+                    <button
+                        onClick={() => removeDropsetSubSerie(index, dIndex)}
+                        className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-400 transition-colors flex items-center justify-center"
+                        title="Eliminar sub-serie"
+                    >
+                        <span className="material-symbols-outlined text-[14px]">close</span>
+                    </button>
+                </div>
+            ))}
         </div>
     );
 }

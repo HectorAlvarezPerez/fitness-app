@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabaseClient';
+import { createId } from '../lib/id';
 import { ACHIEVEMENTS, Achievement } from '../data/achievements';
 
 export interface RoutineSet {
+  id?: string;
   reps: number;
   weight: number;
   isWarmup?: boolean;
@@ -68,6 +70,7 @@ export interface ActiveWorkoutExercise {
   notes?: string;
   includesBodyweight?: boolean; // For exercises like dips where volume = bodyweight + added weight
   sets: Array<{
+    id?: string;
     reps: number;
     weight: number;
     restSeconds: number;
@@ -88,6 +91,32 @@ export interface ActiveWorkout {
   totalPausedMs?: number; // Track total paused time
   exercises: ActiveWorkoutExercise[];
 }
+
+const ensureSetIds = <T extends { id?: string }>(sets: T[]) => {
+  let changed = false;
+  const next = sets.map((set) => {
+    if (set.id) return set;
+    changed = true;
+    return { ...set, id: createId('set') };
+  });
+  return changed ? next : sets;
+};
+
+const normalizeExerciseSets = (exercise: Exercise): Exercise => {
+  if (Array.isArray(exercise.sets)) {
+    const normalized = ensureSetIds(exercise.sets);
+    if (normalized !== exercise.sets) {
+      return { ...exercise, sets: normalized };
+    }
+  }
+  return exercise;
+};
+
+const normalizeActiveWorkoutExercises = (exercises: ActiveWorkoutExercise[]) =>
+  exercises.map((exercise) => ({
+    ...exercise,
+    sets: Array.isArray(exercise.sets) ? ensureSetIds(exercise.sets) : [],
+  }));
 
 export interface RoutineFolder {
   id: string;
@@ -317,12 +346,22 @@ export const useStore = create<AppState>()(
       },
 
       setRoutineName: (name) => set({ routineName: name }),
-      addExercise: (exercise) => set((state) => ({ exercises: [...state.exercises, exercise] })),
-      removeExercise: (id) => set((state) => ({ exercises: state.exercises.filter((e) => e.id !== id) })),
-      updateExercise: (id, updates) => set((state) => ({
-        exercises: state.exercises.map((e) => (e.id === id ? { ...e, ...updates } : e)),
+      addExercise: (exercise) => set((state) => ({
+        exercises: [...state.exercises, normalizeExerciseSets(exercise)],
       })),
-      setExercises: (exercises) => set({ exercises }),
+      removeExercise: (id) => set((state) => ({ exercises: state.exercises.filter((e) => e.id !== id) })),
+      updateExercise: (id, updates) => set((state) => {
+        const normalizedUpdates = {
+          ...updates,
+          sets: Array.isArray(updates.sets) ? ensureSetIds(updates.sets) : updates.sets,
+        };
+        return {
+          exercises: state.exercises.map((e) =>
+            e.id === id ? { ...e, ...normalizedUpdates } : e
+          ),
+        };
+      }),
+      setExercises: (exercises) => set({ exercises: exercises.map(normalizeExerciseSets) }),
       updateOnboardingData: (data) => set((state) => ({ onboardingData: { ...state.onboardingData, ...data } })),
 
       // Routine Management Functions
@@ -670,13 +709,14 @@ export const useStore = create<AppState>()(
           .single();
 
         if (!error && data) {
+          const normalizedExercises = normalizeActiveWorkoutExercises(data.workout_data.exercises || []);
           set({
             activeWorkout: {
               id: data.id,
               routineId: data.routine_id,
               routineName: data.routine_name,
               startedAt: data.started_at,
-              exercises: data.workout_data.exercises || []
+              exercises: normalizedExercises,
             }
           });
         }
@@ -686,8 +726,9 @@ export const useStore = create<AppState>()(
         const state = get();
         if (!state.activeWorkout) return;
 
+        const normalizedSets = ensureSetIds(sets);
         const updatedExercises = state.activeWorkout.exercises.map(ex =>
-          ex.exerciseId === exerciseId ? { ...ex, sets } : ex
+          ex.exerciseId === exerciseId ? { ...ex, sets: normalizedSets } : ex
         );
 
         set({
@@ -756,6 +797,7 @@ export const useStore = create<AppState>()(
             if (Array.isArray(ex.sets)) {
               // New format - preserve dropsets and isWarmup
               parsedSets = ex.sets.map(s => ({
+                id: s.id || createId('set'),
                 reps: s.reps,
                 weight: s.weight,
                 isWarmup: s.isWarmup,
@@ -767,12 +809,13 @@ export const useStore = create<AppState>()(
               const reps = ex.reps || 10;
               const weight = ex.weight || 0;
               parsedSets = Array.from({ length: setsCount }, () => ({
+                id: createId('set'),
                 reps,
                 weight
               }));
             } else {
               // Fallback
-              parsedSets = [{ reps: 10, weight: 0 }];
+              parsedSets = [{ id: createId('set'), reps: 10, weight: 0 }];
             }
 
             // Find last session with this exercise (by name)
@@ -809,6 +852,7 @@ export const useStore = create<AppState>()(
               notes: ex.notes, // Copy notes from routine
               includesBodyweight: ex.includesBodyweight, // Pass bodyweight flag
               sets: parsedSets.map(s => ({
+                id: s.id || createId('set'),
                 reps: s.reps,
                 weight: s.weight,
                 restSeconds,
