@@ -379,6 +379,7 @@ const WorkoutSession: React.FC = () => {
                                                                 setIndex={setIndex}
                                                                 exerciseId={exercise.exerciseId}
                                                                 totalSets={exercise.sets.length}
+                                                                trackingType={exercise.trackingType || 'reps'}
                                                                 toggleSetComplete={toggleSetComplete}
                                                                 updateSetValue={updateSetValue}
                                                                 removeSet={removeSet}
@@ -529,11 +530,12 @@ const SortableWorkoutSetRow: React.FC<{
     setIndex: number;
     exerciseId: string;
     totalSets: number;
+    trackingType: 'reps' | 'time';
     toggleSetComplete: (exerciseId: string, setIndex: number) => void;
     updateSetValue: (exerciseId: string, setIndex: number, field: 'reps' | 'weight' | 'restSeconds', value: number) => void;
     removeSet: (exerciseId: string, setIndex: number) => void;
     lastLabel: string;
-}> = ({ set, setIndex, exerciseId, totalSets, toggleSetComplete, updateSetValue, removeSet, lastLabel }) => {
+}> = ({ set, setIndex, exerciseId, totalSets, trackingType, toggleSetComplete, updateSetValue, removeSet, lastLabel }) => {
     const {
         attributes,
         listeners,
@@ -600,23 +602,25 @@ const SortableWorkoutSetRow: React.FC<{
                     )}
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-2 sm:flex-1">
-                    {/* Weight */}
-                    <div className="flex items-center gap-1">
-                        <input
-                            type="text"
-                            inputMode="decimal"
-                            value={set.weight || ''}
-                            onChange={(e) => {
-                                const val = e.target.value.replace(',', '.');
-                                updateSetValue(exerciseId, setIndex, 'weight', val === '' ? 0 : parseFloat(val) || 0);
-                            }}
-                            className="w-full min-w-[60px] sm:w-16 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
-                        />
-                        <span className="text-xs text-gray-500">kg</span>
-                    </div>
+                <div className={`grid ${trackingType === 'time' ? 'grid-cols-2' : 'grid-cols-3'} gap-2 sm:flex sm:items-center sm:gap-2 sm:flex-1`}>
+                    {/* Weight - hide for time-based exercises */}
+                    {trackingType !== 'time' && (
+                        <div className="flex items-center gap-1">
+                            <input
+                                type="text"
+                                inputMode="decimal"
+                                value={set.weight || ''}
+                                onChange={(e) => {
+                                    const val = e.target.value.replace(',', '.');
+                                    updateSetValue(exerciseId, setIndex, 'weight', val === '' ? 0 : parseFloat(val) || 0);
+                                }}
+                                className="w-full min-w-[60px] sm:w-16 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
+                            />
+                            <span className="text-xs text-gray-500">kg</span>
+                        </div>
+                    )}
 
-                    {/* Reps */}
+                    {/* Reps or Duration */}
                     <div className="flex items-center gap-1">
                         <input
                             type="text"
@@ -629,19 +633,21 @@ const SortableWorkoutSetRow: React.FC<{
                             }}
                             className="w-full min-w-[52px] sm:w-14 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
                         />
-                        <span className="text-xs text-gray-500">reps</span>
+                        <span className="text-xs text-gray-500">{trackingType === 'time' ? 'seg' : 'reps'}</span>
                     </div>
 
-                    {/* Rest */}
-                    <div className="flex items-center gap-1">
-                        <input
-                            type="number"
-                            value={set.restSeconds}
-                            onChange={(e) => updateSetValue(exerciseId, setIndex, 'restSeconds', parseInt(e.target.value) || 0)}
-                            className="w-full min-w-[52px] sm:w-14 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
-                        />
-                        <span className="text-xs text-gray-500">seg</span>
-                    </div>
+                    {/* Rest - hide for time-based exercises */}
+                    {trackingType !== 'time' && (
+                        <div className="flex items-center gap-1">
+                            <input
+                                type="number"
+                                value={set.restSeconds}
+                                onChange={(e) => updateSetValue(exerciseId, setIndex, 'restSeconds', parseInt(e.target.value) || 0)}
+                                className="w-full min-w-[52px] sm:w-14 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
+                            />
+                            <span className="text-xs text-gray-500">seg</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Delete Set */}

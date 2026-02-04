@@ -99,17 +99,19 @@ const RoutineEditor: React.FC = () => {
         const defaultSets = userData?.default_sets_count || 3;
         const defaultReps = userData?.default_reps_count || 10;
         const defaultWeight = userData?.default_weight_kg || 20;
+        const isTimeBased = exerciseLibItem.tracking_type === 'time';
 
-        const newSets = Array.from({ length: defaultSets }, () => ({
-            reps: defaultReps,
-            weight: defaultWeight
+        const newSets = Array.from({ length: isTimeBased ? 1 : defaultSets }, () => ({
+            reps: isTimeBased ? 60 : defaultReps, // For time-based, default to 60 seconds
+            weight: isTimeBased ? 0 : defaultWeight
         }));
 
         addExercise({
             id: Date.now().toString(),
             name: exerciseLibItem.name,
             muscleGroup: exerciseLibItem.primary_muscle,
-            sets: newSets
+            sets: newSets,
+            trackingType: exerciseLibItem.tracking_type || 'reps'
         });
     };
 
@@ -546,12 +548,12 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
             </div>
 
             <div className="flex flex-col gap-2">
-                <div className="grid grid-cols-[28px_40px_32px_1fr_1fr_40px] gap-2 items-center px-2 mb-1">
+                <div className={`grid ${exercise.trackingType === 'time' ? 'grid-cols-[28px_40px_32px_1fr_40px]' : 'grid-cols-[28px_40px_32px_1fr_1fr_40px]'} gap-2 items-center px-2 mb-1`}>
                     <span className="text-xs font-bold text-gray-400 text-center"></span>
                     <span className="text-xs font-bold text-gray-400 text-center">#</span>
                     <span className="text-xs font-bold text-gray-400 text-center">Tipo</span>
-                    <span className="text-xs font-bold text-gray-400">Peso (kg)</span>
-                    <span className="text-xs font-bold text-gray-400">Reps</span>
+                    {exercise.trackingType !== 'time' && <span className="text-xs font-bold text-gray-400">Peso (kg)</span>}
+                    <span className="text-xs font-bold text-gray-400">{exercise.trackingType === 'time' ? 'Duración (seg)' : 'Reps'}</span>
                     <span></span>
                 </div>
 
@@ -570,6 +572,7 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
                                 set={set}
                                 index={index}
                                 totalSets={sets.length}
+                                trackingType={exercise.trackingType || 'reps'}
                                 weightDrafts={weightDrafts}
                                 setWeightDrafts={setWeightDrafts}
                                 activeWeightId={activeWeightId}
@@ -601,6 +604,7 @@ function SortableSetRow({
     set,
     index,
     totalSets,
+    trackingType,
     weightDrafts,
     setWeightDrafts,
     activeWeightId,
@@ -633,7 +637,7 @@ function SortableSetRow({
     return (
         <div ref={setNodeRef} style={style} className="flex flex-col gap-1">
             {/* Main set row */}
-            <div className={`grid grid-cols-[28px_40px_32px_1fr_1fr_40px] gap-2 items-center ${set.isWarmup ? 'opacity-60' : ''}`}>
+            <div className={`grid ${trackingType === 'time' ? 'grid-cols-[28px_40px_32px_1fr_40px]' : 'grid-cols-[28px_40px_32px_1fr_1fr_40px]'} gap-2 items-center ${set.isWarmup ? 'opacity-60' : ''}`}>
                 <button
                     {...attributes}
                     {...listeners}
@@ -665,54 +669,58 @@ function SortableSetRow({
                         W
                     </button>
                 </div>
-                <input
-                    type="text"
-                    inputMode="decimal"
-                    value={weightDraft}
-                    onFocus={() => {
-                        setActiveWeightId(set.id);
-                        setWeightDrafts((prev: Record<string, string>) => ({
-                            ...prev,
-                            [set.id]: prev[set.id] ?? (set.weight ? String(set.weight) : '')
-                        }));
-                    }}
-                    onBlur={() => {
-                        setActiveWeightId(null);
-                        const raw = (weightDrafts[set.id] ?? '').trim();
-                        const normalized = raw.replace(',', '.');
-                        if (normalized === '' || normalized === '.') {
-                            updateSet(index, 'weight', 0);
-                            setWeightDrafts((prev: Record<string, string>) => ({ ...prev, [set.id]: '' }));
-                            return;
-                        }
-                        const parsed = Number(normalized);
-                        if (Number.isNaN(parsed)) {
-                            const fallback = set.weight ? String(set.weight) : '';
-                            setWeightDrafts((prev: Record<string, string>) => ({ ...prev, [set.id]: fallback }));
-                            return;
-                        }
-                        updateSet(index, 'weight', parsed);
-                        setWeightDrafts((prev: Record<string, string>) => ({ ...prev, [set.id]: String(parsed) }));
-                    }}
-                    onChange={(e) => {
-                        const raw = e.target.value;
-                        if (!/^[0-9]*[.,]?[0-9]*$/.test(raw)) {
-                            return;
-                        }
-                        setWeightDrafts((prev: Record<string, string>) => ({ ...prev, [set.id]: raw }));
-                        const normalized = raw.replace(',', '.');
-                        if (normalized === '' || normalized === '.') {
-                            updateSet(index, 'weight', 0);
-                            return;
-                        }
-                        const parsed = Number(normalized);
-                        if (!Number.isNaN(parsed)) {
+                {/* Weight input - hide for time-based exercises */}
+                {trackingType !== 'time' && (
+                    <input
+                        type="text"
+                        inputMode="decimal"
+                        value={weightDraft}
+                        onFocus={() => {
+                            setActiveWeightId(set.id);
+                            setWeightDrafts((prev: Record<string, string>) => ({
+                                ...prev,
+                                [set.id]: prev[set.id] ?? (set.weight ? String(set.weight) : '')
+                            }));
+                        }}
+                        onBlur={() => {
+                            setActiveWeightId(null);
+                            const raw = (weightDrafts[set.id] ?? '').trim();
+                            const normalized = raw.replace(',', '.');
+                            if (normalized === '' || normalized === '.') {
+                                updateSet(index, 'weight', 0);
+                                setWeightDrafts((prev: Record<string, string>) => ({ ...prev, [set.id]: '' }));
+                                return;
+                            }
+                            const parsed = Number(normalized);
+                            if (Number.isNaN(parsed)) {
+                                const fallback = set.weight ? String(set.weight) : '';
+                                setWeightDrafts((prev: Record<string, string>) => ({ ...prev, [set.id]: fallback }));
+                                return;
+                            }
                             updateSet(index, 'weight', parsed);
-                        }
-                    }}
-                    className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border text-center font-bold text-sm"
-                    placeholder="kg"
-                />
+                            setWeightDrafts((prev: Record<string, string>) => ({ ...prev, [set.id]: String(parsed) }));
+                        }}
+                        onChange={(e) => {
+                            const raw = e.target.value;
+                            if (!/^[0-9]*[.,]?[0-9]*$/.test(raw)) {
+                                return;
+                            }
+                            setWeightDrafts((prev: Record<string, string>) => ({ ...prev, [set.id]: raw }));
+                            const normalized = raw.replace(',', '.');
+                            if (normalized === '' || normalized === '.') {
+                                updateSet(index, 'weight', 0);
+                                return;
+                            }
+                            const parsed = Number(normalized);
+                            if (!Number.isNaN(parsed)) {
+                                updateSet(index, 'weight', parsed);
+                            }
+                        }}
+                        className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border text-center font-bold text-sm"
+                        placeholder="kg"
+                    />
+                )}
+                {/* Reps or Duration input */}
                 <input
                     type="text"
                     inputMode="numeric"
@@ -723,7 +731,7 @@ function SortableSetRow({
                         updateSet(index, 'reps', raw === '' ? 0 : parseInt(raw, 10));
                     }}
                     className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border text-center font-bold text-sm"
-                    placeholder="Reps"
+                    placeholder={trackingType === 'time' ? 'Seg' : 'Reps'}
                 />
                 <div className="flex gap-0.5">
                     <button

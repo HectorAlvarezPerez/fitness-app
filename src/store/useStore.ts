@@ -21,6 +21,7 @@ export interface Exercise {
   sets: RoutineSet[];
   restSeconds?: number; // Rest time in seconds for this exercise
   includesBodyweight?: boolean; // For exercises like dips, pull-ups where volume = bodyweight + added weight
+  trackingType?: 'reps' | 'time'; // 'reps' for repetitions, 'time' for time-based (seconds)
   // Legacy fields for backward compatibility - optional or deprecated
   reps?: number;
   weight?: number;
@@ -47,6 +48,7 @@ export interface ExerciseLibraryItem {
   equipment: string;
   category: string;
   instructions?: string;
+  tracking_type: 'reps' | 'time'; // 'reps' for repetitions, 'time' for time-based (seconds)
 }
 
 export interface WorkoutSession {
@@ -69,6 +71,7 @@ export interface ActiveWorkoutExercise {
   imageUrl?: string;
   notes?: string;
   includesBodyweight?: boolean; // For exercises like dips where volume = bodyweight + added weight
+  trackingType?: 'reps' | 'time'; // 'reps' for repetitions, 'time' for time-based (seconds)
   sets: Array<{
     id?: string;
     reps: number;
@@ -851,6 +854,7 @@ export const useStore = create<AppState>()(
               imageUrl: undefined,
               notes: ex.notes, // Copy notes from routine
               includesBodyweight: ex.includesBodyweight, // Pass bodyweight flag
+              trackingType: ex.trackingType || 'reps', // Pass tracking type (reps or time)
               sets: parsedSets.map(s => ({
                 id: s.id || createId('set'),
                 reps: s.reps,
