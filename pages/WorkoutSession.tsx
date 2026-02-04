@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import WorkoutTimer from '../components/WorkoutTimer';
 import RestTimer from '../components/RestTimer';
+import { buildLastPerformanceMap } from '../lib/workoutUtils';
 import {
     DndContext,
     closestCenter,
@@ -27,6 +28,8 @@ const WorkoutSession: React.FC = () => {
     const {
         savedRoutines,
         loadRoutines,
+        workoutHistory,
+        loadWorkoutHistory,
         activeWorkout,
         loadActiveWorkout,
         startWorkout,
@@ -59,6 +62,12 @@ const WorkoutSession: React.FC = () => {
         // relying on main layout or app init is better, but here we can check:
         loadActiveWorkout();
     }, [loadRoutines, loadActiveWorkout]);
+
+    useEffect(() => {
+        if (workoutHistory.length === 0) {
+            loadWorkoutHistory();
+        }
+    }, [workoutHistory.length, loadWorkoutHistory]);
 
     useEffect(() => {
         const initSession = async () => {
@@ -147,6 +156,25 @@ const WorkoutSession: React.FC = () => {
 
         const reordered = arrayMove(exercise.sets, oldIndex, newIndex);
         updateWorkoutExerciseSets(exerciseId, reordered);
+    };
+
+    const lastPerformanceByExercise = useMemo(
+        () => buildLastPerformanceMap(workoutHistory),
+        [workoutHistory]
+    );
+
+    const formatLastSet = (lastSet?: { reps?: number; weight?: number }) => {
+        if (!lastSet) return 'Sin datos previos';
+        const weightDefined = lastSet.weight !== undefined && lastSet.weight !== null;
+        const repsDefined = lastSet.reps !== undefined && lastSet.reps !== null;
+
+        if (!weightDefined && !repsDefined) return 'Sin datos previos';
+
+        const weightText = weightDefined ? `${lastSet.weight}kg` : null;
+        const repsText = repsDefined ? `${lastSet.reps} reps` : null;
+
+        if (weightText && repsText) return `Última: ${weightText} × ${repsText}`;
+        return `Última: ${weightText ?? repsText}`;
     };
 
     const addSet = (exerciseId: string) => {
@@ -332,18 +360,25 @@ const WorkoutSession: React.FC = () => {
                                                     items={exercise.sets.map((set: any) => set.id)}
                                                     strategy={verticalListSortingStrategy}
                                                 >
-                                                    {exercise.sets.map((set, setIndex) => (
-                                                        <SortableWorkoutSetRow
-                                                            key={set.id}
-                                                            set={set}
-                                                            setIndex={setIndex}
-                                                            exerciseId={exercise.exerciseId}
-                                                            totalSets={exercise.sets.length}
-                                                            toggleSetComplete={toggleSetComplete}
-                                                            updateSetValue={updateSetValue}
-                                                            removeSet={removeSet}
-                                                        />
-                                                    ))}
+                                                    {exercise.sets.map((set, setIndex) => {
+                                                        const lastExercise = lastPerformanceByExercise[exercise.name];
+                                                        const lastSet = lastExercise?.sets?.[setIndex];
+                                                        const lastLabel = formatLastSet(lastSet);
+
+                                                        return (
+                                                            <SortableWorkoutSetRow
+                                                                key={set.id}
+                                                                set={set}
+                                                                setIndex={setIndex}
+                                                                exerciseId={exercise.exerciseId}
+                                                                totalSets={exercise.sets.length}
+                                                                toggleSetComplete={toggleSetComplete}
+                                                                updateSetValue={updateSetValue}
+                                                                removeSet={removeSet}
+                                                                lastLabel={lastLabel}
+                                                            />
+                                                        );
+                                                    })}
                                                 </SortableContext>
                                             </DndContext>
 
@@ -482,7 +517,8 @@ const SortableWorkoutSetRow: React.FC<{
     toggleSetComplete: (exerciseId: string, setIndex: number) => void;
     updateSetValue: (exerciseId: string, setIndex: number, field: 'reps' | 'weight' | 'restSeconds', value: number) => void;
     removeSet: (exerciseId: string, setIndex: number) => void;
-}> = ({ set, setIndex, exerciseId, totalSets, toggleSetComplete, updateSetValue, removeSet }) => {
+    lastLabel: string;
+}> = ({ set, setIndex, exerciseId, totalSets, toggleSetComplete, updateSetValue, removeSet, lastLabel }) => {
     const {
         attributes,
         listeners,
@@ -603,6 +639,10 @@ const SortableWorkoutSetRow: React.FC<{
                     </button>
                 )}
             </div>
+
+            <p className="mt-1 ml-10 text-xs text-gray-500 dark:text-gray-400">
+                {lastLabel}
+            </p>
 
             {/* Dropset sub-series */}
             {set.dropsets && set.dropsets.length > 0 && (
