@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
+import { isPartialWorkout } from '../lib/workoutUtils';
 
 const WorkoutHistory: React.FC = () => {
     const { workoutHistory, loadWorkoutHistory, savedRoutines, loadRoutines, deleteWorkoutSession, deleteWorkoutSessions } = useStore();
@@ -164,6 +165,7 @@ const WorkoutHistory: React.FC = () => {
                                 ? workout.exercises_completed.length
                                 : 0;
                             const isExpanded = expandedWorkouts.has(workout.id);
+                            const isPartial = isPartialWorkout(workout);
                             const isSelected = selectedIds.has(workout.id);
 
                             return (
@@ -196,8 +198,11 @@ const WorkoutHistory: React.FC = () => {
                                         <div className="flex items-start justify-between mb-3 pr-8">
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <span className="text-xs px-2 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold">
-                                                        COMPLETADO
+                                                    <span className={`text-xs px-2 py-0.5 rounded font-bold ${isPartial
+                                                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                                                        : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                        }`}>
+                                                        {isPartial ? 'PARCIAL' : 'COMPLETADO'}
                                                     </span>
                                                     <span className="text-xs text-gray-500 dark:text-gray-400">
                                                         {formatDate(workout.completed_at)}

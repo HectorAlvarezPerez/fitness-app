@@ -57,6 +57,12 @@ export const ActiveWorkoutFooter: React.FC = () => {
         ex.sets.some(set => !set.completed)
     ) || activeWorkout.exercises[activeWorkout.exercises.length - 1];
 
+    const totalSets = activeWorkout.exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
+    const completedSets = activeWorkout.exercises.reduce((acc, ex) =>
+        acc + ex.sets.filter(s => s.completed).length, 0
+    );
+    const isPartial = totalSets > 0 && completedSets < totalSets;
+
     const handleFooterClick = () => {
         if (activeWorkout.routineId) {
             navigate(`/routine/${activeWorkout.routineId}/workout`);
@@ -102,7 +108,11 @@ export const ActiveWorkoutFooter: React.FC = () => {
                         {/* Finish Button */}
                         <button
                             onClick={() => {
-                                const confirmed = confirm('¿Finalizar entrenamiento?');
+                                const confirmed = confirm(
+                                    isPartial
+                                        ? '¿Guardar progreso y finalizar? Se guardará como parcial en tu historial.'
+                                        : '¿Finalizar entrenamiento? Se guardará en tu historial.'
+                                );
                                 if (confirmed) {
                                     navigate('/dashboard');
                                     setTimeout(() => {
@@ -111,7 +121,7 @@ export const ActiveWorkoutFooter: React.FC = () => {
                                 }
                             }}
                             className="p-2 hover:bg-white/20 rounded-lg transition-colors text-white"
-                            title="Finalizar entrenamiento"
+                            title={isPartial ? 'Guardar progreso' : 'Finalizar entrenamiento'}
                         >
                             <span className="material-symbols-outlined text-[24px]">flag</span>
                         </button>

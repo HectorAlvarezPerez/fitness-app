@@ -176,20 +176,6 @@ const WorkoutSession: React.FC = () => {
         updateWorkoutExerciseSets(exerciseId, updatedSets);
     };
 
-    const handleFinish = async () => {
-        if (!activeWorkout) return;
-
-        const confirmed = confirm('¿Finalizar entrenamiento? Se guardará en tu historial.');
-        if (confirmed) {
-            // Navigate first to unmount component, then finish
-            navigate('/dashboard');
-            // Small delay to ensure navigation starts
-            setTimeout(() => {
-                finishWorkout();
-            }, 100);
-        }
-    };
-
     if (initializationError) {
         return (
             <div className="flex h-full w-full items-center justify-center p-4">
@@ -228,6 +214,23 @@ const WorkoutSession: React.FC = () => {
         acc + ex.sets.filter(s => s.completed).length, 0
     );
     const progress = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
+    const isPartial = totalSets > 0 && completedSets < totalSets;
+
+    const handleFinish = async () => {
+        const confirmed = confirm(
+            isPartial
+                ? '¿Guardar progreso y finalizar? Se guardará como parcial en tu historial.'
+                : '¿Finalizar entrenamiento? Se guardará en tu historial.'
+        );
+        if (confirmed) {
+            // Navigate first to unmount component, then finish
+            navigate('/dashboard');
+            // Small delay to ensure navigation starts
+            setTimeout(() => {
+                finishWorkout();
+            }, 100);
+        }
+    };
 
     return (
         <div className="h-full w-full flex overflow-hidden bg-white dark:bg-background-dark">
@@ -378,7 +381,7 @@ const WorkoutSession: React.FC = () => {
                                 onClick={handleFinish}
                                 className="w-full py-4 rounded-full bg-gradient-to-r from-primary to-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all"
                             >
-                                {progress === 100 ? '¡Entrenamiento Completo! 🎉' : 'Finalizar Entrenamiento'}
+                                {progress === 100 ? '¡Entrenamiento Completo! 🎉' : 'Guardar progreso y salir'}
                             </button>
 
                             {/* Cancel Button */}
@@ -446,7 +449,7 @@ const WorkoutSession: React.FC = () => {
                             className="w-full py-4 rounded-xl bg-gradient-to-r from-primary to-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
                         >
                             <span className="material-symbols-outlined">flag</span>
-                            {progress === 100 ? 'Finalizar' : 'Finalizar Sesión'}
+                            {progress === 100 ? 'Finalizar' : 'Guardar progreso'}
                         </button>
 
                         <button
