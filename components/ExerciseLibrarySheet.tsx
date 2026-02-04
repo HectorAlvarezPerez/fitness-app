@@ -97,7 +97,7 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({ isOpen, onC
             {/* Sheet */}
             <div
                 ref={sheetRef}
-                className={`fixed inset-x-0 bottom-0 z-[60] bg-[#0f1214] rounded-t-[28px] max-h-[85dvh] flex flex-col transition-transform duration-300 ease-out ${isOpen ? 'translate-y-0' : 'translate-y-full'
+                className={`fixed inset-x-0 bottom-0 z-[60] bg-[#0f1214] rounded-t-[28px] h-[85dvh] max-h-[85vh] flex flex-col overflow-hidden transition-transform duration-300 ease-out ${isOpen ? 'translate-y-0' : 'translate-y-full'
                     }`}
                 style={{
                     transform: isOpen ? `translateY(${currentY}px)` : 'translateY(100%)',
@@ -107,7 +107,7 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({ isOpen, onC
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
             >
-                <div className="sticky top-0 z-10 bg-[#0f1214]">
+                <div className="shrink-0 bg-[#0f1214]">
                     {/* Drag handle */}
                     <div className="flex justify-center pt-3 pb-2 touch-none">
                         <div className="w-10 h-1 bg-white/20 rounded-full" />
@@ -190,7 +190,7 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({ isOpen, onC
                 </div>
 
                 {/* Exercise list */}
-                <div className="flex-1 overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                <div className="flex-1 min-h-0 overflow-y-auto mobile-scroll px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
                     {filteredLibrary.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 text-center">
                             <span className="material-symbols-outlined text-4xl text-gray-600 mb-3">search_off</span>
