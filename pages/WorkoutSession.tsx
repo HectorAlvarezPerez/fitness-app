@@ -433,7 +433,7 @@ const WorkoutSession: React.FC = () => {
                     {activeRestTimer && (
                         <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl p-6 border border-primary/20 shadow-sm">
                             <RestTimer
-                                variant="full"
+                                variant="inline"
                                 duration={activeRestTimer.duration}
                                 onComplete={() => setActiveRestTimer(null)}
                             />

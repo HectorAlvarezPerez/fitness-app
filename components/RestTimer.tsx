@@ -4,7 +4,7 @@ interface RestTimerProps {
     duration: number; // seconds
     onComplete?: () => void;
     onCancel?: () => void;
-    variant?: 'modal' | 'footer';
+    variant?: 'modal' | 'footer' | 'inline';
 }
 
 export const RestTimer: React.FC<RestTimerProps> = ({ duration, onComplete, onCancel, variant = 'modal' }) => {
@@ -78,6 +78,80 @@ export const RestTimer: React.FC<RestTimerProps> = ({ duration, onComplete, onCa
                         <span className="material-symbols-outlined text-sm">skip_next</span>
                     </button>
                 </div>
+            </div>
+        );
+    }
+
+    if (variant === 'inline') {
+        const radius = 60;
+        const circumference = 2 * Math.PI * radius;
+
+        return (
+            <div className="flex flex-col items-center gap-4">
+                <div className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400 tracking-wider">
+                    Descanso
+                </div>
+
+                <div className="relative w-40 h-40">
+                    <svg className="w-full h-full transform -rotate-90">
+                        <circle
+                            cx="80"
+                            cy="80"
+                            r={radius}
+                            stroke="currentColor"
+                            strokeWidth="8"
+                            fill="none"
+                            className="text-gray-200 dark:text-gray-700"
+                        />
+                        <circle
+                            cx="80"
+                            cy="80"
+                            r={radius}
+                            stroke="currentColor"
+                            strokeWidth="8"
+                            fill="none"
+                            strokeLinecap="round"
+                            className="text-primary transition-all"
+                            strokeDasharray={`${circumference}`}
+                            strokeDashoffset={`${circumference * (1 - progress / 100)}`}
+                        />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-3xl font-bold font-mono">{formatTime(remaining)}</span>
+                    </div>
+                </div>
+
+                <div className="flex gap-2 w-full">
+                    <button
+                        onClick={handleToggle}
+                        className="flex-1 py-2.5 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-bold text-sm"
+                    >
+                        {isActive ? 'Pausar' : 'Reanudar'}
+                    </button>
+                    <button
+                        onClick={() => {
+                            setRemaining(prev => prev + 10);
+                        }}
+                        className="flex-1 py-2.5 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-bold text-sm"
+                    >
+                        +10s
+                    </button>
+                    <button
+                        onClick={handleSkip}
+                        className="flex-1 py-2.5 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors font-bold text-sm"
+                    >
+                        Saltar
+                    </button>
+                </div>
+
+                {onCancel && (
+                    <button
+                        onClick={onCancel}
+                        className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                    >
+                        Cancelar temporizador
+                    </button>
+                )}
             </div>
         );
     }
