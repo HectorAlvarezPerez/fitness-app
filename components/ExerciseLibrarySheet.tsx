@@ -24,10 +24,47 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({ isOpen, onC
     const [isDragging, setIsDragging] = useState(false);
     const [startY, setStartY] = useState(0);
     const [currentY, setCurrentY] = useState(0);
+    const [keyboardInset, setKeyboardInset] = useState(0);
+    const [sheetHeight, setSheetHeight] = useState(0);
 
     useEffect(() => {
         loadExerciseLibrary();
     }, [loadExerciseLibrary]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const updateViewportMetrics = () => {
+            const viewport = window.visualViewport;
+            const viewportHeight = viewport?.height ?? window.innerHeight;
+            const offsetTop = viewport?.offsetTop ?? 0;
+            const inset = Math.max(0, window.innerHeight - viewportHeight - offsetTop);
+            const baseHeight = window.innerHeight * 0.85;
+            const height = Math.max(280, baseHeight - inset);
+
+            setKeyboardInset(inset);
+            setSheetHeight(height);
+        };
+
+        updateViewportMetrics();
+
+        const viewport = window.visualViewport;
+        if (viewport) {
+            viewport.addEventListener('resize', updateViewportMetrics);
+            viewport.addEventListener('scroll', updateViewportMetrics);
+        } else {
+            window.addEventListener('resize', updateViewportMetrics);
+        }
+
+        return () => {
+            if (viewport) {
+                viewport.removeEventListener('resize', updateViewportMetrics);
+                viewport.removeEventListener('scroll', updateViewportMetrics);
+            } else {
+                window.removeEventListener('resize', updateViewportMetrics);
+            }
+        };
+    }, [isOpen]);
 
     // Prevent body scroll when sheet is open
     useEffect(() => {
@@ -49,6 +86,7 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({ isOpen, onC
     // Handle touch gestures
     const handleTouchStart = (e: React.TouchEvent) => {
         if (!sheetRef.current) return;
+        if (keyboardInset > 0) return;
         const rect = sheetRef.current.getBoundingClientRect();
         const offsetY = e.touches[0].clientY - rect.top;
         if (offsetY < 80) { // Only drag from header area
@@ -97,9 +135,11 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({ isOpen, onC
             {/* Sheet */}
             <div
                 ref={sheetRef}
-                className={`fixed inset-x-0 bottom-0 z-[60] bg-[#0f1214] rounded-t-[28px] h-[85dvh] max-h-[85vh] flex flex-col overflow-hidden transition-transform duration-300 ease-out ${isOpen ? 'translate-y-0' : 'translate-y-full'
+                className={`fixed inset-x-0 z-[60] bg-[#0f1214] rounded-t-[28px] flex flex-col overflow-hidden transition-transform duration-300 ease-out ${isOpen ? 'translate-y-0' : 'translate-y-full'
                     }`}
                 style={{
+                    bottom: `${keyboardInset}px`,
+                    height: sheetHeight ? `${sheetHeight}px` : '85dvh',
                     transform: isOpen ? `translateY(${currentY}px)` : 'translateY(100%)',
                     transition: isDragging ? 'none' : 'transform 0.3s ease-out'
                 }}
