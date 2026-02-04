@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import logoUrl from '../logo-fitness.png';
+import logoUrl from '../assets/logo-fitness.png';
 
 const OnboardingStep1: React.FC = () => {
   return (

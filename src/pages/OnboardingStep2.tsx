@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import logoUrl from '../logo-fitness.png';
+import logoUrl from '../assets/logo-fitness.png';
 
 const OnboardingStep2: React.FC = () => {
     const { onboardingData, updateOnboardingData } = useStore();

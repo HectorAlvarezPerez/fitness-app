@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabaseClient';
-import logoUrl from '../logo-fitness.png';
+import logoUrl from '../assets/logo-fitness.png';
 
 const OnboardingStep3: React.FC = () => {
     const navigate = useNavigate();

@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabaseClient';
 import { ActiveWorkoutFooter } from './ActiveWorkoutFooter';
 import AchievementNotification from './AchievementNotification';
 import MobileNav from './MobileNav';
-import logoUrl from '../logo-fitness.png';
+import logoUrl from '../assets/logo-fitness.png';
 
 const MainLayout: React.FC = () => {
     const { pathname } = useLocation();
