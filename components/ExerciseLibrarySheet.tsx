@@ -97,7 +97,7 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({ isOpen, onC
             {/* Sheet */}
             <div
                 ref={sheetRef}
-                className={`fixed inset-x-0 bottom-0 z-[60] bg-[#0f1214] rounded-t-[28px] max-h-[85vh] flex flex-col transition-transform duration-300 ease-out ${isOpen ? 'translate-y-0' : 'translate-y-full'
+                className={`fixed inset-x-0 bottom-0 z-[60] bg-[#0f1214] rounded-t-[28px] max-h-[85dvh] flex flex-col transition-transform duration-300 ease-out ${isOpen ? 'translate-y-0' : 'translate-y-full'
                     }`}
                 style={{
                     transform: isOpen ? `translateY(${currentY}px)` : 'translateY(100%)',
@@ -107,88 +107,90 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({ isOpen, onC
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
             >
-                {/* Drag handle */}
-                <div className="flex justify-center pt-3 pb-2 touch-none">
-                    <div className="w-10 h-1 bg-white/20 rounded-full" />
-                </div>
-
-                {/* Header */}
-                <div className="px-5 pb-4">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                            <span className="material-symbols-outlined text-primary text-[24px]">library_books</span>
-                            <h2 className="text-xl font-bold text-white">Biblioteca</h2>
-                        </div>
-                        <button
-                            onClick={onClose}
-                            className="p-2 rounded-full hover:bg-white/5 transition-colors"
-                        >
-                            <span className="material-symbols-outlined text-gray-400">close</span>
-                        </button>
+                <div className="sticky top-0 z-10 bg-[#0f1214]">
+                    {/* Drag handle */}
+                    <div className="flex justify-center pt-3 pb-2 touch-none">
+                        <div className="w-10 h-1 bg-white/20 rounded-full" />
                     </div>
 
-                    {/* Search */}
-                    <div className="relative mb-3">
-                        <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-[20px]">search</span>
-                        <input
-                            value={exerciseSearchQuery}
-                            onChange={(e) => setExerciseSearchQuery(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-sm text-white focus:outline-none focus:border-primary/50 focus:bg-white/10 placeholder:text-gray-500 transition-all"
-                            placeholder="Buscar ejercicio..."
-                            type="text"
-                        />
-                    </div>
-
-                    {/* Filters - Horizontal scroll */}
-                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
-                        <select
-                            className="shrink-0 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white focus:outline-none focus:border-primary/50 appearance-none pr-8 bg-no-repeat bg-right"
-                            style={{
-                                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`,
-                                backgroundSize: '1.5rem'
-                            }}
-                            value={selectedMuscleFilter || ''}
-                            onChange={(e) => setMuscleFilter(e.target.value || null)}
-                        >
-                            <option value="">Músculo</option>
-                            {muscleGroups.map(muscle => (
-                                <option key={muscle} value={muscle}>{muscle}</option>
-                            ))}
-                        </select>
-
-                        <select
-                            className="shrink-0 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white focus:outline-none focus:border-primary/50 appearance-none pr-8 bg-no-repeat bg-right"
-                            style={{
-                                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`,
-                                backgroundSize: '1.5rem'
-                            }}
-                            value={selectedEquipmentFilter || ''}
-                            onChange={(e) => setEquipmentFilter(e.target.value || null)}
-                        >
-                            <option value="">Equipo</option>
-                            {equipmentTypes.map(eq => (
-                                <option key={eq} value={eq}>{eq}</option>
-                            ))}
-                        </select>
-
-                        {/* Clear filters button */}
-                        {(selectedMuscleFilter || selectedEquipmentFilter) && (
+                    {/* Header */}
+                    <div className="px-5 pb-4">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-primary text-[24px]">library_books</span>
+                                <h2 className="text-xl font-bold text-white">Biblioteca</h2>
+                            </div>
                             <button
-                                onClick={() => {
-                                    setMuscleFilter(null);
-                                    setEquipmentFilter(null);
-                                }}
-                                className="shrink-0 px-3 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium flex items-center gap-1"
+                                onClick={onClose}
+                                className="p-2 rounded-full hover:bg-white/5 transition-colors"
                             >
-                                <span className="material-symbols-outlined text-[16px]">close</span>
-                                Limpiar
+                                <span className="material-symbols-outlined text-gray-400">close</span>
                             </button>
-                        )}
+                        </div>
+
+                        {/* Search */}
+                        <div className="relative mb-3">
+                            <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-[20px]">search</span>
+                            <input
+                                value={exerciseSearchQuery}
+                                onChange={(e) => setExerciseSearchQuery(e.target.value)}
+                                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-base sm:text-sm text-white focus:outline-none focus:border-primary/50 focus:bg-white/10 placeholder:text-gray-500 transition-all"
+                                placeholder="Buscar ejercicio..."
+                                type="text"
+                            />
+                        </div>
+
+                        {/* Filters - Horizontal scroll */}
+                        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
+                            <select
+                                className="shrink-0 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-base sm:text-sm text-white focus:outline-none focus:border-primary/50 appearance-none pr-8 bg-no-repeat bg-right"
+                                style={{
+                                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`,
+                                    backgroundSize: '1.5rem'
+                                }}
+                                value={selectedMuscleFilter || ''}
+                                onChange={(e) => setMuscleFilter(e.target.value || null)}
+                            >
+                                <option value="">Músculo</option>
+                                {muscleGroups.map(muscle => (
+                                    <option key={muscle} value={muscle}>{muscle}</option>
+                                ))}
+                            </select>
+
+                            <select
+                                className="shrink-0 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-base sm:text-sm text-white focus:outline-none focus:border-primary/50 appearance-none pr-8 bg-no-repeat bg-right"
+                                style={{
+                                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`,
+                                    backgroundSize: '1.5rem'
+                                }}
+                                value={selectedEquipmentFilter || ''}
+                                onChange={(e) => setEquipmentFilter(e.target.value || null)}
+                            >
+                                <option value="">Equipo</option>
+                                {equipmentTypes.map(eq => (
+                                    <option key={eq} value={eq}>{eq}</option>
+                                ))}
+                            </select>
+
+                            {/* Clear filters button */}
+                            {(selectedMuscleFilter || selectedEquipmentFilter) && (
+                                <button
+                                    onClick={() => {
+                                        setMuscleFilter(null);
+                                        setEquipmentFilter(null);
+                                    }}
+                                    className="shrink-0 px-3 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium flex items-center gap-1"
+                                >
+                                    <span className="material-symbols-outlined text-[16px]">close</span>
+                                    Limpiar
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
 
                 {/* Exercise list */}
-                <div className="flex-1 overflow-y-auto px-4 pb-8">
+                <div className="flex-1 overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
                     {filteredLibrary.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 text-center">
                             <span className="material-symbols-outlined text-4xl text-gray-600 mb-3">search_off</span>
