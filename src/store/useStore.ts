@@ -257,6 +257,8 @@ interface AppState {
   // Active Workout
   loadActiveWorkout: () => Promise<void>;
   startWorkout: (routine: Routine) => Promise<boolean>;
+  startEmptyWorkout: () => Promise<boolean>;
+  addActiveWorkoutExercise: (exercise: ExerciseLibraryItem) => Promise<void>;
   updateActiveWorkoutExerciseNotes: (exerciseId: string, notes: string) => Promise<void>;
   updateWorkoutExerciseSets: (exerciseId: string, sets: ActiveWorkoutExercise['sets']) => Promise<void>;
   saveActiveWorkoutProgress: () => Promise<void>;
@@ -776,6 +778,85 @@ export const useStore = create<AppState>()(
             updated_at: new Date().toISOString()
           })
           .eq('user_id', user.id);
+      },
+
+      startEmptyWorkout: async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) {
+            console.error('No user found');
+            return false;
+          }
+
+          const activeWorkout: ActiveWorkout = {
+            routineId: undefined,
+            routineName: 'Entrenamiento libre',
+            startedAt: new Date().toISOString(),
+            exercises: []
+          };
+
+          const { data, error } = await supabase
+            .from('active_workouts')
+            .upsert({
+              user_id: user.id,
+              routine_id: null,
+              routine_name: activeWorkout.routineName,
+              started_at: activeWorkout.startedAt,
+              workout_data: { exercises: [] }
+            })
+            .select()
+            .single();
+
+          if (error) {
+            console.error('Supabase error starting empty workout:', error);
+            return false;
+          }
+
+          if (data) {
+            set({ activeWorkout: { ...activeWorkout, id: data.id } });
+            return true;
+          }
+          return false;
+        } catch (err) {
+          console.error('Unexpected error starting empty workout:', err);
+          return false;
+        }
+      },
+
+      addActiveWorkoutExercise: async (exercise: ExerciseLibraryItem) => {
+        const state = get();
+        if (!state.activeWorkout) return;
+
+        const trackingType = exercise.tracking_type || 'reps';
+        const defaultSets = state.userData?.default_sets_count || 3;
+        const defaultReps = state.userData?.default_reps_count ?? (trackingType === 'time' ? 30 : 10);
+        const defaultWeight = state.userData?.default_weight_kg ?? 0;
+        const restSeconds = state.userData?.default_rest_seconds ?? 90;
+
+        const newExercise: ActiveWorkoutExercise = {
+          exerciseId: createId('ex'),
+          name: exercise.name,
+          primaryMuscle: exercise.primary_muscle,
+          trackingType,
+          sets: Array.from({ length: defaultSets }).map(() => ({
+            id: createId('set'),
+            reps: defaultReps,
+            weight: trackingType === 'time' ? 0 : defaultWeight,
+            restSeconds,
+            completed: false
+          }))
+        };
+
+        const updatedExercises = [...state.activeWorkout.exercises, newExercise];
+
+        set({
+          activeWorkout: {
+            ...state.activeWorkout,
+            exercises: updatedExercises
+          }
+        });
+
+        await get().saveActiveWorkoutProgress();
       },
 
       startWorkout: async (routine: Routine) => {

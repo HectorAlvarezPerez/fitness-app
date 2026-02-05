@@ -27,7 +27,8 @@ const RoutinesList: React.FC = () => {
         deleteFolder,
         moveRoutineToFolder,
         duplicateRoutine,
-        startWorkout
+        startWorkout,
+        startEmptyWorkout
     } = useStore();
 
     const [isCreatingFolder, setIsCreatingFolder] = useState(false);
@@ -129,6 +130,13 @@ const RoutinesList: React.FC = () => {
         const success = await startWorkout(routine);
         if (success) {
             navigate(`/routine/${routine.id}/workout`);
+        }
+    };
+
+    const handleStartEmptyWorkout = async () => {
+        const success = await startEmptyWorkout();
+        if (success) {
+            navigate('/routine/free/workout');
         }
     };
 
@@ -274,6 +282,13 @@ const RoutinesList: React.FC = () => {
                         </p>
                     </div>
                     <div className="flex gap-2">
+                        <button
+                            onClick={handleStartEmptyWorkout}
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white dark:bg-[#1a2632] border border-primary/40 text-primary font-bold hover:bg-primary/10 transition-all"
+                        >
+                            <span className="material-symbols-outlined text-[20px]">bolt</span>
+                            <span className="hidden sm:inline">Entrenamiento libre</span>
+                        </button>
                         <button
                             onClick={() => setIsCreatingFolder(true)}
                             className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-gray-100 dark:bg-gray-800 font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"

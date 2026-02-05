@@ -38,6 +38,7 @@ const App: React.FC = () => {
             <Route path="/routine" element={<RoutinesList />} />
             <Route path="/routine/new" element={<RoutineEditor />} />
             <Route path="/routine/edit/:id" element={<RoutineEditor />} />
+            <Route path="/routine/free/workout" element={<WorkoutSession />} />
             <Route path="/routine/:id/workout" element={<WorkoutSession />} />
             <Route path="/history" element={<WorkoutHistory />} />
             <Route path="/achievements" element={<Achievements />} />

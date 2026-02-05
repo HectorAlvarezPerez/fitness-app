@@ -5,6 +5,7 @@ import WorkoutTimer from '../components/WorkoutTimer';
 import RestTimer from '../components/RestTimer';
 import { buildLastPerformanceMap } from '../lib/workoutUtils';
 import ConfirmDialog from '../components/ConfirmDialog';
+import ExerciseLibrarySheet from '../components/ExerciseLibrarySheet';
 import {
     DndContext,
     closestCenter,
@@ -34,6 +35,8 @@ const WorkoutSession: React.FC = () => {
         activeWorkout,
         loadActiveWorkout,
         startWorkout,
+        startEmptyWorkout,
+        addActiveWorkoutExercise,
         updateActiveWorkoutExerciseNotes,
         updateWorkoutExerciseSets,
         finishWorkout,
@@ -46,6 +49,7 @@ const WorkoutSession: React.FC = () => {
     const initializingRef = React.useRef(false);
     const [finishConfirmOpen, setFinishConfirmOpen] = useState(false);
     const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+    const [isLibraryOpen, setIsLibraryOpen] = useState(false);
 
     const setSensors = useSensors(
         useSensor(PointerSensor, {
@@ -77,11 +81,24 @@ const WorkoutSession: React.FC = () => {
             // Safe guards
             if (activeWorkout) return;
             if (initializingRef.current) return;
-            if (savedRoutines.length === 0) return; // Wait for routines to load
+            if (id !== 'free' && savedRoutines.length === 0) return; // Wait for routines to load
 
             initializingRef.current = true;
 
             if (id) {
+                if (id === 'free') {
+                    try {
+                        const success = await startEmptyWorkout();
+                        if (!success) {
+                            setInitializationError('No se pudo iniciar el entrenamiento libre.');
+                        }
+                    } catch (e) {
+                        setInitializationError('Error al iniciar entrenamiento');
+                    } finally {
+                        initializingRef.current = false;
+                    }
+                    return;
+                }
                 const routine = savedRoutines.find(r => r.id === id);
                 if (routine) {
                     try {
@@ -105,7 +122,7 @@ const WorkoutSession: React.FC = () => {
         };
 
         initSession();
-    }, [id, savedRoutines, activeWorkout, startWorkout, navigate]);
+    }, [id, savedRoutines, activeWorkout, startWorkout, startEmptyWorkout, navigate]);
 
     const toggleSetComplete = (exerciseId: string, setIndex: number) => {
         if (!activeWorkout) return;
@@ -267,6 +284,11 @@ const WorkoutSession: React.FC = () => {
         }, 100);
     };
 
+    const handleAddExercise = (exercise: any) => {
+        addActiveWorkoutExercise(exercise);
+        setIsLibraryOpen(false);
+    };
+
     return (
         <div className="h-full w-full flex overflow-hidden bg-white dark:bg-background-dark">
             {/* Main Content Area */}
@@ -289,7 +311,16 @@ const WorkoutSession: React.FC = () => {
                             </div>
                         </div>
 
-                        <h1 className="text-2xl md:text-3xl font-black mb-2">{activeWorkout.routineName}</h1>
+                        <div className="flex items-start justify-between gap-3">
+                            <h1 className="text-2xl md:text-3xl font-black mb-2">{activeWorkout.routineName}</h1>
+                            <button
+                                onClick={() => setIsLibraryOpen(true)}
+                                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-primary/10 text-primary font-bold hover:bg-primary/20 transition-all"
+                            >
+                                <span className="material-symbols-outlined text-[18px]">add</span>
+                                <span className="hidden sm:inline">Añadir</span>
+                            </button>
+                        </div>
 
                         {/* Mobile Progress Bar */}
                         <div className="lg:hidden flex items-center gap-3">
@@ -307,6 +338,25 @@ const WorkoutSession: React.FC = () => {
 
                     {/* Exercises */}
                     <div className="p-4 lg:p-6 flex flex-col gap-4">
+                        {activeWorkout.exercises.length === 0 && (
+                            <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 p-6 text-center text-gray-500 dark:text-gray-400">
+                                <div className="flex flex-col items-center gap-3">
+                                    <span className="material-symbols-outlined text-3xl text-primary">playlist_add</span>
+                                    <div>
+                                        <p className="font-semibold">Rutina libre vacía</p>
+                                        <p className="text-sm">Añade ejercicios para empezar tu sesión.</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setIsLibraryOpen(true)}
+                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-white font-bold hover:bg-primary/90 transition-all"
+                                    >
+                                        <span className="material-symbols-outlined text-[18px]">add</span>
+                                        Añadir ejercicio
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         {activeWorkout.exercises.map((exercise, exIndex) => (
                             <div
                                 key={exercise.exerciseId}
@@ -520,6 +570,12 @@ const WorkoutSession: React.FC = () => {
                 variant="danger"
                 onCancel={() => setCancelConfirmOpen(false)}
                 onConfirm={confirmCancel}
+            />
+
+            <ExerciseLibrarySheet
+                isOpen={isLibraryOpen}
+                onClose={() => setIsLibraryOpen(false)}
+                onAddExercise={handleAddExercise}
             />
         </div>
     );
