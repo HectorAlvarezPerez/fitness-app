@@ -116,10 +116,12 @@ const normalizeExerciseSets = (exercise: Exercise): Exercise => {
 };
 
 const normalizeActiveWorkoutExercises = (exercises: ActiveWorkoutExercise[]) =>
-  exercises.map((exercise) => ({
-    ...exercise,
-    sets: Array.isArray(exercise.sets) ? ensureSetIds(exercise.sets) : [],
-  }));
+  exercises
+    .filter((exercise) => exercise && typeof exercise.name === 'string')
+    .map((exercise) => ({
+      ...exercise,
+      sets: Array.isArray(exercise.sets) ? ensureSetIds(exercise.sets) : [],
+    }));
 
 export interface RoutineFolder {
   id: string;
@@ -569,7 +571,7 @@ export const useStore = create<AppState>()(
 
       getFilteredExercises: () => {
         const state = get();
-        let filtered = state.exerciseLibrary;
+        let filtered = state.exerciseLibrary.filter((ex): ex is ExerciseLibraryItem => !!ex && typeof ex.name === 'string');
 
         if (state.selectedMuscleFilter) {
           filtered = filtered.filter(ex => ex.primary_muscle === state.selectedMuscleFilter);
@@ -714,7 +716,10 @@ export const useStore = create<AppState>()(
           .single();
 
         if (!error && data) {
-          const normalizedExercises = normalizeActiveWorkoutExercises(data.workout_data.exercises || []);
+          const rawExercises = Array.isArray(data.workout_data?.exercises)
+            ? data.workout_data.exercises
+            : [];
+          const normalizedExercises = normalizeActiveWorkoutExercises(rawExercises);
           set({
             activeWorkout: {
               id: data.id,
@@ -732,7 +737,10 @@ export const useStore = create<AppState>()(
         if (!state.activeWorkout) return;
 
         const normalizedSets = ensureSetIds(sets);
-        const updatedExercises = state.activeWorkout.exercises.map(ex =>
+        const safeExercises = Array.isArray(state.activeWorkout.exercises)
+          ? state.activeWorkout.exercises.filter((ex): ex is ActiveWorkoutExercise => !!ex && typeof ex.exerciseId === 'string')
+          : [];
+        const updatedExercises = safeExercises.map(ex =>
           ex.exerciseId === exerciseId ? { ...ex, sets: normalizedSets } : ex
         );
 
@@ -750,7 +758,10 @@ export const useStore = create<AppState>()(
         const state = get();
         if (!state.activeWorkout) return;
 
-        const updatedExercises = state.activeWorkout.exercises.map(ex =>
+        const safeExercises = Array.isArray(state.activeWorkout.exercises)
+          ? state.activeWorkout.exercises.filter((ex): ex is ActiveWorkoutExercise => !!ex && typeof ex.exerciseId === 'string')
+          : [];
+        const updatedExercises = safeExercises.map(ex =>
           ex.exerciseId === exerciseId ? { ...ex, notes } : ex
         );
 
@@ -771,10 +782,14 @@ export const useStore = create<AppState>()(
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
+        const safeExercises = Array.isArray(state.activeWorkout.exercises)
+          ? state.activeWorkout.exercises.filter((ex): ex is ActiveWorkoutExercise => !!ex && typeof ex.exerciseId === 'string')
+          : [];
+
         await supabase
           .from('active_workouts')
           .update({
-            workout_data: { exercises: state.activeWorkout.exercises },
+            workout_data: { exercises: safeExercises },
             updated_at: new Date().toISOString()
           })
           .eq('user_id', user.id);
@@ -826,6 +841,7 @@ export const useStore = create<AppState>()(
       addActiveWorkoutExercise: async (exercise: ExerciseLibraryItem) => {
         const state = get();
         if (!state.activeWorkout) return;
+        if (!exercise || !exercise.name) return;
 
         const trackingType = exercise.tracking_type || 'reps';
         const defaultSets = state.userData?.default_sets_count || 3;
@@ -997,7 +1013,9 @@ export const useStore = create<AppState>()(
         const durationMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / 60000);
 
         let totalVolume = 0;
-        const completedExercises = state.activeWorkout.exercises;
+        const completedExercises = Array.isArray(state.activeWorkout.exercises)
+          ? state.activeWorkout.exercises.filter((ex): ex is ActiveWorkoutExercise => !!ex && Array.isArray(ex.sets))
+          : [];
         const userWeight = state.onboardingData?.weight || 0;
 
         completedExercises.forEach(ex => {

@@ -54,13 +54,17 @@ export const ActiveWorkoutFooter: React.FC = () => {
         return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     };
 
-    // Find current exercise (first incomplete one)
-    const currentExercise = activeWorkout.exercises.find(ex =>
-        ex.sets.some(set => !set.completed)
-    ) || activeWorkout.exercises[activeWorkout.exercises.length - 1];
+    const safeExercises = Array.isArray(activeWorkout.exercises)
+        ? activeWorkout.exercises.filter((ex): ex is typeof activeWorkout.exercises[number] => !!ex && Array.isArray(ex.sets))
+        : [];
 
-    const totalSets = activeWorkout.exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
-    const completedSets = activeWorkout.exercises.reduce((acc, ex) =>
+    // Find current exercise (first incomplete one)
+    const currentExercise = safeExercises.find(ex =>
+        ex.sets.some(set => !set.completed)
+    ) || safeExercises[safeExercises.length - 1];
+
+    const totalSets = safeExercises.reduce((acc, ex) => acc + ex.sets.length, 0);
+    const completedSets = safeExercises.reduce((acc, ex) =>
         acc + ex.sets.filter(s => s.completed).length, 0
     );
     const isPartial = totalSets > 0 && completedSets < totalSets;
@@ -89,7 +93,7 @@ export const ActiveWorkoutFooter: React.FC = () => {
                                     {activeWorkout.routineName}
                                 </span>
                                 <span className="text-white/80 text-xs leading-tight">
-                                    {currentExercise.name}
+                                    {currentExercise ? currentExercise.name : 'Sin ejercicios'}
                                 </span>
                             </div>
                         </div>

@@ -127,7 +127,7 @@ const WorkoutSession: React.FC = () => {
     const toggleSetComplete = (exerciseId: string, setIndex: number) => {
         if (!activeWorkout) return;
 
-        const exercise = activeWorkout.exercises.find(ex => ex.exerciseId === exerciseId);
+        const exercise = activeWorkout.exercises.find(ex => ex && ex.exerciseId === exerciseId);
         if (!exercise) return;
 
         const updatedSets = exercise.sets.map((set, idx) =>
@@ -152,7 +152,7 @@ const WorkoutSession: React.FC = () => {
     const updateSetValue = (exerciseId: string, setIndex: number, field: 'reps' | 'weight' | 'restSeconds', value: number) => {
         if (!activeWorkout) return;
 
-        const exercise = activeWorkout.exercises.find(ex => ex.exerciseId === exerciseId);
+        const exercise = activeWorkout.exercises.find(ex => ex && ex.exerciseId === exerciseId);
         if (!exercise) return;
 
         const updatedSets = exercise.sets.map((set, idx) =>
@@ -167,7 +167,7 @@ const WorkoutSession: React.FC = () => {
         const { active, over } = event;
         if (!over || active.id === over.id) return;
 
-        const exercise = activeWorkout.exercises.find(ex => ex.exerciseId === exerciseId);
+        const exercise = activeWorkout.exercises.find(ex => ex && ex.exerciseId === exerciseId);
         if (!exercise) return;
 
         const oldIndex = exercise.sets.findIndex((set: any) => set.id === active.id);
@@ -200,7 +200,7 @@ const WorkoutSession: React.FC = () => {
     const addSet = (exerciseId: string) => {
         if (!activeWorkout) return;
 
-        const exercise = activeWorkout.exercises.find(ex => ex.exerciseId === exerciseId);
+        const exercise = activeWorkout.exercises.find(ex => ex && ex.exerciseId === exerciseId);
         if (!exercise || exercise.sets.length === 0) return;
 
         const lastSet = exercise.sets[exercise.sets.length - 1];
@@ -217,7 +217,7 @@ const WorkoutSession: React.FC = () => {
     const removeSet = (exerciseId: string, setIndex: number) => {
         if (!activeWorkout) return;
 
-        const exercise = activeWorkout.exercises.find(ex => ex.exerciseId === exerciseId);
+        const exercise = activeWorkout.exercises.find(ex => ex && ex.exerciseId === exerciseId);
         if (!exercise || exercise.sets.length <= 1) return;
 
         const updatedSets = exercise.sets.filter((_, idx) => idx !== setIndex);
@@ -257,8 +257,12 @@ const WorkoutSession: React.FC = () => {
         );
     }
 
-    const totalSets = activeWorkout.exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
-    const completedSets = activeWorkout.exercises.reduce((acc, ex) =>
+    const safeExercises = Array.isArray(activeWorkout.exercises)
+        ? activeWorkout.exercises.filter((ex): ex is typeof activeWorkout.exercises[number] => !!ex && typeof ex.name === 'string')
+        : [];
+
+    const totalSets = safeExercises.reduce((acc, ex) => acc + ex.sets.length, 0);
+    const completedSets = safeExercises.reduce((acc, ex) =>
         acc + ex.sets.filter(s => s.completed).length, 0
     );
     const progress = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
@@ -285,6 +289,7 @@ const WorkoutSession: React.FC = () => {
     };
 
     const handleAddExercise = (exercise: any) => {
+        if (!exercise || !exercise.name) return;
         addActiveWorkoutExercise(exercise);
         setIsLibraryOpen(false);
     };
@@ -338,7 +343,7 @@ const WorkoutSession: React.FC = () => {
 
                     {/* Exercises */}
                     <div className="p-4 lg:p-6 flex flex-col gap-4">
-                        {activeWorkout.exercises.length === 0 && (
+                        {safeExercises.length === 0 && (
                             <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 p-6 text-center text-gray-500 dark:text-gray-400">
                                 <div className="flex flex-col items-center gap-3">
                                     <span className="material-symbols-outlined text-3xl text-primary">playlist_add</span>
@@ -357,7 +362,7 @@ const WorkoutSession: React.FC = () => {
                             </div>
                         )}
 
-                        {activeWorkout.exercises.map((exercise, exIndex) => (
+                        {safeExercises.map((exercise, exIndex) => (
                             <div
                                 key={exercise.exerciseId}
                                 className="rounded-2xl bg-white dark:bg-[#1a2632] border border-slate-200 dark:border-[#233648] overflow-hidden shadow-sm"

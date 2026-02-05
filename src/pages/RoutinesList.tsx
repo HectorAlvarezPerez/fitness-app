@@ -286,8 +286,8 @@ const RoutinesList: React.FC = () => {
                             onClick={handleStartEmptyWorkout}
                             className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white dark:bg-[#1a2632] border border-primary/40 text-primary font-bold hover:bg-primary/10 transition-all"
                         >
-                            <span className="material-symbols-outlined text-[20px]">bolt</span>
-                            <span className="hidden sm:inline">Entrenamiento libre</span>
+                            <span className="material-symbols-outlined text-[20px]">play_arrow</span>
+                            <span className="hidden sm:inline">Empezar entrenamiento</span>
                         </button>
                         <button
                             onClick={() => setIsCreatingFolder(true)}
