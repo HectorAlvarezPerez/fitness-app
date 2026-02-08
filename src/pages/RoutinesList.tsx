@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore, Routine, RoutineFolder } from '../store/useStore';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { getActiveWorkoutPath } from '../lib/activeWorkout';
 
 const FOLDER_COLORS = [
     '#3b82f6', // Blue
@@ -28,7 +29,8 @@ const RoutinesList: React.FC = () => {
         moveRoutineToFolder,
         duplicateRoutine,
         startWorkout,
-        startEmptyWorkout
+        startEmptyWorkout,
+        activeWorkout
     } = useStore();
 
     const [isCreatingFolder, setIsCreatingFolder] = useState(false);
@@ -305,6 +307,19 @@ const RoutinesList: React.FC = () => {
                         </Link>
                     </div>
                 </header>
+
+                {activeWorkout && (
+                    <Link
+                        to={getActiveWorkoutPath(activeWorkout.routineId)}
+                        className="flex items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3 text-primary font-bold hover:bg-primary/15 transition-colors"
+                    >
+                        <span className="inline-flex items-center gap-2">
+                            <span className="material-symbols-outlined">play_circle</span>
+                            Reanudar rutina en curso: {activeWorkout.routineName}
+                        </span>
+                        <span className="material-symbols-outlined">arrow_forward</span>
+                    </Link>
+                )}
 
                 {/* New Folder Input */}
                 {isCreatingFolder && (

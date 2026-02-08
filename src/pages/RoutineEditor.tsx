@@ -110,6 +110,9 @@ const RoutineEditor: React.FC = () => {
             id: Date.now().toString(),
             name: exerciseLibItem.name,
             muscleGroup: exerciseLibItem.primary_muscle,
+            secondaryMuscles: exerciseLibItem.secondary_muscles || [],
+            secondaryMuscleFactor: exerciseLibItem.secondary_muscles?.length ? 0.35 : 0,
+            restSeconds: defaultRestSeconds,
             sets: newSets,
             trackingType: exerciseLibItem.tracking_type || 'reps'
         });
@@ -148,7 +151,7 @@ const RoutineEditor: React.FC = () => {
         <>
             <div className="h-full w-full flex overflow-hidden bg-slate-100 dark:bg-[#0a1218]">
                 <div className="flex-1 overflow-y-auto mobile-scroll">
-                    <div className="max-w-4xl mx-auto px-4 md:px-8 py-6 pb-[calc(8rem+env(safe-area-inset-bottom))] flex flex-col gap-6">
+                    <div className="max-w-4xl mx-auto px-4 md:px-8 py-6 pb-[calc(8rem+env(safe-area-inset-bottom)+var(--keyboard-inset,0px))] flex flex-col gap-6">
                         {/* Header with back and save buttons */}
                         <div className="flex items-center justify-between gap-3">
                             <button
@@ -330,7 +333,8 @@ const RoutineEditor: React.FC = () => {
             {/* Mobile FAB - Add Exercise */}
             <button
                 onClick={() => setIsLibraryOpen(true)}
-                className="lg:hidden fixed bottom-24 right-4 z-40 size-14 rounded-full bg-gradient-to-br from-primary to-orange-600 text-white shadow-xl shadow-primary/30 flex items-center justify-center active:scale-95 transition-transform"
+                className="lg:hidden fixed right-4 z-40 size-14 rounded-full bg-gradient-to-br from-primary to-orange-600 text-white shadow-xl shadow-primary/30 flex items-center justify-center active:scale-95 transition-transform"
+                style={{ bottom: 'calc(6rem + var(--keyboard-inset, 0px))' }}
             >
                 <span className="material-symbols-outlined text-[28px]">add</span>
             </button>

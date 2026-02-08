@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore';
 import WorkoutTimer from '../components/WorkoutTimer';
 import RestTimer from '../components/RestTimer';
 import { buildLastPerformanceMap } from '../lib/workoutUtils';
+import { parseLocaleDecimal } from '../lib/numberUtils';
 import ConfirmDialog from '../components/ConfirmDialog';
 import ExerciseLibrarySheet from '../components/ExerciseLibrarySheet';
 import {
@@ -38,12 +39,18 @@ const WorkoutSession: React.FC = () => {
         startEmptyWorkout,
         addActiveWorkoutExercise,
         updateActiveWorkoutExerciseNotes,
+        updateActiveWorkoutExerciseRest,
         updateWorkoutExerciseSets,
+        setActiveWorkoutPosition,
+        startRestTimer,
+        clearRestTimer,
+        pauseRestTimer,
+        resumeRestTimer,
+        extendRestTimer,
         finishWorkout,
         cancelWorkout
     } = useStore();
 
-    const [activeRestTimer, setActiveRestTimer] = useState<{ exerciseId: string; setIndex: number; duration: number } | null>(null);
     const [expandedExercise, setExpandedExercise] = useState<string | null>(null);
     const [initializationError, setInitializationError] = useState<string | null>(null);
     const initializingRef = React.useRef(false);
@@ -124,6 +131,24 @@ const WorkoutSession: React.FC = () => {
         initSession();
     }, [id, savedRoutines, activeWorkout, startWorkout, startEmptyWorkout, navigate]);
 
+    useEffect(() => {
+        if (!activeWorkout?.currentExerciseId) return;
+        setExpandedExercise((current) => current || activeWorkout.currentExerciseId || null);
+    }, [activeWorkout?.currentExerciseId]);
+
+    useEffect(() => {
+        if (!activeWorkout?.currentExerciseId || typeof activeWorkout.currentSetIndex !== 'number') return;
+        const anchor = `${activeWorkout.currentExerciseId}-${activeWorkout.currentSetIndex}`;
+        const timeout = setTimeout(() => {
+            const element = document.querySelector(`[data-set-anchor=\"${anchor}\"]`);
+            if (element && element instanceof HTMLElement) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 120);
+
+        return () => clearTimeout(timeout);
+    }, [activeWorkout?.currentExerciseId, activeWorkout?.currentSetIndex]);
+
     const toggleSetComplete = (exerciseId: string, setIndex: number) => {
         if (!activeWorkout) return;
 
@@ -134,22 +159,20 @@ const WorkoutSession: React.FC = () => {
             idx === setIndex ? { ...set, completed: !set.completed } : set
         );
 
-        updateWorkoutExerciseSets(exerciseId, updatedSets);
+        void updateWorkoutExerciseSets(exerciseId, updatedSets);
+        void setActiveWorkoutPosition(exerciseId, setIndex);
 
         // Start rest timer if completing a set (not uncompleting)
         // Skip rest timer if this set has dropsets (no rest between dropset sub-series)
         const currentSet = exercise.sets[setIndex];
         const hasDropsets = currentSet.dropsets && currentSet.dropsets.length > 0;
-        if (!currentSet.completed && currentSet.restSeconds > 0 && !hasDropsets) {
-            setActiveRestTimer({
-                exerciseId,
-                setIndex,
-                duration: currentSet.restSeconds
-            });
+        const restSeconds = exercise.restSeconds || 0;
+        if (!currentSet.completed && restSeconds > 0 && !hasDropsets) {
+            void startRestTimer(exerciseId, setIndex, restSeconds);
         }
     };
 
-    const updateSetValue = (exerciseId: string, setIndex: number, field: 'reps' | 'weight' | 'restSeconds', value: number) => {
+    const updateSetValue = (exerciseId: string, setIndex: number, field: 'reps' | 'weight', value: number) => {
         if (!activeWorkout) return;
 
         const exercise = activeWorkout.exercises.find(ex => ex && ex.exerciseId === exerciseId);
@@ -159,7 +182,8 @@ const WorkoutSession: React.FC = () => {
             idx === setIndex ? { ...set, [field]: value } : set
         );
 
-        updateWorkoutExerciseSets(exerciseId, updatedSets);
+        void updateWorkoutExerciseSets(exerciseId, updatedSets);
+        void setActiveWorkoutPosition(exerciseId, setIndex);
     };
 
     const handleSetDragEnd = (exerciseId: string, event: any) => {
@@ -207,11 +231,11 @@ const WorkoutSession: React.FC = () => {
         const newSet = {
             reps: lastSet.reps,
             weight: lastSet.weight,
-            restSeconds: lastSet.restSeconds,
             completed: false
         };
 
-        updateWorkoutExerciseSets(exerciseId, [...exercise.sets, newSet]);
+        void updateWorkoutExerciseSets(exerciseId, [...exercise.sets, newSet]);
+        void setActiveWorkoutPosition(exerciseId, exercise.sets.length);
     };
 
     const removeSet = (exerciseId: string, setIndex: number) => {
@@ -221,7 +245,7 @@ const WorkoutSession: React.FC = () => {
         if (!exercise || exercise.sets.length <= 1) return;
 
         const updatedSets = exercise.sets.filter((_, idx) => idx !== setIndex);
-        updateWorkoutExerciseSets(exerciseId, updatedSets);
+        void updateWorkoutExerciseSets(exerciseId, updatedSets);
     };
 
     if (initializationError) {
@@ -267,6 +291,7 @@ const WorkoutSession: React.FC = () => {
     );
     const progress = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
     const isPartial = totalSets > 0 && completedSets < totalSets;
+    const isFreeWorkout = !activeWorkout.routineId;
 
     const handleFinish = () => {
         setFinishConfirmOpen(true);
@@ -298,7 +323,7 @@ const WorkoutSession: React.FC = () => {
         <div className="h-full w-full flex overflow-hidden bg-white dark:bg-background-dark">
             {/* Main Content Area */}
             <div className="flex-1 overflow-y-auto mobile-scroll">
-                <div className="flex flex-col max-w-3xl mx-auto pb-[calc(9rem+env(safe-area-inset-bottom))]">
+                <div className="flex flex-col max-w-3xl mx-auto pb-[calc(9rem+env(safe-area-inset-bottom)+var(--keyboard-inset,0px))]">
                     {/* Header (Mobile Only for Sidebar items) */}
                     <div className="sticky top-0 z-10 bg-white dark:bg-background-dark border-b border-gray-200 dark:border-surface-border p-4 lg:p-6">
                         <div className="flex items-center justify-between mb-3">
@@ -370,7 +395,13 @@ const WorkoutSession: React.FC = () => {
                                 {/* Exercise Header */}
                                 <div
                                     className="p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-[#1f2d3a] transition-colors"
-                                    onClick={() => setExpandedExercise(expandedExercise === exercise.exerciseId ? null : exercise.exerciseId)}
+                                    onClick={() => {
+                                        const nextExpanded = expandedExercise === exercise.exerciseId ? null : exercise.exerciseId;
+                                        setExpandedExercise(nextExpanded);
+                                        if (nextExpanded) {
+                                            void setActiveWorkoutPosition(exercise.exerciseId, 0);
+                                        }
+                                    }}
                                 >
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
@@ -399,17 +430,42 @@ const WorkoutSession: React.FC = () => {
                                 {expandedExercise === exercise.exerciseId && (
                                     <div className="border-t border-gray-200 dark:border-[#233648] p-4 bg-gray-50 dark:bg-[#0f1820]">
                                         {/* Notes Field */}
-                                        <div className="mb-4">
+                                        <div className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
                                             <div className="relative">
                                                 <span className="material-symbols-outlined absolute left-3 top-3 text-gray-400 text-[18px]">edit_note</span>
                                                 <textarea
                                                     value={exercise.notes || ''}
-                                                    onChange={(e) => updateActiveWorkoutExerciseNotes(exercise.exerciseId, e.target.value)}
+                                                    onChange={(e) => void updateActiveWorkoutExerciseNotes(exercise.exerciseId, e.target.value)}
                                                     placeholder="Notas del ejercicio..."
                                                     rows={2}
                                                     className="w-full bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all resize-none"
                                                 />
                                             </div>
+                                            <div className="relative w-full sm:w-24">
+                                                <span className="material-symbols-outlined absolute left-2 top-3 text-gray-400 text-[16px]">timer</span>
+                                                <input
+                                                    type="number"
+                                                    value={exercise.restSeconds}
+                                                    min={0}
+                                                    max={600}
+                                                    onChange={(e) =>
+                                                        void updateActiveWorkoutExerciseRest(
+                                                            exercise.exerciseId,
+                                                            parseInt(e.target.value, 10) || 0
+                                                        )
+                                                    }
+                                                    title="Descanso del ejercicio (segundos)"
+                                                    className="w-full bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] rounded-xl py-2.5 pl-8 pr-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center transition-all"
+                                                />
+                                            </div>
+                                            {isFreeWorkout && (
+                                                <button
+                                                    onClick={() => setExpandedExercise(null)}
+                                                    className="rounded-xl px-3 py-2 text-sm font-bold border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary transition-colors"
+                                                >
+                                                    Cerrar ejercicio
+                                                </button>
+                                            )}
                                         </div>
 
                                         <div className="flex flex-col gap-2">
@@ -434,6 +490,10 @@ const WorkoutSession: React.FC = () => {
                                                                 setIndex={setIndex}
                                                                 exerciseId={exercise.exerciseId}
                                                                 totalSets={exercise.sets.length}
+                                                                isCurrentSet={
+                                                                    activeWorkout.currentExerciseId === exercise.exerciseId &&
+                                                                    activeWorkout.currentSetIndex === setIndex
+                                                                }
                                                                 trackingType={exercise.trackingType || 'reps'}
                                                                 toggleSetComplete={toggleSetComplete}
                                                                 updateSetValue={updateSetValue}
@@ -460,16 +520,20 @@ const WorkoutSession: React.FC = () => {
                     </div>
 
                     {/* Static Footer Container (Mobile Only) */}
-                    <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-background-dark border-t border-gray-200 dark:border-surface-border z-30 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                    <div className="lg:hidden fixed bottom-[var(--keyboard-inset,0px)] left-0 right-0 bg-white dark:bg-background-dark border-t border-gray-200 dark:border-surface-border z-30 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                         <div className="w-full space-y-2">
                             {/* Timer (if active) - Footer version */}
-                            {activeRestTimer && (
+                            {activeWorkout.restTimer && (
                                 <div className="mb-3 border-b border-gray-200 dark:border-surface-border pb-3">
                                     <RestTimer
+                                        key={activeWorkout.restTimer.instanceId}
                                         variant="footer"
-                                        duration={activeRestTimer.duration}
-                                        onComplete={() => setActiveRestTimer(null)}
-                                    // No cancel in footer, or maybe just clicking skip/finish cancels it
+                                        timer={activeWorkout.restTimer}
+                                        onComplete={() => void clearRestTimer()}
+                                        onPause={() => void pauseRestTimer()}
+                                        onResume={() => void resumeRestTimer()}
+                                        onAddSeconds={(seconds) => void extendRestTimer(seconds)}
+                                        completeLabel="Siguiente serie"
                                     />
                                 </div>
                             )}
@@ -525,12 +589,17 @@ const WorkoutSession: React.FC = () => {
                     </div>
 
                     {/* Active Rest Timer Widget */}
-                    {activeRestTimer && (
+                    {activeWorkout.restTimer && (
                         <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl p-6 border border-primary/20 shadow-sm">
                             <RestTimer
+                                key={activeWorkout.restTimer.instanceId}
                                 variant="inline"
-                                duration={activeRestTimer.duration}
-                                onComplete={() => setActiveRestTimer(null)}
+                                timer={activeWorkout.restTimer}
+                                onComplete={() => void clearRestTimer()}
+                                onPause={() => void pauseRestTimer()}
+                                onResume={() => void resumeRestTimer()}
+                                onAddSeconds={(seconds) => void extendRestTimer(seconds)}
+                                completeLabel="Siguiente serie"
                             />
                         </div>
                     )}
@@ -591,12 +660,13 @@ const SortableWorkoutSetRow: React.FC<{
     setIndex: number;
     exerciseId: string;
     totalSets: number;
+    isCurrentSet: boolean;
     trackingType: 'reps' | 'time';
     toggleSetComplete: (exerciseId: string, setIndex: number) => void;
-    updateSetValue: (exerciseId: string, setIndex: number, field: 'reps' | 'weight' | 'restSeconds', value: number) => void;
+    updateSetValue: (exerciseId: string, setIndex: number, field: 'reps' | 'weight', value: number) => void;
     removeSet: (exerciseId: string, setIndex: number) => void;
     lastLabel: string;
-}> = ({ set, setIndex, exerciseId, totalSets, trackingType, toggleSetComplete, updateSetValue, removeSet, lastLabel }) => {
+}> = ({ set, setIndex, exerciseId, totalSets, isCurrentSet, trackingType, toggleSetComplete, updateSetValue, removeSet, lastLabel }) => {
     const {
         attributes,
         listeners,
@@ -612,13 +682,24 @@ const SortableWorkoutSetRow: React.FC<{
         opacity: isDragging ? 0.7 : 1,
         zIndex: isDragging ? 5 : 'auto',
     };
+    const [weightDraft, setWeightDraft] = useState(set.weight ? String(set.weight) : '');
+    const [isWeightFocused, setIsWeightFocused] = useState(false);
+
+    useEffect(() => {
+        if (!isWeightFocused) {
+            setWeightDraft(set.weight ? String(set.weight) : '');
+        }
+    }, [set.weight, isWeightFocused]);
 
     return (
         <div
             ref={setNodeRef}
+            data-set-anchor={`${exerciseId}-${setIndex}`}
             style={style}
             className={`p-3 rounded-lg border-2 transition-all ${set.completed
                 ? 'bg-primary/10 border-primary'
+                : isCurrentSet
+                    ? 'bg-amber-50/60 dark:bg-amber-900/10 border-amber-400'
                 : set.isWarmup
                     ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-gray-200 dark:border-[#233648] opacity-75'
                     : 'bg-white dark:bg-[#1a2632] border-gray-200 dark:border-[#233648]'
@@ -663,17 +744,42 @@ const SortableWorkoutSetRow: React.FC<{
                     )}
                 </div>
 
-                <div className={`grid ${trackingType === 'time' ? 'grid-cols-2' : 'grid-cols-3'} gap-2 sm:flex sm:items-center sm:gap-2 sm:flex-1`}>
+                <div className={`grid ${trackingType === 'time' ? 'grid-cols-1' : 'grid-cols-2'} gap-2 sm:flex sm:items-center sm:gap-2 sm:flex-1`}>
                     {/* Weight - hide for time-based exercises */}
                     {trackingType !== 'time' && (
                         <div className="flex items-center gap-1">
                             <input
                                 type="text"
                                 inputMode="decimal"
-                                value={set.weight || ''}
+                                value={weightDraft}
+                                onFocus={() => setIsWeightFocused(true)}
+                                onBlur={() => {
+                                    setIsWeightFocused(false);
+                                    if (!weightDraft.trim()) {
+                                        updateSetValue(exerciseId, setIndex, 'weight', 0);
+                                        setWeightDraft('');
+                                        return;
+                                    }
+                                    const parsed = parseLocaleDecimal(weightDraft);
+                                    if (parsed === null) {
+                                        setWeightDraft(set.weight ? String(set.weight) : '');
+                                        return;
+                                    }
+                                    updateSetValue(exerciseId, setIndex, 'weight', parsed);
+                                    setWeightDraft(String(parsed));
+                                }}
                                 onChange={(e) => {
-                                    const val = e.target.value.replace(',', '.');
-                                    updateSetValue(exerciseId, setIndex, 'weight', val === '' ? 0 : parseFloat(val) || 0);
+                                    const next = e.target.value;
+                                    if (!/^[0-9]*[.,]?[0-9]*$/.test(next)) return;
+                                    setWeightDraft(next);
+                                    if (!next.trim()) {
+                                        updateSetValue(exerciseId, setIndex, 'weight', 0);
+                                        return;
+                                    }
+                                    const parsed = parseLocaleDecimal(next);
+                                    if (parsed !== null) {
+                                        updateSetValue(exerciseId, setIndex, 'weight', parsed);
+                                    }
                                 }}
                                 className="w-full min-w-[60px] sm:w-16 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
                             />
@@ -696,19 +802,6 @@ const SortableWorkoutSetRow: React.FC<{
                         />
                         <span className="text-xs text-gray-500">{trackingType === 'time' ? 'seg' : 'reps'}</span>
                     </div>
-
-                    {/* Rest - hide for time-based exercises */}
-                    {trackingType !== 'time' && (
-                        <div className="flex items-center gap-1">
-                            <input
-                                type="number"
-                                value={set.restSeconds}
-                                onChange={(e) => updateSetValue(exerciseId, setIndex, 'restSeconds', parseInt(e.target.value) || 0)}
-                                className="w-full min-w-[52px] sm:w-14 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
-                            />
-                            <span className="text-xs text-gray-500">seg</span>
-                        </div>
-                    )}
                 </div>
 
                 {/* Delete Set */}

@@ -1,49 +1,102 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { RestTimerStateLike, getRestTimerRemainingSeconds } from '../lib/restTimer';
 
 interface RestTimerProps {
-    duration: number; // seconds
+    timer: RestTimerStateLike & { instanceId: string };
     onComplete?: () => void;
     onCancel?: () => void;
+    onPause?: () => void;
+    onResume?: () => void;
+    onAddSeconds?: (seconds: number) => void;
     variant?: 'modal' | 'footer' | 'inline';
+    completeLabel?: string;
 }
 
-export const RestTimer: React.FC<RestTimerProps> = ({ duration, onComplete, onCancel, variant = 'modal' }) => {
-    const [remaining, setRemaining] = useState(duration);
-    const [isActive, setIsActive] = useState(true);
-    const audioRef = useRef<HTMLAudioElement | null>(null);
+const playDoneTone = () => {
+    try {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContextClass) return;
+        const context = new AudioContextClass();
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+
+        oscillator.type = 'sine';
+        oscillator.frequency.value = 880;
+        gain.gain.setValueAtTime(0.08, context.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.2);
+
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start();
+        oscillator.stop(context.currentTime + 0.2);
+    } catch {
+        // Ignore audio failures.
+    }
+};
+
+export const RestTimer: React.FC<RestTimerProps> = ({
+    timer,
+    onComplete,
+    onCancel,
+    onPause,
+    onResume,
+    onAddSeconds,
+    variant = 'modal',
+    completeLabel = 'Saltar',
+}) => {
+    const [nowMs, setNowMs] = useState(Date.now());
+    const completedTimerRef = useRef<string | null>(null);
+
+    const remaining = useMemo(
+        () => getRestTimerRemainingSeconds(timer, nowMs),
+        [timer, nowMs]
+    );
+    const isPaused = Boolean(timer.pausedAt);
 
     useEffect(() => {
-        if (!isActive || remaining <= 0) return;
-
+        setNowMs(Date.now());
         const interval = setInterval(() => {
-            setRemaining(prev => {
-                if (prev <= 1) {
-                    clearInterval(interval);
-                    // Play sound
-                    if (audioRef.current) {
-                        audioRef.current.play().catch(() => { /* ignore */ });
-                    }
-                    onComplete?.();
-                    return 0;
-                }
-                return prev - 1;
-            });
+            setNowMs(Date.now());
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [isActive, onComplete, remaining]);
+    }, [timer.instanceId, timer.startedAt, timer.durationSeconds, timer.pausedAt, timer.pausedElapsedSeconds]);
 
-    const handleToggle = () => setIsActive(!isActive);
-    const handleSkip = () => {
-        setRemaining(0);
+    useEffect(() => {
+        if (remaining > 0) {
+            if (completedTimerRef.current === timer.instanceId) {
+                completedTimerRef.current = null;
+            }
+            return;
+        }
+
+        if (completedTimerRef.current === timer.instanceId) return;
+
+        completedTimerRef.current = timer.instanceId;
+        playDoneTone();
         onComplete?.();
-    };
+    }, [remaining, timer.instanceId, onComplete]);
 
-    const progress = ((duration - remaining) / duration) * 100;
+    const progress = timer.durationSeconds > 0
+        ? ((timer.durationSeconds - remaining) / timer.durationSeconds) * 100
+        : 100;
+
     const formatTime = (seconds: number) => {
         const m = Math.floor(seconds / 60);
         const s = seconds % 60;
         return `${m}:${s.toString().padStart(2, '0')}`;
+    };
+
+    const handlePauseToggle = () => {
+        if (isPaused) {
+            onResume?.();
+            return;
+        }
+        onPause?.();
+    };
+
+    const handleComplete = () => {
+        onComplete?.();
     };
 
     if (variant === 'footer') {
@@ -58,23 +111,24 @@ export const RestTimer: React.FC<RestTimerProps> = ({ duration, onComplete, onCa
                     </div>
                 </div>
 
-                {/* Audio element for notification sound */}
-                <audio ref={audioRef} src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSyAzvLTgjMGHGS57OihUBELTKXh8bllHAU2jdXyzn0vBSp+zPLYizcIGWi77eqeUBELTKXh8bllHAU2jdXyzn0vBSp+zPLYizcIG2i87eqeUBEKT6ni9LpoIAYrgsz03IU1BxlptO3qn08RAM+p4/S4ZRwFN4/W88p4KwYngcvz24k3CBlotO3rn08RAM+p4/S4ZRwFN4/W88p4KwYngcvz24k3CBlotO3rn08RAM+p4/S4ZRwFN4/W88p4KwYngcvz24k3CBlotO3rn08RAM+q5PS4ZRwFN4/W88p4KwYngcvz24k3CBlotO3sn08RAM+q5PS4ZRwFN4/W88p4KwYngcvz24k3CBlotO3sn08RAM+q5PS4ZRwFN4/W88p4KwYngcvz24k3CBlotO3sn08RAM+q5PS4ZRwFOY/W88t4KwQpf8rx25A2Bxdptuzrn08RANCr5fS4ZRsFOI/X88t4KgUpf8rx25A2Bxdptuzrn08RANCr5fS4ZRsFOJDX88t3KgUpf8rx25A2Bxdpt+zroE8RANCr5fS4ZRsFOJDX88t3KgUpf8rx25A2Bxdpt+zroE8RANCr5fS4ZRsFOJDX88t3KgUpf8rx25A2Bxdpt+zroE8RANCr5fS4ZRsFOJDX88t3KgUpf8rx25A2Bxdpt+zroE8RANCr5fS4ZRsFOJDX88t3KgUpf8rx25A2Bxdpt+zroE8RANCr5fS4ZRsFOJDX88t3KgUpf8rx25A2BxdptuzroE8RANCE5fS4ZRsFOJDX88t3KgUpf8rx25A2Bxdptuzrn08RANCr5fS4ZhsFOJDX88t3KgQpf8rx25A2Bxdpt+zroE8RANCr5fS4ZhsFOJDX88t3KgQpf8rx25A2Bxdpt+zroE8RANCr5fS4ZhsFOJDY88t3KgQpf8vx25A2Bxdpt+zroE8RANCr5fS4ZhsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCr5fS4ZhsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCr5fS4ZhsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCr5fS4ZhsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZhsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZhsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZRsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZRsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZRsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZRsFOpHYdJt+zroE8RANCs5fS4ZRsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZRsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZRsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZRsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZRsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZRsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8R" />
-
                 <div className="flex items-center gap-3">
                     <button
-                        onClick={() => {
-                            setRemaining(prev => prev + 10);
-                        }}
+                        onClick={() => onAddSeconds?.(10)}
                         className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 transition-colors text-sm"
                     >
                         +10s
                     </button>
                     <button
-                        onClick={handleSkip}
+                        onClick={handlePauseToggle}
+                        className="px-4 py-2 rounded-lg bg-slate-800 text-slate-200 font-bold hover:bg-slate-700 transition-colors text-sm"
+                    >
+                        {isPaused ? 'Reanudar' : 'Pausar'}
+                    </button>
+                    <button
+                        onClick={handleComplete}
                         className="px-6 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold transition-colors flex items-center gap-2"
                     >
-                        Saltar
+                        {completeLabel}
                         <span className="material-symbols-outlined text-sm">skip_next</span>
                     </button>
                 </div>
@@ -123,24 +177,22 @@ export const RestTimer: React.FC<RestTimerProps> = ({ duration, onComplete, onCa
 
                 <div className="flex gap-2 w-full">
                     <button
-                        onClick={handleToggle}
+                        onClick={handlePauseToggle}
                         className="flex-1 py-2.5 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-bold text-sm"
                     >
-                        {isActive ? 'Pausar' : 'Reanudar'}
+                        {isPaused ? 'Reanudar' : 'Pausar'}
                     </button>
                     <button
-                        onClick={() => {
-                            setRemaining(prev => prev + 10);
-                        }}
+                        onClick={() => onAddSeconds?.(10)}
                         className="flex-1 py-2.5 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-bold text-sm"
                     >
                         +10s
                     </button>
                     <button
-                        onClick={handleSkip}
+                        onClick={handleComplete}
                         className="flex-1 py-2.5 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors font-bold text-sm"
                     >
-                        Saltar
+                        {completeLabel}
                     </button>
                 </div>
 
@@ -162,7 +214,6 @@ export const RestTimer: React.FC<RestTimerProps> = ({ duration, onComplete, onCa
                 <div className="flex flex-col items-center gap-6">
                     <h3 className="text-xl font-bold">Descanso</h3>
 
-                    {/* Circular Progress */}
                     <div className="relative w-48 h-48">
                         <svg className="w-full h-full transform -rotate-90">
                             <circle
@@ -192,27 +243,24 @@ export const RestTimer: React.FC<RestTimerProps> = ({ duration, onComplete, onCa
                         </div>
                     </div>
 
-                    {/* Controls */}
                     <div className="flex gap-3 w-full">
                         <button
-                            onClick={handleToggle}
+                            onClick={handlePauseToggle}
                             className="flex-1 py-3 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-bold"
                         >
-                            {isActive ? 'Pausar' : 'Reanudar'}
+                            {isPaused ? 'Reanudar' : 'Pausar'}
                         </button>
                         <button
-                            onClick={() => {
-                                setRemaining(prev => prev + 10);
-                            }}
+                            onClick={() => onAddSeconds?.(10)}
                             className="flex-1 py-3 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-bold"
                         >
                             +10s
                         </button>
                         <button
-                            onClick={handleSkip}
+                            onClick={handleComplete}
                             className="flex-1 py-3 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors font-bold"
                         >
-                            Saltar
+                            {completeLabel}
                         </button>
                     </div>
 
@@ -226,9 +274,6 @@ export const RestTimer: React.FC<RestTimerProps> = ({ duration, onComplete, onCa
                     )}
                 </div>
             </div>
-
-            {/* Audio element for notification sound */}
-            <audio ref={audioRef} src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSyAzvLTgjMGHGS57OihUBELTKXh8bllHAU2jdXyzn0vBSp+zPLYizcIGWi77eqeUBELTKXh8bllHAU2jdXyzn0vBSp+zPLYizcIG2i87eqeUBEKT6ni9LpoIAYrgsz03IU1BxlptO3qn08RAM+p4/S4ZRwFN4/W88p4KwYngcvz24k3CBlotO3rn08RAM+p4/S4ZRwFN4/W88p4KwYngcvz24k3CBlotO3rn08RAM+p4/S4ZRwFN4/W88p4KwYngcvz24k3CBlotO3rn08RAM+q5PS4ZRwFN4/W88p4KwYngcvz24k3CBlotO3sn08RAM+q5PS4ZRwFN4/W88p4KwYngcvz24k3CBlotO3sn08RAM+q5PS4ZRwFN4/W88p4KwYngcvz24k3CBlotO3sn08RAM+q5PS4ZRwFOY/W88t4KwQpf8rx25A2Bxdptuzrn08RANCr5fS4ZRsFOI/X88t4KgUpf8rx25A2Bxdptuzrn08RANCr5fS4ZRsFOJDX88t3KgUpf8rx25A2Bxdpt+zroE8RANCr5fS4ZRsFOJDX88t3KgUpf8rx25A2Bxdpt+zroE8RANCr5fS4ZRsFOJDX88t3KgUpf8rx25A2Bxdpt+zroE8RANCr5fS4ZRsFOJDX88t3KgUpf8rx25A2Bxdpt+zroE8RANCr5fS4ZRsFOJDX88t3KgUpf8rx25A2Bxdpt+zroE8RANCr5fS4ZRsFOJDX88t3KgUpf8rx25A2BxdptuzroE8RANCE5fS4ZRsFOJDX88t3KgUpf8rx25A2Bxdptuzrn08RANCr5fS4ZhsFOJDX88t3KgQpf8rx25A2Bxdpt+zroE8RANCr5fS4ZhsFOJDX88t3KgQpf8rx25A2Bxdpt+zroE8RANCr5fS4ZhsFOJDY88t3KgQpf8vx25A2Bxdpt+zroE8RANCr5fS4ZhsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCr5fS4ZhsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCr5fS4ZhsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCr5fS4ZhsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZhsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZhsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZRsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZRsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZRsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZRsFOpHYdJt+zroE8RANCs5fS4ZRsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZRsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZRsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZRsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZRsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8RANCs5fS4ZRsFOpHY88t3KgQpf8vx25A2Bxdpt+zroE8R" />
         </div>
     );
 };

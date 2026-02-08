@@ -43,7 +43,7 @@ const MuscleStats: React.FC<MuscleStatsProps> = ({ stats }) => {
                         />
                         <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} axisLine={false} />
                         <Radar
-                            name="Ejercicios"
+                            name="Series ponderadas"
                             dataKey="A"
                             stroke="#ec4913"
                             strokeWidth={3}
@@ -69,7 +69,7 @@ const MuscleStats: React.FC<MuscleStatsProps> = ({ stats }) => {
                     <div key={muscle} className="group">
                         <div className="flex justify-between text-sm mb-1">
                             <span className="font-medium text-slate-700 dark:text-slate-200">{muscle}</span>
-                            <span className="text-slate-500 dark:text-slate-400">{count} ejercicios</span>
+                            <span className="text-slate-500 dark:text-slate-400">{count.toFixed(1)} series</span>
                         </div>
                         <div className="h-2.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                             <div

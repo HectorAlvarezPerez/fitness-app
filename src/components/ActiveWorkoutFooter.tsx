@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import ConfirmDialog from './ConfirmDialog';
+import { getActiveWorkoutPath } from '../lib/activeWorkout';
 
 export const ActiveWorkoutFooter: React.FC = () => {
     const { activeWorkout, pauseWorkout, resumeWorkout, finishWorkout } = useStore();
@@ -70,13 +71,11 @@ export const ActiveWorkoutFooter: React.FC = () => {
     const isPartial = totalSets > 0 && completedSets < totalSets;
 
     const handleFooterClick = () => {
-        if (activeWorkout.routineId) {
-            navigate(`/routine/${activeWorkout.routineId}/workout`);
-        }
+        navigate(getActiveWorkoutPath(activeWorkout.routineId));
     };
 
     return (
-        <div className="fixed left-0 right-0 bottom-[calc(72px+env(safe-area-inset-bottom))] md:bottom-0 bg-primary/95 backdrop-blur-md border-t border-primary-600 shadow-2xl z-30 transition-all">
+        <div className="fixed left-0 right-0 bottom-[calc(72px+env(safe-area-inset-bottom)+var(--keyboard-inset,0px))] md:bottom-0 bg-primary/95 backdrop-blur-md border-t border-primary-600 shadow-2xl z-30 transition-all">
             <div className="max-w-4xl mx-auto px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                 <div className="flex items-center justify-between gap-3">
                     {/* Left: Info - Clickable */}

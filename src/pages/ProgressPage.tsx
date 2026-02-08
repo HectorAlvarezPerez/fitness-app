@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useStore, BodyMeasurement } from '../store/useStore';
 import { BodyHeatmap } from '../components/BodyHeatmap';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { accumulateMuscleSeriesDistribution } from '../lib/muscleStats';
 
 export default function ProgressPage() {
     const {
@@ -76,37 +77,18 @@ export default function ProgressPage() {
 
     const weeklyMuscleData = useMemo(() => {
         const muscleCounts: { [key: string]: number } = {};
-        let maxCount = 0;
 
         workoutHistory.forEach(session => {
             const date = new Date(session.completed_at);
             if (date >= startOfSelectedWeek && date <= endOfSelectedWeek) {
-                session.exercises_completed?.forEach((ex: any) => {
-                    let muscle = ex.primaryMuscle || ex.muscleGroup || '';
-                    muscle = muscle.toLowerCase();
-
-                    if (muscle.includes('pecho') || muscle.includes('chest')) muscle = 'pecho';
-                    else if (muscle.includes('espald') || muscle.includes('back') || muscle.includes('dorsal')) muscle = 'espalda';
-                    else if (muscle.includes('hombro') || muscle.includes('shoulder') || muscle.includes('deltoid')) muscle = 'hombros';
-                    else if (muscle.includes('biceps') || muscle.includes('bíceps')) muscle = 'biceps';
-                    else if (muscle.includes('triceps') || muscle.includes('tríceps')) muscle = 'triceps';
-                    else if (muscle.includes('cuad') || muscle.includes('quad')) muscle = 'cuadriceps';
-                    else if (muscle.includes('femoral') || muscle.includes('isquio') || muscle.includes('hamstring')) muscle = 'isquios';
-                    else if (muscle.includes('gemel') || muscle.includes('calves')) muscle = 'gemelos';
-                    else if (muscle.includes('glut') || muscle.includes('glutes')) muscle = 'gluteos';
-                    else if (muscle.includes('abdo') || muscle.includes('core')) muscle = 'abs';
-                    else if (muscle.includes('trapec') || muscle.includes('trap')) muscle = 'trapecios';
-                    else if (muscle.includes('antebraz') || muscle.includes('forearm')) muscle = 'antebrazos';
-
-                    if (muscle) {
-                        const sets = Array.isArray(ex.sets) ? ex.sets.length : (ex.sets || 3);
-                        muscleCounts[muscle] = (muscleCounts[muscle] || 0) + sets;
-                        maxCount = Math.max(maxCount, muscleCounts[muscle]);
-                    }
+                const sessionDistribution = accumulateMuscleSeriesDistribution(session.exercises_completed || []);
+                Object.entries(sessionDistribution).forEach(([muscle, weightedSeries]) => {
+                    muscleCounts[muscle] = (muscleCounts[muscle] || 0) + weightedSeries;
                 });
             }
         });
 
+        const maxCount = Math.max(0, ...Object.values(muscleCounts));
         const normalizedData: { [key: string]: number } = {};
         if (maxCount > 0) {
             Object.keys(muscleCounts).forEach(key => {
@@ -328,7 +310,7 @@ export default function ProgressPage() {
                                                 </Pie>
                                                 <Tooltip
                                                     contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
-                                                    formatter={(value: number) => [`${value} series`, 'Total']}
+                                                    formatter={(value: number) => [`${value.toFixed(1)} series`, 'Total']}
                                                 />
                                             </PieChart>
                                         </ResponsiveContainer>
@@ -340,7 +322,7 @@ export default function ProgressPage() {
                                                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }}></div>
                                                     <span className="text-sm font-medium text-slate-700 dark:text-gray-300">{entry.name}</span>
                                                 </div>
-                                                <span className="text-sm font-bold text-slate-900 dark:text-white">{entry.value} series</span>
+                                                <span className="text-sm font-bold text-slate-900 dark:text-white">{entry.value.toFixed(1)} series</span>
                                             </div>
                                         ))}
                                         {musclePieData.length === 0 && (

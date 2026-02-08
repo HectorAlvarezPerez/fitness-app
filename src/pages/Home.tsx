@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
+import { getActiveWorkoutPath } from '../lib/activeWorkout';
 
 const Home: React.FC = () => {
     const { userData, activeWorkout, workoutHistory, loadUserData, loadWorkoutHistory, loadActiveWorkout } = useStore();
@@ -39,7 +40,7 @@ const Home: React.FC = () => {
                                 <h3 className="text-lg font-bold text-primary mb-1">Entrenamiento en Curso</h3>
                                 <p className="text-xl font-bold mb-4">{activeWorkout.routineName}</p>
                                 <Link
-                                    to={`/routine/${activeWorkout.routineId}/workout`}
+                                    to={getActiveWorkoutPath(activeWorkout.routineId)}
                                     className="inline-flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-full font-bold shadow-lg shadow-primary/30 hover:bg-primary/90 transition-all"
                                 >
                                     <span>Continuar Entrenando</span>

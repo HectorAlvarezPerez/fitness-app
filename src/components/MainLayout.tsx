@@ -9,6 +9,56 @@ import logoUrl from '../assets/logo-fitness.png';
 
 const MainLayout: React.FC = () => {
     const { pathname } = useLocation();
+    const { loadActiveWorkout } = useStore();
+    const [keyboardInset, setKeyboardInset] = useState(0);
+    const isKeyboardOpen = keyboardInset > 0;
+
+    useEffect(() => {
+        void loadActiveWorkout();
+    }, [loadActiveWorkout]);
+
+    useEffect(() => {
+        const updateKeyboardInset = () => {
+            const viewport = window.visualViewport;
+            const viewportHeight = viewport?.height ?? window.innerHeight;
+            const offsetTop = viewport?.offsetTop ?? 0;
+            const inset = Math.max(0, window.innerHeight - viewportHeight - offsetTop);
+            setKeyboardInset(inset);
+            document.documentElement.style.setProperty('--keyboard-inset', `${inset}px`);
+        };
+
+        const handleFocusIn = (event: Event) => {
+            const target = event.target as HTMLElement | null;
+            if (!target) return;
+            if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)) return;
+
+            setTimeout(() => {
+                target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }, 220);
+        };
+
+        updateKeyboardInset();
+
+        const viewport = window.visualViewport;
+        if (viewport) {
+            viewport.addEventListener('resize', updateKeyboardInset);
+            viewport.addEventListener('scroll', updateKeyboardInset);
+        } else {
+            window.addEventListener('resize', updateKeyboardInset);
+        }
+        document.addEventListener('focusin', handleFocusIn, true);
+
+        return () => {
+            if (viewport) {
+                viewport.removeEventListener('resize', updateKeyboardInset);
+                viewport.removeEventListener('scroll', updateKeyboardInset);
+            } else {
+                window.removeEventListener('resize', updateKeyboardInset);
+            }
+            document.removeEventListener('focusin', handleFocusIn, true);
+            document.documentElement.style.setProperty('--keyboard-inset', '0px');
+        };
+    }, []);
 
     // Mapping for title
     const getTitle = () => {
@@ -41,7 +91,7 @@ const MainLayout: React.FC = () => {
         || pathname.includes('/routine/edit');
     const mainPadding = hideBottomNav
         ? 'pb-0'
-        : 'pb-[calc(72px+env(safe-area-inset-bottom))] md:pb-0';
+        : 'pb-[calc(72px+env(safe-area-inset-bottom)+var(--keyboard-inset,0px))] md:pb-0';
 
     return (
         <div className="flex flex-col min-h-[100dvh] h-[100dvh] bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display overflow-hidden">
@@ -83,10 +133,10 @@ const MainLayout: React.FC = () => {
             </main>
 
             {/* Active Workout Footer (shows above bottom nav, but not on workout page) */}
-            {!pathname.includes('/workout') && <ActiveWorkoutFooter />}
+            {!pathname.includes('/workout') && !isKeyboardOpen && <ActiveWorkoutFooter />}
 
             {/* New Mobile Bottom Navigation */}
-            {!hideBottomNav && <MobileNav />}
+            {!hideBottomNav && !isKeyboardOpen && <MobileNav />}
         </div>
     );
 };

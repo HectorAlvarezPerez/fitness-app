@@ -3,6 +3,12 @@ import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabaseClient';
 import { createId } from '../lib/id';
 import { ACHIEVEMENTS, Achievement } from '../data/achievements';
+import {
+  buildActiveWorkoutDataPayload,
+  PersistedRestTimer,
+  readActiveWorkoutDataPayload,
+} from '../lib/activeWorkout';
+import { getRestTimerElapsedSeconds } from '../lib/restTimer';
 
 export interface RoutineSet {
   id?: string;
@@ -20,6 +26,8 @@ export interface Exercise {
   notes?: string;
   sets: RoutineSet[];
   restSeconds?: number; // Rest time in seconds for this exercise
+  secondaryMuscles?: string[];
+  secondaryMuscleFactor?: number;
   includesBodyweight?: boolean; // For exercises like dips, pull-ups where volume = bodyweight + added weight
   trackingType?: 'reps' | 'time'; // 'reps' for repetitions, 'time' for time-based (seconds)
   // Legacy fields for backward compatibility - optional or deprecated
@@ -68,6 +76,9 @@ export interface ActiveWorkoutExercise {
   exerciseId: string;
   name: string;
   primaryMuscle: string;
+  secondaryMuscles?: string[];
+  secondaryMuscleFactor?: number;
+  restSeconds: number;
   imageUrl?: string;
   notes?: string;
   includesBodyweight?: boolean; // For exercises like dips where volume = bodyweight + added weight
@@ -76,13 +87,15 @@ export interface ActiveWorkoutExercise {
     id?: string;
     reps: number;
     weight: number;
-    restSeconds: number;
+    restSeconds?: number; // Legacy, rest now lives at exercise level
     completed: boolean;
     isWarmup?: boolean;
     // Sub-series para dropsets (3.1, 3.2, etc.)
     dropsets?: Array<{ reps: number; weight: number; completed?: boolean }>;
   }>;
 }
+
+export interface ActiveWorkoutRestTimer extends PersistedRestTimer { }
 
 export interface ActiveWorkout {
   id?: string;
@@ -92,6 +105,9 @@ export interface ActiveWorkout {
   isPaused?: boolean;
   pausedAt?: string;
   totalPausedMs?: number; // Track total paused time
+  currentExerciseId?: string;
+  currentSetIndex?: number;
+  restTimer?: ActiveWorkoutRestTimer | null;
   exercises: ActiveWorkoutExercise[];
 }
 
@@ -120,8 +136,21 @@ const normalizeActiveWorkoutExercises = (exercises: ActiveWorkoutExercise[]) =>
     .filter((exercise) => exercise && typeof exercise.name === 'string')
     .map((exercise) => ({
       ...exercise,
+      restSeconds: Number.isFinite(exercise.restSeconds)
+        ? Math.max(0, Math.round(exercise.restSeconds))
+        : Math.max(
+          0,
+          Math.round(
+            exercise.sets?.find((set) => typeof set.restSeconds === 'number')?.restSeconds || 90
+          )
+        ),
       sets: Array.isArray(exercise.sets) ? ensureSetIds(exercise.sets) : [],
     }));
+
+const toSafeRestSeconds = (value: number | undefined, fallback = 90) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return fallback;
+  return Math.max(0, Math.round(value));
+};
 
 export interface RoutineFolder {
   id: string;
@@ -262,7 +291,14 @@ interface AppState {
   startEmptyWorkout: () => Promise<boolean>;
   addActiveWorkoutExercise: (exercise: ExerciseLibraryItem) => Promise<void>;
   updateActiveWorkoutExerciseNotes: (exerciseId: string, notes: string) => Promise<void>;
+  updateActiveWorkoutExerciseRest: (exerciseId: string, restSeconds: number) => Promise<void>;
   updateWorkoutExerciseSets: (exerciseId: string, sets: ActiveWorkoutExercise['sets']) => Promise<void>;
+  setActiveWorkoutPosition: (exerciseId: string, setIndex: number) => Promise<void>;
+  startRestTimer: (exerciseId: string, setIndex: number, durationSeconds: number) => Promise<void>;
+  clearRestTimer: () => Promise<void>;
+  pauseRestTimer: () => Promise<void>;
+  resumeRestTimer: () => Promise<void>;
+  extendRestTimer: (secondsToAdd: number) => Promise<void>;
   saveActiveWorkoutProgress: () => Promise<void>;
   finishWorkout: () => Promise<void>;
   clearActiveWorkout: () => void;
@@ -716,9 +752,8 @@ export const useStore = create<AppState>()(
           .single();
 
         if (!error && data) {
-          const rawExercises = Array.isArray(data.workout_data?.exercises)
-            ? data.workout_data.exercises
-            : [];
+          const workoutData = readActiveWorkoutDataPayload(data.workout_data);
+          const rawExercises = workoutData.exercises;
           const normalizedExercises = normalizeActiveWorkoutExercises(rawExercises);
           set({
             activeWorkout: {
@@ -726,6 +761,12 @@ export const useStore = create<AppState>()(
               routineId: data.routine_id,
               routineName: data.routine_name,
               startedAt: data.started_at,
+              isPaused: data.workout_data?.is_paused ?? false,
+              pausedAt: data.workout_data?.paused_at ?? undefined,
+              totalPausedMs: data.workout_data?.total_paused_ms ?? 0,
+              currentExerciseId: workoutData.currentExerciseId,
+              currentSetIndex: workoutData.currentSetIndex,
+              restTimer: workoutData.restTimer,
               exercises: normalizedExercises,
             }
           });
@@ -741,12 +782,21 @@ export const useStore = create<AppState>()(
           ? state.activeWorkout.exercises.filter((ex): ex is ActiveWorkoutExercise => !!ex && typeof ex.exerciseId === 'string')
           : [];
         const updatedExercises = safeExercises.map(ex =>
-          ex.exerciseId === exerciseId ? { ...ex, sets: normalizedSets } : ex
+          ex.exerciseId === exerciseId
+            ? {
+              ...ex,
+              sets: normalizedSets.map((set) => ({
+                ...set,
+                restSeconds: ex.restSeconds,
+              })),
+            }
+            : ex
         );
 
         set({
           activeWorkout: {
             ...state.activeWorkout,
+            currentExerciseId: exerciseId,
             exercises: updatedExercises
           }
         });
@@ -768,8 +818,158 @@ export const useStore = create<AppState>()(
         set({
           activeWorkout: {
             ...state.activeWorkout,
+            currentExerciseId: exerciseId,
             exercises: updatedExercises
           }
+        });
+
+        await get().saveActiveWorkoutProgress();
+      },
+
+      updateActiveWorkoutExerciseRest: async (exerciseId: string, restSeconds: number) => {
+        const state = get();
+        if (!state.activeWorkout) return;
+
+        const safeRestSeconds = toSafeRestSeconds(restSeconds);
+        const safeExercises = Array.isArray(state.activeWorkout.exercises)
+          ? state.activeWorkout.exercises.filter((ex): ex is ActiveWorkoutExercise => !!ex && typeof ex.exerciseId === 'string')
+          : [];
+
+        const updatedExercises = safeExercises.map((exercise) => {
+          if (exercise.exerciseId !== exerciseId) return exercise;
+          return {
+            ...exercise,
+            restSeconds: safeRestSeconds,
+            sets: exercise.sets.map((set) => ({
+              ...set,
+              restSeconds: safeRestSeconds,
+            })),
+          };
+        });
+
+        set({
+          activeWorkout: {
+            ...state.activeWorkout,
+            currentExerciseId: exerciseId,
+            exercises: updatedExercises,
+          },
+        });
+
+        await get().saveActiveWorkoutProgress();
+      },
+
+      setActiveWorkoutPosition: async (exerciseId: string, setIndex: number) => {
+        const state = get();
+        if (!state.activeWorkout) return;
+
+        set({
+          activeWorkout: {
+            ...state.activeWorkout,
+            currentExerciseId: exerciseId,
+            currentSetIndex: setIndex,
+          },
+        });
+
+        await get().saveActiveWorkoutProgress();
+      },
+
+      startRestTimer: async (exerciseId: string, setIndex: number, durationSeconds: number) => {
+        const state = get();
+        if (!state.activeWorkout) return;
+
+        const safeDuration = toSafeRestSeconds(durationSeconds);
+        set({
+          activeWorkout: {
+            ...state.activeWorkout,
+            currentExerciseId: exerciseId,
+            currentSetIndex: setIndex,
+            restTimer: {
+              exerciseId,
+              setIndex,
+              durationSeconds: safeDuration,
+              startedAt: new Date().toISOString(),
+              pausedAt: undefined,
+              pausedElapsedSeconds: 0,
+              instanceId: createId('rest'),
+            },
+          },
+        });
+
+        await get().saveActiveWorkoutProgress();
+      },
+
+      clearRestTimer: async () => {
+        const state = get();
+        if (!state.activeWorkout) return;
+
+        set({
+          activeWorkout: {
+            ...state.activeWorkout,
+            restTimer: null,
+          },
+        });
+
+        await get().saveActiveWorkoutProgress();
+      },
+
+      pauseRestTimer: async () => {
+        const state = get();
+        if (!state.activeWorkout?.restTimer) return;
+
+        const elapsedSeconds = getRestTimerElapsedSeconds(state.activeWorkout.restTimer);
+
+        set({
+          activeWorkout: {
+            ...state.activeWorkout,
+            restTimer: {
+              ...state.activeWorkout.restTimer,
+              pausedAt: new Date().toISOString(),
+              pausedElapsedSeconds: elapsedSeconds,
+            },
+          },
+        });
+
+        await get().saveActiveWorkoutProgress();
+      },
+
+      resumeRestTimer: async () => {
+        const state = get();
+        if (!state.activeWorkout?.restTimer) return;
+
+        const pausedElapsedSeconds = state.activeWorkout.restTimer.pausedElapsedSeconds ?? 0;
+        const resumedStartedAt = new Date(Date.now() - pausedElapsedSeconds * 1000).toISOString();
+
+        set({
+          activeWorkout: {
+            ...state.activeWorkout,
+            restTimer: {
+              ...state.activeWorkout.restTimer,
+              startedAt: resumedStartedAt,
+              pausedAt: undefined,
+            },
+          },
+        });
+
+        await get().saveActiveWorkoutProgress();
+      },
+
+      extendRestTimer: async (secondsToAdd: number) => {
+        const state = get();
+        if (!state.activeWorkout?.restTimer) return;
+
+        const durationSeconds = toSafeRestSeconds(
+          state.activeWorkout.restTimer.durationSeconds + secondsToAdd,
+          state.activeWorkout.restTimer.durationSeconds
+        );
+
+        set({
+          activeWorkout: {
+            ...state.activeWorkout,
+            restTimer: {
+              ...state.activeWorkout.restTimer,
+              durationSeconds,
+            },
+          },
         });
 
         await get().saveActiveWorkoutProgress();
@@ -786,10 +986,22 @@ export const useStore = create<AppState>()(
           ? state.activeWorkout.exercises.filter((ex): ex is ActiveWorkoutExercise => !!ex && typeof ex.exerciseId === 'string')
           : [];
 
+        const workoutData = buildActiveWorkoutDataPayload({
+          exercises: safeExercises,
+          currentExerciseId: state.activeWorkout.currentExerciseId,
+          currentSetIndex: state.activeWorkout.currentSetIndex,
+          restTimer: state.activeWorkout.restTimer || null,
+        });
+
         await supabase
           .from('active_workouts')
           .update({
-            workout_data: { exercises: safeExercises },
+            workout_data: {
+              ...workoutData,
+              is_paused: state.activeWorkout.isPaused ?? false,
+              paused_at: state.activeWorkout.pausedAt || null,
+              total_paused_ms: state.activeWorkout.totalPausedMs || 0,
+            },
             updated_at: new Date().toISOString()
           })
           .eq('user_id', user.id);
@@ -807,9 +1019,13 @@ export const useStore = create<AppState>()(
             routineId: undefined,
             routineName: 'Entrenamiento libre',
             startedAt: new Date().toISOString(),
+            currentExerciseId: undefined,
+            currentSetIndex: undefined,
+            restTimer: null,
             exercises: []
           };
 
+          const workoutData = buildActiveWorkoutDataPayload(activeWorkout);
           const { data, error } = await supabase
             .from('active_workouts')
             .upsert({
@@ -817,7 +1033,12 @@ export const useStore = create<AppState>()(
               routine_id: null,
               routine_name: activeWorkout.routineName,
               started_at: activeWorkout.startedAt,
-              workout_data: { exercises: [] }
+              workout_data: {
+                ...workoutData,
+                is_paused: false,
+                paused_at: null,
+                total_paused_ms: 0,
+              }
             })
             .select()
             .single();
@@ -853,12 +1074,14 @@ export const useStore = create<AppState>()(
           exerciseId: createId('ex'),
           name: exercise.name,
           primaryMuscle: exercise.primary_muscle,
+          secondaryMuscles: exercise.secondary_muscles || [],
+          secondaryMuscleFactor: exercise.secondary_muscles?.length ? 0.35 : 0,
+          restSeconds,
           trackingType,
           sets: Array.from({ length: defaultSets }).map(() => ({
             id: createId('set'),
             reps: defaultReps,
             weight: trackingType === 'time' ? 0 : defaultWeight,
-            restSeconds,
             completed: false
           }))
         };
@@ -868,6 +1091,8 @@ export const useStore = create<AppState>()(
         set({
           activeWorkout: {
             ...state.activeWorkout,
+            currentExerciseId: newExercise.exerciseId,
+            currentSetIndex: 0,
             exercises: updatedExercises
           }
         });
@@ -942,12 +1167,18 @@ export const useStore = create<AppState>()(
             }
 
             // Use exercise's restSeconds, fallback to routine's default, then user's default, then 90
-            const restSeconds = ex.restSeconds || routine.default_rest_seconds || get().userData?.default_rest_seconds || 90;
+            const restSeconds = toSafeRestSeconds(
+              ex.restSeconds || routine.default_rest_seconds || get().userData?.default_rest_seconds || 90
+            );
 
             return {
               exerciseId: ex.id,
               name: ex.name,
               primaryMuscle: ex.muscleGroup,
+              secondaryMuscles: ex.secondaryMuscles || [],
+              secondaryMuscleFactor:
+                ex.secondaryMuscleFactor ?? ((ex.secondaryMuscles?.length || 0) > 0 ? 0.35 : 0),
+              restSeconds,
               imageUrl: undefined,
               notes: ex.notes, // Copy notes from routine
               includesBodyweight: ex.includesBodyweight, // Pass bodyweight flag
@@ -956,7 +1187,6 @@ export const useStore = create<AppState>()(
                 id: s.id || createId('set'),
                 reps: s.reps,
                 weight: s.weight,
-                restSeconds,
                 completed: false,
                 isWarmup: s.isWarmup,
                 dropsets: s.dropsets?.map(d => ({ ...d, completed: false }))
@@ -968,9 +1198,13 @@ export const useStore = create<AppState>()(
             routineId: routine.id,
             routineName: routine.name,
             startedAt: new Date().toISOString(),
+            currentExerciseId: exercises[0]?.exerciseId,
+            currentSetIndex: 0,
+            restTimer: null,
             exercises
           };
 
+          const workoutData = buildActiveWorkoutDataPayload(activeWorkout);
           const { data, error } = await supabase
             .from('active_workouts')
             .upsert({
@@ -978,7 +1212,12 @@ export const useStore = create<AppState>()(
               routine_id: routine.id,
               routine_name: routine.name,
               started_at: activeWorkout.startedAt,
-              workout_data: { exercises }
+              workout_data: {
+                ...workoutData,
+                is_paused: false,
+                paused_at: null,
+                total_paused_ms: 0,
+              }
             })
             .select()
             .single();
@@ -1139,6 +1378,7 @@ export const useStore = create<AppState>()(
               pausedAt: new Date().toISOString(),
             }
           });
+          void get().saveActiveWorkoutProgress();
         }
       },
 
@@ -1156,6 +1396,7 @@ export const useStore = create<AppState>()(
               totalPausedMs: currentPausedMs + pausedDuration,
             }
           });
+          void get().saveActiveWorkoutProgress();
         }
       },
 

@@ -5,6 +5,7 @@ import WorkoutStatisticsChart from '../components/dashboard/WorkoutStatisticsCha
 import WorkoutCalendar from '../components/dashboard/WorkoutCalendar';
 import GlobalStatsSummary from '../components/dashboard/GlobalStatsSummary';
 import MuscleStats from '../components/dashboard/MuscleStats';
+import { accumulateMuscleSeriesDistribution } from '../lib/muscleStats';
 
 const Dashboard: React.FC = () => {
     const { stats, workoutHistory, loadWorkoutHistory } = useStore();
@@ -16,14 +17,14 @@ const Dashboard: React.FC = () => {
     }, [loadWorkoutHistory]);
 
     useEffect(() => {
-        // Calculate muscle group stats
+        // Calculate muscle group stats by weighted series distribution.
         const muscles: Record<string, number> = {};
 
         workoutHistory.forEach(workout => {
             if (Array.isArray(workout.exercises_completed)) {
-                workout.exercises_completed.forEach((ex: any) => {
-                    const muscle = ex.primaryMuscle || 'Otro';
-                    muscles[muscle] = (muscles[muscle] || 0) + 1;
+                const workoutDistribution = accumulateMuscleSeriesDistribution(workout.exercises_completed);
+                Object.entries(workoutDistribution).forEach(([muscle, weightedSeries]) => {
+                    muscles[muscle] = (muscles[muscle] || 0) + weightedSeries;
                 });
             }
         });
@@ -71,7 +72,7 @@ const Dashboard: React.FC = () => {
                             Ver historial completado
                         </Link>
                     </div>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Distribución de ejercicios por grupo muscular.</p>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Distribución ponderada por series y músculos secundarios.</p>
 
                     <MuscleStats stats={muscleStats} />
                 </div>
