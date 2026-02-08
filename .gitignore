@@ -118,3 +118,6 @@ dist
 
 # DS Store
 .DS_Store
+
+# Local Codex agent metadata
+.agent/
