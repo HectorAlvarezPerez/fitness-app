@@ -53,16 +53,16 @@ const AppGuide: React.FC = () => {
                         <Link to="/dashboard" className="text-primary font-bold hover:underline">Ver Estadísticas →</Link>
                     </div>
 
-                    {/* Achievements */}
+                    {/* Personal Records */}
                     <div className="bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] rounded-2xl p-6 hover:shadow-lg transition-all">
                         <div className="size-12 rounded-xl bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 flex items-center justify-center mb-4">
-                            <span className="material-symbols-outlined text-3xl">emoji_events</span>
+                            <span className="material-symbols-outlined text-3xl">fitness_center</span>
                         </div>
-                        <h3 className="text-xl font-bold mb-2">Logros y Metas</h3>
+                        <h3 className="text-xl font-bold mb-2">Récords Personales</h3>
                         <p className="text-gray-500 dark:text-gray-400 mb-4">
-                            Desbloquea medallas al mantener la constancia y superar tus récords personales. ¡Mantén la motivación alta!
+                            Supera tus marcas y recibe notificaciones cuando logres un nuevo récord personal en tus ejercicios favoritos.
                         </p>
-                        <Link to="/achievements" className="text-primary font-bold hover:underline">Ver Logros →</Link>
+                        <Link to="/dashboard" className="text-primary font-bold hover:underline">Ver Estadísticas →</Link>
                     </div>
                 </div>
 

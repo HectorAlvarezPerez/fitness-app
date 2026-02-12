@@ -10,6 +10,9 @@ const Settings: React.FC = () => {
 
     // Password Change State
     const [newPassword, setNewPassword] = useState('');
+    const [notificationsEnabled, setNotificationsEnabled] = useState(
+        () => localStorage.getItem('fitness-rest-timer-notifications') !== 'off'
+    );
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isChangingPassword, setIsChangingPassword] = useState(false);
     const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -79,6 +82,39 @@ const Settings: React.FC = () => {
                             <p className="font-bold text-lg">{userData?.user_metadata?.full_name || userData?.email?.split('@')[0] || 'Usuario'}</p>
                             <p className="text-sm text-gray-500 dark:text-gray-400">{userData?.email || 'Modo Invitado'}</p>
                         </div>
+                    </div>
+                </div>
+
+                {/* Notification Settings */}
+                <div className="rounded-2xl border border-slate-200 dark:border-[#233648] bg-white dark:bg-[#1a2632] p-6">
+                    <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-primary">notifications</span>
+                        Notificaciones
+                    </h2>
+
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="font-medium">Temporizador de descanso</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Notificación y vibración al terminar el descanso</p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                const next = !notificationsEnabled;
+                                localStorage.setItem('fitness-rest-timer-notifications', next ? 'on' : 'off');
+                                setNotificationsEnabled(next);
+                            }}
+                            className={`relative w-12 h-7 rounded-full transition-colors ${notificationsEnabled
+                                ? 'bg-primary'
+                                : 'bg-gray-300 dark:bg-gray-600'
+                                }`}
+                        >
+                            <span
+                                className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${notificationsEnabled
+                                    ? 'translate-x-5'
+                                    : 'translate-x-0'
+                                    }`}
+                            />
+                        </button>
                     </div>
                 </div>
 

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabaseClient';
 import { createId } from '../lib/id';
-import { ACHIEVEMENTS, Achievement } from '../data/achievements';
+
 import {
   buildActiveWorkoutDataPayload,
   PersistedRestTimer,
@@ -109,6 +109,7 @@ export interface ActiveWorkout {
   currentSetIndex?: number;
   restTimer?: ActiveWorkoutRestTimer | null;
   exercises: ActiveWorkoutExercise[];
+  overrideDate?: string; // YYYY-MM-DD for past-day workouts
 }
 
 const ensureSetIds = <T extends { id?: string }>(sets: T[]) => {
@@ -247,14 +248,12 @@ interface AppState {
   addBodyMeasurement: (measurement: Omit<BodyMeasurement, 'id' | 'user_id' | 'created_at'>) => Promise<void>;
   deleteBodyMeasurement: (id: string) => Promise<void>;
 
-  // Achievements & PRs
-  achievements: string[]; // IDs of unlocked achievements
+  // Personal Records
   personalRecords: Record<string, { weight: number; reps: number; date: string }>;
-  notification: { title: string; message: string; type: 'achievement' | 'pr' } | null;
-  loadAchievements: () => Promise<void>;
+  notification: { title: string; message: string; type: 'pr' } | null;
   loadPersonalRecords: () => Promise<void>;
   dismissNotification: () => void;
-  syncAchievementsAndPRs: () => Promise<void>;
+  syncPersonalRecords: () => Promise<void>;
 
   userData: UserData | null;
   loadUserData: () => Promise<void>;
@@ -287,8 +286,8 @@ interface AppState {
 
   // Active Workout
   loadActiveWorkout: () => Promise<void>;
-  startWorkout: (routine: Routine) => Promise<boolean>;
-  startEmptyWorkout: () => Promise<boolean>;
+  startWorkout: (routine: Routine, overrideDate?: string) => Promise<boolean>;
+  startEmptyWorkout: (overrideDate?: string) => Promise<boolean>;
   addActiveWorkoutExercise: (exercise: ExerciseLibraryItem) => Promise<void>;
   updateActiveWorkoutExerciseNotes: (exerciseId: string, notes: string) => Promise<void>;
   updateActiveWorkoutExerciseRest: (exerciseId: string, restSeconds: number) => Promise<void>;
@@ -353,8 +352,8 @@ export const useStore = create<AppState>()(
       // Body Measurements
       bodyMeasurements: [],
 
-      // Achievements & PRs
-      achievements: [],
+      // Personal Records
+
       personalRecords: {},
       notification: null,
 
@@ -711,8 +710,8 @@ export const useStore = create<AppState>()(
 
           // Reload history
           await get().loadWorkoutHistory();
-          // Recalculate stats/achievements
-          await get().syncAchievementsAndPRs();
+          // Recalculate PRs
+          await get().syncPersonalRecords();
         } catch (error) {
           console.error('Error deleting workout session:', error);
         }
@@ -733,8 +732,8 @@ export const useStore = create<AppState>()(
 
           // Reload history
           await get().loadWorkoutHistory();
-          // Recalculate stats/achievements
-          await get().syncAchievementsAndPRs();
+          // Recalculate PRs
+          await get().syncPersonalRecords();
         } catch (error) {
           console.error('Error deleting workout sessions:', error);
         }
@@ -768,6 +767,7 @@ export const useStore = create<AppState>()(
               currentSetIndex: workoutData.currentSetIndex,
               restTimer: workoutData.restTimer,
               exercises: normalizedExercises,
+              overrideDate: workoutData.overrideDate,
             }
           });
         }
@@ -991,6 +991,7 @@ export const useStore = create<AppState>()(
           currentExerciseId: state.activeWorkout.currentExerciseId,
           currentSetIndex: state.activeWorkout.currentSetIndex,
           restTimer: state.activeWorkout.restTimer || null,
+          overrideDate: state.activeWorkout.overrideDate,
         });
 
         await supabase
@@ -1007,7 +1008,7 @@ export const useStore = create<AppState>()(
           .eq('user_id', user.id);
       },
 
-      startEmptyWorkout: async () => {
+      startEmptyWorkout: async (overrideDate?: string) => {
         try {
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) {
@@ -1015,14 +1016,19 @@ export const useStore = create<AppState>()(
             return false;
           }
 
+          const startedAt = overrideDate
+            ? new Date(`${overrideDate}T09:00:00`).toISOString()
+            : new Date().toISOString();
+
           const activeWorkout: ActiveWorkout = {
             routineId: undefined,
             routineName: 'Entrenamiento libre',
-            startedAt: new Date().toISOString(),
+            startedAt,
             currentExerciseId: undefined,
             currentSetIndex: undefined,
             restTimer: null,
-            exercises: []
+            exercises: [],
+            overrideDate,
           };
 
           const workoutData = buildActiveWorkoutDataPayload(activeWorkout);
@@ -1039,7 +1045,7 @@ export const useStore = create<AppState>()(
                 paused_at: null,
                 total_paused_ms: 0,
               }
-            })
+            }, { onConflict: 'user_id' })
             .select()
             .single();
 
@@ -1100,7 +1106,7 @@ export const useStore = create<AppState>()(
         await get().saveActiveWorkoutProgress();
       },
 
-      startWorkout: async (routine: Routine) => {
+      startWorkout: async (routine: Routine, overrideDate?: string) => {
         try {
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) {
@@ -1194,10 +1200,15 @@ export const useStore = create<AppState>()(
             };
           });
 
+          const startedAt = overrideDate
+            ? new Date(`${overrideDate}T09:00:00`).toISOString()
+            : new Date().toISOString();
+
           const activeWorkout: ActiveWorkout = {
             routineId: routine.id,
             routineName: routine.name,
-            startedAt: new Date().toISOString(),
+            startedAt,
+            overrideDate: overrideDate || undefined,
             currentExerciseId: exercises[0]?.exerciseId,
             currentSetIndex: 0,
             restTimer: null,
@@ -1218,7 +1229,7 @@ export const useStore = create<AppState>()(
                 paused_at: null,
                 total_paused_ms: 0,
               }
-            })
+            }, { onConflict: 'user_id' })
             .select()
             .single();
 
@@ -1280,15 +1291,24 @@ export const useStore = create<AppState>()(
           });
         });
 
+        // Use overrideDate if set (for past-day workouts)
+        const overrideDate = state.activeWorkout.overrideDate;
+        const completedAt = overrideDate
+          ? new Date(`${overrideDate}T10:00:00`).toISOString()
+          : endTime.toISOString();
+        const startedAtFinal = overrideDate
+          ? new Date(`${overrideDate}T09:00:00`).toISOString()
+          : state.activeWorkout.startedAt;
+
         await supabase.from('workout_sessions').insert({
           user_id: user.id,
           routine_id: state.activeWorkout.routineId,
           routine_name: state.activeWorkout.routineName,
-          started_at: state.activeWorkout.startedAt,
-          completed_at: endTime.toISOString(),
+          started_at: startedAtFinal,
+          completed_at: completedAt,
           exercises_completed: completedExercises,
           total_volume: totalVolume,
-          duration_minutes: durationMinutes
+          duration_minutes: overrideDate ? 60 : durationMinutes
         });
 
         await supabase.from('active_workouts').delete().eq('user_id', user.id);
@@ -1296,16 +1316,12 @@ export const useStore = create<AppState>()(
         set({ activeWorkout: null });
         await get().loadWorkoutHistory();
 
-        // Check for PRs and Achievements
+        // Check for PRs
         await get().loadPersonalRecords();
-        await get().loadAchievements();
 
         const currentPRs = get().personalRecords;
-        const myAchievements = get().achievements;
-        const history = get().workoutHistory;
-        let notificationToShow = null;
+        let notificationToShow: { title: string; message: string; type: 'pr' } | null = null;
 
-        // 1. Check PRs
         for (const ex of completedExercises) {
           let maxWeight = 0;
           let maxReps = 0;
@@ -1334,7 +1350,6 @@ export const useStore = create<AppState>()(
                 await supabase.from('personal_records').insert({ user_id: user.id, exercise_name: ex.name, weight: maxWeight, reps: maxReps });
               }
 
-              // Prioritize PR notification
               notificationToShow = { title: '¡Nuevo Récord Personal!', message: `${ex.name}: ${maxWeight}kg`, type: 'pr' as const };
             }
           }
@@ -1342,28 +1357,10 @@ export const useStore = create<AppState>()(
 
         // Refresh PRs locally
         await get().loadPersonalRecords();
-        const updatedPRs = Object.values(get().personalRecords);
-
-        // 2. Check Achievements
-        for (const achievement of ACHIEVEMENTS) {
-          if (!myAchievements.includes(achievement.id)) {
-            // Check condition using updated history and PRs
-            if (achievement.condition(history, updatedPRs)) {
-              await supabase.from('user_achievements').insert({ user_id: user.id, achievement_id: achievement.id });
-
-              // Only override if not already showing a PR (or maybe queue them, but for now single notif is fine)
-              if (!notificationToShow) {
-                notificationToShow = { title: '¡Logro Desbloqueado!', message: achievement.title, type: 'achievement' as const };
-              }
-            }
-          }
-        }
 
         if (notificationToShow) {
           set({ notification: notificationToShow });
         }
-
-        await get().loadAchievements();
       },
 
       clearActiveWorkout: () => set({ activeWorkout: null }),
@@ -1465,20 +1462,7 @@ export const useStore = create<AppState>()(
         }
       },
 
-      // Achievements & PRs Implementation
-      loadAchievements: async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data } = await supabase
-          .from('user_achievements')
-          .select('achievement_id')
-          .eq('user_id', user.id);
-
-        if (data) {
-          set({ achievements: data.map(a => a.achievement_id) });
-        }
-      },
+      // Personal Records Implementation
 
       loadPersonalRecords: async () => {
         const { data: { user } } = await supabase.auth.getUser();
@@ -1500,7 +1484,7 @@ export const useStore = create<AppState>()(
 
       dismissNotification: () => set({ notification: null }),
 
-      syncAchievementsAndPRs: async () => {
+      syncPersonalRecords: async () => {
         try {
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) return;
@@ -1510,7 +1494,7 @@ export const useStore = create<AppState>()(
             .from('workout_sessions')
             .select('*')
             .eq('user_id', user.id)
-            .order('completed_at', { ascending: true }); // Process chronologically
+            .order('completed_at', { ascending: true });
 
           if (error || !history) return;
 
@@ -1523,9 +1507,6 @@ export const useStore = create<AppState>()(
                 ex.sets.forEach((s: any) => {
                   if (s.completed) {
                     const currentMax = recalculatedPRs[ex.name]?.weight || 0;
-                    // Logic: If weight is higher, it's a new PR.
-                    // IMPORTANT: Since we process chronologically, the last one standing is the current PR if weights are equal?
-                    // Usually PR is strictly > currentMax.
                     if (s.weight > currentMax) {
                       recalculatedPRs[ex.name] = { weight: s.weight, reps: s.reps, date: session.completed_at };
                     }
@@ -1535,18 +1516,7 @@ export const useStore = create<AppState>()(
             });
           });
 
-          // 3. Recalculate Achievements
-          const recalculatedAchievements: string[] = [];
-          const prsArray = Object.values(recalculatedPRs);
-
-          ACHIEVEMENTS.forEach(ach => {
-            if (ach.condition(history, prsArray)) {
-              recalculatedAchievements.push(ach.id);
-            }
-          });
-
-          // 4. Sync to DB - PRs
-          // Delete all existing PRs and re-insert (easiest way to ensure sync)
+          // 3. Sync to DB - delete all existing PRs and re-insert
           await supabase.from('personal_records').delete().eq('user_id', user.id);
 
           if (Object.keys(recalculatedPRs).length > 0) {
@@ -1560,26 +1530,13 @@ export const useStore = create<AppState>()(
             await supabase.from('personal_records').insert(prsToInsert);
           }
 
-          // 5. Sync to DB - Achievements
-          // Delete all achievements and re-insert
-          await supabase.from('user_achievements').delete().eq('user_id', user.id);
-
-          if (recalculatedAchievements.length > 0) {
-            const achievementsToInsert = recalculatedAchievements.map(id => ({
-              user_id: user.id,
-              achievement_id: id
-            }));
-            await supabase.from('user_achievements').insert(achievementsToInsert);
-          }
-
-          // 6. Update Local State
+          // 4. Update Local State
           set({
-            achievements: recalculatedAchievements,
             personalRecords: recalculatedPRs
           });
 
         } catch (err) {
-          console.error("Error syncing stats:", err);
+          console.error("Error syncing PRs:", err);
         }
       },
     }),

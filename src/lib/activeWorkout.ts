@@ -13,6 +13,7 @@ type ActiveWorkoutLike = {
   currentExerciseId?: string;
   currentSetIndex?: number;
   restTimer?: PersistedRestTimer | null;
+  overrideDate?: string;
 };
 
 const isObject = (value: unknown): value is Record<string, any> =>
@@ -27,6 +28,7 @@ export const buildActiveWorkoutDataPayload = (activeWorkout: ActiveWorkoutLike) 
   current_set_index:
     typeof activeWorkout.currentSetIndex === 'number' ? activeWorkout.currentSetIndex : null,
   rest_timer: activeWorkout.restTimer || null,
+  override_date: activeWorkout.overrideDate || null,
 });
 
 export const readActiveWorkoutDataPayload = (workoutData: unknown) => {
@@ -69,11 +71,15 @@ export const readActiveWorkoutDataPayload = (workoutData: unknown) => {
     };
   }
 
+  const overrideDate =
+    typeof workoutData.override_date === 'string' ? workoutData.override_date : undefined;
+
   return {
     exercises: rawExercises,
     currentExerciseId,
     currentSetIndex,
     restTimer,
+    overrideDate,
   };
 };
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import WorkoutTimer from '../components/WorkoutTimer';
 import RestTimer from '../components/RestTimer';
@@ -28,6 +28,8 @@ import { CSS } from '@dnd-kit/utilities';
 const WorkoutSession: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const location = useLocation();
     const {
         savedRoutines,
         loadRoutines,
@@ -53,10 +55,11 @@ const WorkoutSession: React.FC = () => {
 
     const [expandedExercise, setExpandedExercise] = useState<string | null>(null);
     const [initializationError, setInitializationError] = useState<string | null>(null);
-    const initializingRef = React.useRef(false);
     const [finishConfirmOpen, setFinishConfirmOpen] = useState(false);
     const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
     const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+    // For past-day workouts, use the real page-open time for the live timer
+    const realStartedAtRef = React.useRef<string>(new Date().toISOString());
 
     const setSensors = useSensors(
         useSensor(PointerSensor, {
@@ -84,52 +87,61 @@ const WorkoutSession: React.FC = () => {
     }, [workoutHistory.length, loadWorkoutHistory]);
 
     useEffect(() => {
+        let cancelled = false;
+
         const initSession = async () => {
             // Safe guards
             if (activeWorkout) return;
-            if (initializingRef.current) return;
-            if (id !== 'free' && savedRoutines.length === 0) return; // Wait for routines to load
 
-            initializingRef.current = true;
+            // The static route /routine/free/workout has no :id param,
+            // so id will be undefined. Detect both cases.
+            // Use location.pathname (from useLocation) instead of window.location.pathname
+            // because the app uses HashRouter.
+            const isFreeRoute = id === 'free' || (!id && location.pathname.includes('/free/'));
+
+            if (!isFreeRoute && savedRoutines.length === 0) return; // Wait for routines to load
+
+            if (isFreeRoute) {
+                try {
+                    const dateParam = searchParams.get('date') || undefined;
+                    const success = await startEmptyWorkout(dateParam);
+                    if (cancelled) return;
+                    if (!success) {
+                        setInitializationError('No se pudo iniciar el entrenamiento libre.');
+                    }
+                } catch (e) {
+                    if (cancelled) return;
+                    setInitializationError('Error al iniciar entrenamiento');
+                }
+                return;
+            }
 
             if (id) {
-                if (id === 'free') {
-                    try {
-                        const success = await startEmptyWorkout();
-                        if (!success) {
-                            setInitializationError('No se pudo iniciar el entrenamiento libre.');
-                        }
-                    } catch (e) {
-                        setInitializationError('Error al iniciar entrenamiento');
-                    } finally {
-                        initializingRef.current = false;
-                    }
-                    return;
-                }
                 const routine = savedRoutines.find(r => r.id === id);
                 if (routine) {
                     try {
-                        console.log('Starting workout for routine:', routine.name);
-                        const success = await startWorkout(routine);
+                        const dateParam = searchParams.get('date') || undefined;
+                        const success = await startWorkout(routine, dateParam);
+                        if (cancelled) return;
                         if (!success) {
                             setInitializationError('No se pudo iniciar el entrenamiento. Verifica tu conexión.');
                         }
                     } catch (e) {
+                        if (cancelled) return;
                         setInitializationError('Error al iniciar entrenamiento');
                     }
                 } else {
-                    // Only redirect if routines are loaded but ID not found
                     if (savedRoutines.length > 0) {
-                        console.warn('Routine not found, redirecting');
                         navigate('/routine');
                     }
                 }
             }
-            initializingRef.current = false;
         };
 
         initSession();
-    }, [id, savedRoutines, activeWorkout, startWorkout, startEmptyWorkout, navigate]);
+
+        return () => { cancelled = true; };
+    }, [id, savedRoutines, activeWorkout, startWorkout, startEmptyWorkout, navigate, searchParams, location]);
 
     useEffect(() => {
         if (!activeWorkout?.currentExerciseId) return;
@@ -184,6 +196,23 @@ const WorkoutSession: React.FC = () => {
 
         void updateWorkoutExerciseSets(exerciseId, updatedSets);
         void setActiveWorkoutPosition(exerciseId, setIndex);
+    };
+
+    const updateDropsetValue = (exerciseId: string, setIndex: number, dropsetIndex: number, field: 'reps' | 'weight', value: number) => {
+        if (!activeWorkout) return;
+
+        const exercise = activeWorkout.exercises.find(ex => ex && ex.exerciseId === exerciseId);
+        if (!exercise) return;
+
+        const updatedSets = exercise.sets.map((set, idx) => {
+            if (idx !== setIndex || !set.dropsets) return set;
+            const updatedDropsets = set.dropsets.map((d: any, di: number) =>
+                di === dropsetIndex ? { ...d, [field]: value } : d
+            );
+            return { ...set, dropsets: updatedDropsets };
+        });
+
+        void updateWorkoutExerciseSets(exerciseId, updatedSets);
     };
 
     const handleSetDragEnd = (exerciseId: string, event: any) => {
@@ -337,12 +366,18 @@ const WorkoutSession: React.FC = () => {
 
                             {/* Mobile Timer */}
                             <div className="lg:hidden">
-                                <WorkoutTimer startedAt={activeWorkout.startedAt} />
+                                <WorkoutTimer startedAt={activeWorkout.overrideDate ? realStartedAtRef.current : activeWorkout.startedAt} />
                             </div>
                         </div>
 
                         <div className="flex items-start justify-between gap-3">
                             <h1 className="text-2xl md:text-3xl font-black mb-2">{activeWorkout.routineName}</h1>
+                            {activeWorkout.overrideDate && (
+                                <div className="mb-2 px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-sm font-medium flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-base">calendar_month</span>
+                                    Registrando entrenamiento del {new Date(activeWorkout.overrideDate + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                </div>
+                            )}
                             <button
                                 onClick={() => setIsLibraryOpen(true)}
                                 className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-primary/10 text-primary font-bold hover:bg-primary/20 transition-all"
@@ -497,6 +532,7 @@ const WorkoutSession: React.FC = () => {
                                                                 trackingType={exercise.trackingType || 'reps'}
                                                                 toggleSetComplete={toggleSetComplete}
                                                                 updateSetValue={updateSetValue}
+                                                                updateDropsetValue={updateDropsetValue}
                                                                 removeSet={removeSet}
                                                                 lastLabel={lastLabel}
                                                             />
@@ -567,7 +603,7 @@ const WorkoutSession: React.FC = () => {
                     <div className="bg-gray-50 dark:bg-surface-dark rounded-2xl p-6 border border-gray-100 dark:border-surface-border shadow-sm">
                         <h3 className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase mb-2 text-center">Tiempo Transcurrido</h3>
                         <div className="flex justify-center">
-                            <WorkoutTimer startedAt={activeWorkout.startedAt} className="text-4xl" />
+                            <WorkoutTimer startedAt={activeWorkout.overrideDate ? realStartedAtRef.current : activeWorkout.startedAt} className="text-4xl" />
                         </div>
                     </div>
 
@@ -664,9 +700,10 @@ const SortableWorkoutSetRow: React.FC<{
     trackingType: 'reps' | 'time';
     toggleSetComplete: (exerciseId: string, setIndex: number) => void;
     updateSetValue: (exerciseId: string, setIndex: number, field: 'reps' | 'weight', value: number) => void;
+    updateDropsetValue: (exerciseId: string, setIndex: number, dropsetIndex: number, field: 'reps' | 'weight', value: number) => void;
     removeSet: (exerciseId: string, setIndex: number) => void;
     lastLabel: string;
-}> = ({ set, setIndex, exerciseId, totalSets, isCurrentSet, trackingType, toggleSetComplete, updateSetValue, removeSet, lastLabel }) => {
+}> = ({ set, setIndex, exerciseId, totalSets, isCurrentSet, trackingType, toggleSetComplete, updateSetValue, updateDropsetValue, removeSet, lastLabel }) => {
     const {
         attributes,
         listeners,
@@ -700,9 +737,9 @@ const SortableWorkoutSetRow: React.FC<{
                 ? 'bg-primary/10 border-primary'
                 : isCurrentSet
                     ? 'bg-amber-50/60 dark:bg-amber-900/10 border-amber-400'
-                : set.isWarmup
-                    ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-gray-200 dark:border-[#233648] opacity-75'
-                    : 'bg-white dark:bg-[#1a2632] border-gray-200 dark:border-[#233648]'
+                    : set.isWarmup
+                        ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-gray-200 dark:border-[#233648] opacity-75'
+                        : 'bg-white dark:bg-[#1a2632] border-gray-200 dark:border-[#233648]'
                 }`}
         >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
@@ -835,7 +872,7 @@ const SortableWorkoutSetRow: React.FC<{
                                 <input
                                     type="number"
                                     value={dropset.weight}
-                                    readOnly
+                                    onChange={(e) => updateDropsetValue(exerciseId, setIndex, dIndex, 'weight', parseFloat(e.target.value) || 0)}
                                     className="w-12 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-orange-200 dark:border-orange-700 text-sm font-bold"
                                 />
                                 <span className="text-xs text-gray-500">kg</span>
@@ -844,7 +881,7 @@ const SortableWorkoutSetRow: React.FC<{
                                 <input
                                     type="number"
                                     value={dropset.reps}
-                                    readOnly
+                                    onChange={(e) => updateDropsetValue(exerciseId, setIndex, dIndex, 'reps', parseInt(e.target.value) || 0)}
                                     className="w-12 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-orange-200 dark:border-orange-700 text-sm font-bold"
                                 />
                                 <span className="text-xs text-gray-500">reps</span>

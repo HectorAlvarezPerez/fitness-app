@@ -74,6 +74,28 @@ export const RestTimer: React.FC<RestTimerProps> = ({
 
         completedTimerRef.current = timer.instanceId;
         playDoneTone();
+
+        // Browser notification (lazy permission request)
+        const notifPref = localStorage.getItem('fitness-rest-timer-notifications');
+        if (notifPref !== 'off') {
+            if ('Notification' in window) {
+                if (Notification.permission === 'granted') {
+                    try { new Notification('⏱ Descanso terminado', { body: 'Hora de la siguiente serie', icon: '/favicon.ico' }); } catch { /* ignore */ }
+                } else if (Notification.permission === 'default') {
+                    Notification.requestPermission().then(p => {
+                        if (p === 'granted') {
+                            try { new Notification('⏱ Descanso terminado', { body: 'Hora de la siguiente serie', icon: '/favicon.ico' }); } catch { /* ignore */ }
+                        }
+                    });
+                }
+            }
+        }
+
+        // Device vibration
+        if (navigator.vibrate) {
+            navigator.vibrate([200, 100, 200]);
+        }
+
         onComplete?.();
     }, [remaining, timer.instanceId, onComplete]);
 
