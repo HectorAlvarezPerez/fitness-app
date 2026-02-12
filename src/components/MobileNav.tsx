@@ -58,19 +58,19 @@ const MobileNav: React.FC = () => {
                         >
                             {/* Active indicator pill */}
                             <div className={`absolute -top-1 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full transition-all duration-300 ${active
-                                    ? 'bg-gradient-to-r from-primary to-orange-500 opacity-100 scale-100'
-                                    : 'opacity-0 scale-75'
+                                ? 'bg-gradient-to-r from-primary to-orange-500 opacity-100 scale-100'
+                                : 'opacity-0 scale-75'
                                 }`} />
 
                             {/* Icon container with glow effect */}
                             <div className={`relative p-1.5 rounded-xl transition-all duration-300 ${active
-                                    ? 'bg-primary/15'
-                                    : 'group-active:bg-white/5'
+                                ? 'bg-primary/15'
+                                : 'group-active:bg-white/5'
                                 }`}>
                                 <span
                                     className={`material-symbols-outlined text-[24px] transition-all duration-300 ${active
-                                            ? 'text-primary scale-110'
-                                            : 'text-gray-500 group-hover:text-gray-400'
+                                        ? 'text-primary scale-110'
+                                        : 'text-gray-500 group-hover:text-gray-400'
                                         }`}
                                     style={{
                                         fontVariationSettings: active
@@ -108,8 +108,10 @@ const MoreMenu: React.FC<{ pathname: string }> = ({ pathname }) => {
     const [isOpen, setIsOpen] = useState(false);
 
     const menuItems = [
+        { path: '/pr', label: 'PR', icon: 'military_tech' },
+        { path: '/exercises', label: 'Exercises', icon: 'list_alt' },
         { path: '/history', label: 'Historial', icon: 'history' },
-        { path: '/achievements', label: 'Logros', icon: 'emoji_events' },
+
         { path: '/settings', label: 'Ajustes', icon: 'settings' },
     ];
 
@@ -131,16 +133,16 @@ const MoreMenu: React.FC<{ pathname: string }> = ({ pathname }) => {
                 className="relative flex flex-col items-center gap-0.5 py-2 px-4 min-w-[4.5rem] group"
             >
                 <div className={`absolute -top-1 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full transition-all duration-300 ${isMoreActive
-                        ? 'bg-gradient-to-r from-primary to-orange-500 opacity-100 scale-100'
-                        : 'opacity-0 scale-75'
+                    ? 'bg-gradient-to-r from-primary to-orange-500 opacity-100 scale-100'
+                    : 'opacity-0 scale-75'
                     }`} />
 
                 <div className={`relative p-1.5 rounded-xl transition-all duration-300 ${isMoreActive || isOpen ? 'bg-primary/15' : 'group-active:bg-white/5'
                     }`}>
                     <span
                         className={`material-symbols-outlined text-[24px] transition-all duration-300 ${isMoreActive || isOpen
-                                ? 'text-primary scale-110'
-                                : 'text-gray-500 group-hover:text-gray-400'
+                            ? 'text-primary scale-110'
+                            : 'text-gray-500 group-hover:text-gray-400'
                             }`}
                         style={{
                             fontVariationSettings: isMoreActive || isOpen
@@ -160,8 +162,8 @@ const MoreMenu: React.FC<{ pathname: string }> = ({ pathname }) => {
 
             {/* Popup menu */}
             <div className={`absolute bottom-full right-2 mb-3 bg-[#1a1d21] border border-white/10 rounded-2xl shadow-2xl overflow-hidden transition-all duration-200 origin-bottom-right ${isOpen
-                    ? 'opacity-100 scale-100 translate-y-0'
-                    : 'opacity-0 scale-95 translate-y-2 pointer-events-none'
+                ? 'opacity-100 scale-100 translate-y-0'
+                : 'opacity-0 scale-95 translate-y-2 pointer-events-none'
                 }`}>
                 <div className="p-2 flex flex-col gap-1 min-w-[180px]">
                     {menuItems.map((item) => {
@@ -172,8 +174,8 @@ const MoreMenu: React.FC<{ pathname: string }> = ({ pathname }) => {
                                 to={item.path}
                                 onClick={() => setIsOpen(false)}
                                 className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${active
-                                        ? 'bg-primary/15 text-primary'
-                                        : 'text-white hover:bg-white/5'
+                                    ? 'bg-primary/15 text-primary'
+                                    : 'text-white hover:bg-white/5'
                                     }`}
                             >
                                 <span

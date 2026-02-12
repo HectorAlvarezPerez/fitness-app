@@ -10,7 +10,10 @@ import RoutineEditor from './pages/RoutineEditor';
 import RoutinesList from './pages/RoutinesList';
 import WorkoutSession from './pages/WorkoutSession';
 import WorkoutHistory from './pages/WorkoutHistory';
-import Achievements from './pages/Achievements';
+import PersonalRecordsPage from './pages/PersonalRecordsPage';
+import ExercisesPage from './pages/ExercisesPage';
+import ExerciseEditorPage from './pages/ExerciseEditorPage';
+
 import ProgressPage from './pages/ProgressPage';
 import Settings from './pages/Settings';
 import ProfileData from './pages/ProfileData';
@@ -41,7 +44,11 @@ const App: React.FC = () => {
             <Route path="/routine/free/workout" element={<WorkoutSession />} />
             <Route path="/routine/:id/workout" element={<WorkoutSession />} />
             <Route path="/history" element={<WorkoutHistory />} />
-            <Route path="/achievements" element={<Achievements />} />
+            <Route path="/pr" element={<PersonalRecordsPage />} />
+            <Route path="/exercises" element={<ExercisesPage />} />
+            <Route path="/exercises/new" element={<ExerciseEditorPage />} />
+            <Route path="/exercises/:id/edit" element={<ExerciseEditorPage />} />
+
 
             <Route path="/progress" element={<ProgressPage />} />
             <Route path="/settings" element={<Settings />} />

@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabaseClient';
 import { ActiveWorkoutFooter } from './ActiveWorkoutFooter';
-import AchievementNotification from './AchievementNotification';
+import PRNotification from './PRNotification';
 import MobileNav from './MobileNav';
 import logoUrl from '../assets/logo-fitness.png';
 
@@ -69,7 +69,11 @@ const MainLayout: React.FC = () => {
         if (pathname.includes('/routine')) return 'Rutinas';
         if (pathname.includes('/dashboard')) return 'Estadísticas';
         if (pathname.includes('/progress')) return 'Progreso';
-        if (pathname.includes('/achievements')) return 'Logros';
+        if (pathname.includes('/pr')) return 'Personal Records';
+        if (pathname.includes('/exercises/new')) return 'Nuevo Ejercicio';
+        if (pathname.includes('/exercises') && pathname.includes('/edit')) return 'Editar Ejercicio';
+        if (pathname.includes('/exercises')) return 'Exercises';
+
         if (pathname.includes('/history')) return 'Historial';
         if (pathname.includes('/settings')) return 'Configuración';
         if (pathname.includes('/profile-data')) return 'Mis Datos';
@@ -80,22 +84,26 @@ const MainLayout: React.FC = () => {
         { path: '/home', label: 'Inicio', icon: 'home' },
         { path: '/dashboard', label: 'Estadísticas', icon: 'bar_chart' },
         { path: '/routine', label: 'Rutinas', icon: 'fitness_center' },
+        { path: '/pr', label: 'PR', icon: 'military_tech' },
+        { path: '/exercises', label: 'Exercises', icon: 'list_alt' },
         { path: '/progress', label: 'Progreso', icon: 'accessibility_new' },
         { path: '/history', label: 'Historial', icon: 'history' },
-        { path: '/achievements', label: 'Logros', icon: 'emoji_events' },
+
     ];
 
     // Check if we should hide bottom nav (during workout or editor)
     const hideBottomNav = pathname.includes('/workout')
         || pathname.includes('/routine/new')
-        || pathname.includes('/routine/edit');
+        || pathname.includes('/routine/edit')
+        || pathname.includes('/exercises/new')
+        || (pathname.includes('/exercises/') && pathname.includes('/edit'));
     const mainPadding = hideBottomNav
         ? 'pb-0'
         : 'pb-[calc(72px+env(safe-area-inset-bottom)+var(--keyboard-inset,0px))] md:pb-0';
 
     return (
         <div className="flex flex-col min-h-[100dvh] h-[100dvh] bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display overflow-hidden">
-            <AchievementNotification />
+            <PRNotification />
             {/* Desktop Header */}
             <header className="hidden md:flex items-center justify-between px-8 py-4 bg-white/80 dark:bg-[#111a22]/90 backdrop-blur-md border-b border-gray-200 dark:border-[#233648] shrink-0 z-20">
                 <NavLink to="/home" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
