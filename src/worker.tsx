@@ -5,7 +5,6 @@ import { derivePersonalRecordRows, PersistedPersonalRecord } from './lib/persona
 import {
   buildExercisePayload,
   canEditExercise,
-  isMissingUserIdColumnError,
   validateExerciseName,
 } from './lib/exerciseUtils'
 
@@ -78,13 +77,13 @@ app.get('/api/pr', async (c) => {
   if (persistedResult.error) return c.json({ error: persistedResult.error.message }, 500)
 
   const persistedMap: Record<string, PersistedPersonalRecord> = {}
-  ;(persistedResult.data || []).forEach((entry: any) => {
-    persistedMap[entry.exercise_name] = {
-      weight: entry.weight,
-      reps: entry.reps,
-      date: entry.date,
-    }
-  })
+    ; (persistedResult.data || []).forEach((entry: any) => {
+      persistedMap[entry.exercise_name] = {
+        weight: entry.weight,
+        reps: entry.reps,
+        date: entry.date,
+      }
+    })
 
   const records = derivePersonalRecordRows(
     (historyResult.data as any[]) || [],
@@ -134,17 +133,6 @@ app.post('/api/exercises', async (c) => {
     .insert([{ ...payload, user_id: userId }])
     .select('*')
     .single()
-
-  if (createError && isMissingUserIdColumnError(createError.message || '')) {
-    const { data: fallbackCreated, error: fallbackError } = await client
-      .from('exercises')
-      .insert([payload])
-      .select('*')
-      .single()
-
-    if (fallbackError) return c.json({ error: fallbackError.message }, 500)
-    return c.json({ data: fallbackCreated }, 201)
-  }
 
   if (createError) return c.json({ error: createError.message }, 500)
   return c.json({ data: created }, 201)

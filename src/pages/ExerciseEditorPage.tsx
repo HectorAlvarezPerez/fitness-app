@@ -5,7 +5,6 @@ import { ExerciseLibraryItem } from '../store/useStore';
 import {
   buildExercisePayload,
   canEditExercise,
-  isMissingUserIdColumnError,
   validateExerciseName,
 } from '../lib/exerciseUtils';
 
@@ -198,18 +197,6 @@ const ExerciseEditorPage: React.FC = () => {
     const { error: createError } = await supabase.from('exercises').insert([payloadWithUser]);
 
     if (createError) {
-      if (isMissingUserIdColumnError(createError.message || '')) {
-        const { error: fallbackError } = await supabase.from('exercises').insert([payload]);
-        if (fallbackError) {
-          setError(fallbackError.message || 'No se pudo crear el ejercicio.');
-          setIsSaving(false);
-          return;
-        }
-
-        navigate('/exercises?saved=1');
-        return;
-      }
-
       setError(createError.message || 'No se pudo crear el ejercicio.');
       setIsSaving(false);
       return;
@@ -343,11 +330,10 @@ const ExerciseEditorPage: React.FC = () => {
                     key={muscle}
                     type="button"
                     onClick={() => handleToggleSecondaryMuscle(muscle)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
-                      selected
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${selected
                         ? 'border-primary bg-primary/10 text-primary'
                         : 'border-slate-200 dark:border-[#233648] text-gray-500 hover:border-primary/40'
-                    }`}
+                      }`}
                     disabled={!isEditable || isSaving}
                   >
                     {muscle}
