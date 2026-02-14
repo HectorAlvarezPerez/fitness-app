@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" class="dark">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -7,6 +7,29 @@
     <link rel="icon" type="image/png" href="/src/assets/logo-fitness.png" />
     <link rel="apple-touch-icon" href="/src/assets/logo-fitness.png" />
     
+    <script>
+        (() => {
+            const STORAGE_KEY = 'fitness-theme';
+            let theme = 'dark';
+
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored === 'light' || stored === 'dark') {
+                    theme = stored;
+                } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    theme = 'dark';
+                } else {
+                    theme = 'light';
+                }
+            } catch {
+                // If localStorage is unavailable, keep default
+            }
+
+            document.documentElement.classList.toggle('dark', theme === 'dark');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+
     <!-- External Libraries -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 

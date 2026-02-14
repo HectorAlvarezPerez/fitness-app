@@ -21,9 +21,14 @@ import AppGuide from './pages/AppGuide';
 
 import MainLayout from './components/MainLayout';
 import ErrorBoundary from './components/ErrorBoundary';
+import { initTheme } from './lib/theme';
 // ... existing imports
 
 const App: React.FC = () => {
+  React.useEffect(() => {
+    initTheme();
+  }, []);
+
   return (
     <HashRouter>
       <ErrorBoundary>

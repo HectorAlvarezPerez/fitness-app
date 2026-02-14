@@ -130,7 +130,7 @@ const MainLayout: React.FC = () => {
             </header>
 
             {/* Mobile Header - Improved for smaller screens */}
-            <header className="md:hidden flex items-center justify-between px-4 py-3 bg-[#0a0c0e]/95 backdrop-blur-md border-b border-white/5 shrink-0 z-20">
+            <header className="md:hidden flex items-center justify-between px-4 py-3 bg-white/90 dark:bg-[#0a0c0e]/95 backdrop-blur-md border-b border-gray-200 dark:border-white/5 shrink-0 z-20">
                 <h1 className="text-lg font-bold truncate">{getTitle()}</h1>
                 <ProfileDropdown />
             </header>
@@ -191,7 +191,7 @@ const ProfileDropdown: React.FC = () => {
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-[#1a1d21] border border-white/10 shadow-2xl overflow-hidden z-50">
+                <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white dark:bg-[#1a1d21] border border-gray-200 dark:border-white/10 shadow-2xl overflow-hidden z-50">
                     <div className="p-3 border-b border-white/5">
                         <div className="flex items-center gap-3">
                             <img
@@ -200,8 +200,8 @@ const ProfileDropdown: React.FC = () => {
                                 className="size-10 rounded-full"
                             />
                             <div className="overflow-hidden">
-                                <p className="font-bold text-sm truncate text-white">{displayName}</p>
-                                <p className="text-xs text-gray-400 truncate">{displayEmail}</p>
+                                <p className="font-bold text-sm truncate text-slate-900 dark:text-white">{displayName}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{displayEmail}</p>
                             </div>
                         </div>
                     </div>
@@ -212,8 +212,8 @@ const ProfileDropdown: React.FC = () => {
                             onClick={() => setIsOpen(false)}
                             className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 active:bg-white/10 transition-colors"
                         >
-                            <span className="material-symbols-outlined text-[20px] text-gray-400">assignment_ind</span>
-                            <span className="text-sm font-medium text-white">Mis Datos</span>
+                            <span className="material-symbols-outlined text-[20px] text-gray-500 dark:text-gray-400">assignment_ind</span>
+                            <span className="text-sm font-medium text-slate-800 dark:text-white">Mis Datos</span>
                         </NavLink>
 
                         <NavLink
@@ -221,8 +221,8 @@ const ProfileDropdown: React.FC = () => {
                             onClick={() => setIsOpen(false)}
                             className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 active:bg-white/10 transition-colors"
                         >
-                            <span className="material-symbols-outlined text-[20px] text-gray-400">settings</span>
-                            <span className="text-sm font-medium text-white">Configuración</span>
+                            <span className="material-symbols-outlined text-[20px] text-gray-500 dark:text-gray-400">settings</span>
+                            <span className="text-sm font-medium text-slate-800 dark:text-white">Configuración</span>
                         </NavLink>
 
                         <NavLink
@@ -230,8 +230,8 @@ const ProfileDropdown: React.FC = () => {
                             onClick={() => setIsOpen(false)}
                             className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 active:bg-white/10 transition-colors"
                         >
-                            <span className="material-symbols-outlined text-[20px] text-gray-400">help</span>
-                            <span className="text-sm font-medium text-white">Ayuda</span>
+                            <span className="material-symbols-outlined text-[20px] text-gray-500 dark:text-gray-400">help</span>
+                            <span className="text-sm font-medium text-slate-800 dark:text-white">Ayuda</span>
                         </NavLink>
                     </div>
 
