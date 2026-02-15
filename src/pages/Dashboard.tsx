@@ -41,20 +41,18 @@ const Dashboard: React.FC = () => {
     }
 
     return (
-        <div className="h-full w-full overflow-y-auto p-4 md:p-8">
-            <div className="flex flex-col max-w-4xl mx-auto flex-1 gap-6 pb-20">
-                <header className="flex flex-col gap-2">
-                    <h1 className="text-3xl md:text-4xl font-black">Estadísticas</h1>
-                    <p className="text-gray-500 dark:text-gray-400">Tu progreso semanal en números.</p>
+        <div className="h-full w-full overflow-y-auto p-4 md:p-6">
+            <div className="flex flex-col max-w-4xl mx-auto flex-1 gap-4 pb-20">
+                <header className="flex flex-col gap-1">
+                    <h1 className="text-2xl md:text-3xl font-black">Estadísticas</h1>
+                    <p className="text-gray-500 dark:text-gray-400">Tu progreso semanal.</p>
                 </header>
 
-                <div className="mb-4">
-                    <GlobalStatsSummary />
-                </div>
+                <GlobalStatsSummary />
 
-                <div className="flex flex-col lg:flex-row gap-6">
+                <div className="flex flex-col lg:flex-row gap-4">
                     {/* Advanced Statistics Chart */}
-                    <div className="flex-[2] h-[450px]">
+                    <div className="flex-[2] h-[350px]">
                         <WorkoutStatisticsChart />
                     </div>
 
@@ -65,15 +63,13 @@ const Dashboard: React.FC = () => {
                 </div>
 
                 {/* Muscle Group Statistics */}
-                <div className="rounded-2xl border border-slate-200 dark:border-[#233648] bg-white dark:bg-[#1a2632] p-6">
+                <div className="rounded-2xl bg-white dark:bg-[#1a2632] p-4">
                     <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-lg font-bold">Grupos Musculares</h3>
+                        <h3 className="text-base font-bold">Grupos Musculares</h3>
                         <Link to="/history" className="text-sm text-primary hover:underline font-medium">
-                            Ver historial completado
+                            Ver historial
                         </Link>
                     </div>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Distribución ponderada por series y músculos secundarios.</p>
-
                     <MuscleStats stats={muscleStats} />
                 </div>
             </div>

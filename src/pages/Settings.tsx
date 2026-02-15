@@ -1,16 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
-import { applyTheme, initTheme, ThemeMode } from '../lib/theme';
 import { useStore } from '../store/useStore';
 import ConfirmDialog from '../components/ConfirmDialog';
 
 const Settings: React.FC = () => {
     const navigate = useNavigate();
     const { userData } = useStore();
-
-    // Theme State
-    const [theme, setTheme] = useState<ThemeMode>('dark');
 
     // Password Change State
     const [newPassword, setNewPassword] = useState('');
@@ -21,15 +17,6 @@ const Settings: React.FC = () => {
     const [isChangingPassword, setIsChangingPassword] = useState(false);
     const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
-
-    useEffect(() => {
-        setTheme(initTheme());
-    }, []);
-
-    const handleThemeChange = (nextTheme: ThemeMode) => {
-        setTheme(nextTheme);
-        applyTheme(nextTheme);
-    };
 
     const handleLogout = async () => {
         setLogoutConfirmOpen(true);
@@ -95,48 +82,6 @@ const Settings: React.FC = () => {
                             <p className="font-bold text-lg">{userData?.user_metadata?.full_name || userData?.email?.split('@')[0] || 'Usuario'}</p>
                             <p className="text-sm text-gray-500 dark:text-gray-400">{userData?.email || 'Modo Invitado'}</p>
                         </div>
-                    </div>
-                </div>
-
-                {/* Appearance Section */}
-                <div className="rounded-2xl border border-slate-200 dark:border-[#233648] bg-white dark:bg-[#1a2632] p-6">
-                    <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-primary">palette</span>
-                        Apariencia
-                    </h2>
-
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                        Elige entre modo oscuro o modo claro.
-                    </p>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <button
-                            type="button"
-                            onClick={() => handleThemeChange('light')}
-                            className={`rounded-xl border px-4 py-3 text-sm font-bold transition-all ${
-                                theme === 'light'
-                                    ? 'border-primary bg-primary/10 text-primary'
-                                    : 'border-gray-200 dark:border-[#233648] hover:border-primary/50'
-                            }`}
-                            aria-pressed={theme === 'light'}
-                        >
-                            <span className="material-symbols-outlined align-middle mr-1 text-[18px]">light_mode</span>
-                            Claro
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => handleThemeChange('dark')}
-                            className={`rounded-xl border px-4 py-3 text-sm font-bold transition-all ${
-                                theme === 'dark'
-                                    ? 'border-primary bg-primary/10 text-primary'
-                                    : 'border-gray-200 dark:border-[#233648] hover:border-primary/50'
-                            }`}
-                            aria-pressed={theme === 'dark'}
-                        >
-                            <span className="material-symbols-outlined align-middle mr-1 text-[18px]">dark_mode</span>
-                            Oscuro
-                        </button>
                     </div>
                 </div>
 

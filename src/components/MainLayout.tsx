@@ -6,16 +6,30 @@ import { ActiveWorkoutFooter } from './ActiveWorkoutFooter';
 import PRNotification from './PRNotification';
 import MobileNav from './MobileNav';
 import logoUrl from '../assets/logo-fitness.png';
+import { applyTheme, initTheme, ThemeMode } from '../lib/theme';
 
 const MainLayout: React.FC = () => {
     const { pathname } = useLocation();
     const { loadActiveWorkout } = useStore();
     const [keyboardInset, setKeyboardInset] = useState(0);
+    const [theme, setTheme] = useState<ThemeMode>('dark');
     const isKeyboardOpen = keyboardInset > 0;
 
     useEffect(() => {
         void loadActiveWorkout();
     }, [loadActiveWorkout]);
+
+    // Initialize theme on mount
+    useEffect(() => {
+        const resolvedTheme = initTheme();
+        setTheme(resolvedTheme);
+    }, []);
+
+    const toggleTheme = () => {
+        const nextTheme: ThemeMode = theme === 'dark' ? 'light' : 'dark';
+        setTheme(nextTheme);
+        applyTheme(nextTheme);
+    };
 
     useEffect(() => {
         const updateKeyboardInset = () => {
@@ -126,13 +140,37 @@ const MainLayout: React.FC = () => {
                     ))}
                 </nav>
 
-                <ProfileDropdown />
+                <div className="flex items-center gap-3">
+                    {/* Theme Toggle Button */}
+                    <button
+                        onClick={toggleTheme}
+                        className="size-9 rounded-full bg-gray-100 dark:bg-[#1a2632] flex items-center justify-center hover:bg-gray-200 dark:hover:bg-[#233648] transition-colors"
+                        aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                    >
+                        <span className="material-symbols-outlined text-[22px]">
+                            {theme === 'dark' ? 'light_mode' : 'dark_mode'}
+                        </span>
+                    </button>
+                    <ProfileDropdown />
+                </div>
             </header>
 
             {/* Mobile Header - Improved for smaller screens */}
             <header className="md:hidden flex items-center justify-between px-4 py-3 bg-white/90 dark:bg-[#0a0c0e]/95 backdrop-blur-md border-b border-gray-200 dark:border-white/5 shrink-0 z-20">
                 <h1 className="text-lg font-bold truncate">{getTitle()}</h1>
-                <ProfileDropdown />
+                <div className="flex items-center gap-2">
+                    {/* Theme Toggle Button */}
+                    <button
+                        onClick={toggleTheme}
+                        className="size-9 rounded-full bg-gray-100 dark:bg-[#1a2632] flex items-center justify-center hover:bg-gray-200 dark:hover:bg-[#233648] transition-colors"
+                        aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                    >
+                        <span className="material-symbols-outlined text-[22px]">
+                            {theme === 'dark' ? 'light_mode' : 'dark_mode'}
+                        </span>
+                    </button>
+                    <ProfileDropdown />
+                </div>
             </header>
 
             {/* Main Content - Add padding for bottom nav on mobile */}
