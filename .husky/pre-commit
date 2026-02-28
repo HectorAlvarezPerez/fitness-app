@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+
+# Block commits if staged changes contain secrets.
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --redact --verbose
+else
+  echo "❌ gitleaks no está instalado."
+  echo "Instálalo y reintenta commit:"
+  echo "  - macOS: brew install gitleaks"
+  echo "  - Linux: https://github.com/gitleaks/gitleaks#installing"
+  exit 1
+fi
