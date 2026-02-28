@@ -14,9 +14,7 @@ vi.mock('../store/useStore', () => ({
         routine_name: 'Rutina Test',
         started_at: new Date().toISOString(),
         completed_at: new Date().toISOString(),
-        exercises_completed: [
-          { name: 'Press', sets: [{ completed: true }, { completed: false }] },
-        ],
+        exercises_completed: [{ name: 'Press', sets: [{ completed: true }, { completed: false }] }],
         total_volume: 0,
         duration_minutes: 30,
       },

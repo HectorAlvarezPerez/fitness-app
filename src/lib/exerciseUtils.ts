@@ -42,7 +42,10 @@ export const validateExerciseName = (
   return { trimmedName, error: null };
 };
 
-export const canEditExercise = (exerciseUserId: string | null | undefined, currentUserId?: string | null) => {
+export const canEditExercise = (
+  exerciseUserId: string | null | undefined,
+  currentUserId?: string | null
+) => {
   if (!exerciseUserId) return true;
   if (!currentUserId) return false;
   return exerciseUserId === currentUserId;

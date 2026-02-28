@@ -151,7 +151,10 @@ export const derivePersonalRecordRows = (
         const weight = asNumber(set.weight);
 
         if (isTimeExercise) {
-          if (hasValue(reps) && (!hasValue(row.bestTimeSeconds) || reps > (row.bestTimeSeconds || 0))) {
+          if (
+            hasValue(reps) &&
+            (!hasValue(row.bestTimeSeconds) || reps > (row.bestTimeSeconds || 0))
+          ) {
             row.bestTimeSeconds = reps;
             if (parseDateMs(sessionDate) > parseDateMs(row.updatedAt)) {
               row.updatedAt = sessionDate;

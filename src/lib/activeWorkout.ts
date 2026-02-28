@@ -43,7 +43,9 @@ export const readActiveWorkoutDataPayload = (workoutData: unknown) => {
 
   const rawExercises = Array.isArray(workoutData.exercises) ? workoutData.exercises : [];
   const currentExerciseId =
-    typeof workoutData.current_exercise_id === 'string' ? workoutData.current_exercise_id : undefined;
+    typeof workoutData.current_exercise_id === 'string'
+      ? workoutData.current_exercise_id
+      : undefined;
   const currentSetIndex =
     typeof workoutData.current_set_index === 'number' ? workoutData.current_set_index : undefined;
 
@@ -82,4 +84,3 @@ export const readActiveWorkoutDataPayload = (workoutData: unknown) => {
     overrideDate,
   };
 };
-

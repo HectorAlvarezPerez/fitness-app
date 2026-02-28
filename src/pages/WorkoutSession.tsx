@@ -8,890 +8,999 @@ import { parseLocaleDecimal } from '../lib/numberUtils';
 import ConfirmDialog from '../components/ConfirmDialog';
 import ExerciseLibrarySheet from '../components/ExerciseLibrarySheet';
 import {
-    DndContext,
-    closestCenter,
-    KeyboardSensor,
-    PointerSensor,
-    TouchSensor,
-    useSensor,
-    useSensors,
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
 } from '@dnd-kit/core';
 import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    useSortable,
-    verticalListSortingStrategy,
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 const WorkoutSession: React.FC = () => {
-    const { id } = useParams<{ id: string }>();
-    const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
-    const location = useLocation();
-    const {
-        savedRoutines,
-        loadRoutines,
-        workoutHistory,
-        loadWorkoutHistory,
-        activeWorkout,
-        loadActiveWorkout,
-        startWorkout,
-        startEmptyWorkout,
-        addActiveWorkoutExercise,
-        updateActiveWorkoutExerciseNotes,
-        updateActiveWorkoutExerciseRest,
-        updateWorkoutExerciseSets,
-        setActiveWorkoutPosition,
-        startRestTimer,
-        clearRestTimer,
-        pauseRestTimer,
-        resumeRestTimer,
-        extendRestTimer,
-        finishWorkout,
-        cancelWorkout
-    } = useStore();
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const {
+    savedRoutines,
+    loadRoutines,
+    workoutHistory,
+    loadWorkoutHistory,
+    activeWorkout,
+    loadActiveWorkout,
+    startWorkout,
+    startEmptyWorkout,
+    addActiveWorkoutExercise,
+    updateActiveWorkoutExerciseNotes,
+    updateActiveWorkoutExerciseRest,
+    updateWorkoutExerciseSets,
+    setActiveWorkoutPosition,
+    startRestTimer,
+    clearRestTimer,
+    pauseRestTimer,
+    resumeRestTimer,
+    extendRestTimer,
+    finishWorkout,
+    cancelWorkout,
+  } = useStore();
 
-    const [expandedExercise, setExpandedExercise] = useState<string | null>(null);
-    const [initializationError, setInitializationError] = useState<string | null>(null);
-    const [finishConfirmOpen, setFinishConfirmOpen] = useState(false);
-    const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
-    const [isLibraryOpen, setIsLibraryOpen] = useState(false);
-    // For past-day workouts, use the real page-open time for the live timer
-    const realStartedAtRef = React.useRef<string>(new Date().toISOString());
+  const [expandedExercise, setExpandedExercise] = useState<string | null>(null);
+  const [initializationError, setInitializationError] = useState<string | null>(null);
+  const [finishConfirmOpen, setFinishConfirmOpen] = useState(false);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  // For past-day workouts, use the real page-open time for the live timer
+  const realStartedAtRef = React.useRef<string>(new Date().toISOString());
 
-    const setSensors = useSensors(
-        useSensor(PointerSensor, {
-            activationConstraint: { distance: 6 }
-        }),
-        useSensor(TouchSensor, {
-            activationConstraint: { distance: 6 }
-        }),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        })
-    );
+  const setSensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
-    useEffect(() => {
-        loadRoutines();
-        // Don't auto-load active workout here if we are trying to start a specific one
-        // relying on main layout or app init is better, but here we can check:
-        loadActiveWorkout();
-    }, [loadRoutines, loadActiveWorkout]);
+  useEffect(() => {
+    loadRoutines();
+    // Don't auto-load active workout here if we are trying to start a specific one
+    // relying on main layout or app init is better, but here we can check:
+    loadActiveWorkout();
+  }, [loadRoutines, loadActiveWorkout]);
 
-    useEffect(() => {
-        if (workoutHistory.length === 0) {
-            loadWorkoutHistory();
-        }
-    }, [workoutHistory.length, loadWorkoutHistory]);
-
-    useEffect(() => {
-        let cancelled = false;
-
-        const initSession = async () => {
-            // Safe guards
-            if (activeWorkout) return;
-
-            // The static route /routine/free/workout has no :id param,
-            // so id will be undefined. Detect both cases.
-            // Use location.pathname (from useLocation) instead of window.location.pathname
-            // because the app uses HashRouter.
-            const isFreeRoute = id === 'free' || (!id && location.pathname.includes('/free/'));
-
-            if (!isFreeRoute && savedRoutines.length === 0) return; // Wait for routines to load
-
-            if (isFreeRoute) {
-                try {
-                    const dateParam = searchParams.get('date') || undefined;
-                    const success = await startEmptyWorkout(dateParam);
-                    if (cancelled) return;
-                    if (!success) {
-                        setInitializationError('No se pudo iniciar el entrenamiento libre.');
-                    }
-                } catch (e) {
-                    if (cancelled) return;
-                    setInitializationError('Error al iniciar entrenamiento');
-                }
-                return;
-            }
-
-            if (id) {
-                const routine = savedRoutines.find(r => r.id === id);
-                if (routine) {
-                    try {
-                        const dateParam = searchParams.get('date') || undefined;
-                        const success = await startWorkout(routine, dateParam);
-                        if (cancelled) return;
-                        if (!success) {
-                            setInitializationError('No se pudo iniciar el entrenamiento. Verifica tu conexión.');
-                        }
-                    } catch (e) {
-                        if (cancelled) return;
-                        setInitializationError('Error al iniciar entrenamiento');
-                    }
-                } else {
-                    if (savedRoutines.length > 0) {
-                        navigate('/routine');
-                    }
-                }
-            }
-        };
-
-        initSession();
-
-        return () => { cancelled = true; };
-    }, [id, savedRoutines, activeWorkout, startWorkout, startEmptyWorkout, navigate, searchParams, location]);
-
-    useEffect(() => {
-        if (!activeWorkout?.currentExerciseId) return;
-        setExpandedExercise((current) => current || activeWorkout.currentExerciseId || null);
-    }, [activeWorkout?.currentExerciseId]);
-
-    useEffect(() => {
-        if (!activeWorkout?.currentExerciseId || typeof activeWorkout.currentSetIndex !== 'number') return;
-        const anchor = `${activeWorkout.currentExerciseId}-${activeWorkout.currentSetIndex}`;
-        const timeout = setTimeout(() => {
-            const element = document.querySelector(`[data-set-anchor=\"${anchor}\"]`);
-            if (element && element instanceof HTMLElement) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }, 120);
-
-        return () => clearTimeout(timeout);
-    }, [activeWorkout?.currentExerciseId, activeWorkout?.currentSetIndex]);
-
-    const toggleSetComplete = (exerciseId: string, setIndex: number) => {
-        if (!activeWorkout) return;
-
-        const exercise = activeWorkout.exercises.find(ex => ex && ex.exerciseId === exerciseId);
-        if (!exercise) return;
-
-        const updatedSets = exercise.sets.map((set, idx) =>
-            idx === setIndex ? { ...set, completed: !set.completed } : set
-        );
-
-        void updateWorkoutExerciseSets(exerciseId, updatedSets);
-        void setActiveWorkoutPosition(exerciseId, setIndex);
-
-        // Start rest timer if completing a set (not uncompleting)
-        // Skip rest timer if this set has dropsets (no rest between dropset sub-series)
-        const currentSet = exercise.sets[setIndex];
-        const hasDropsets = currentSet.dropsets && currentSet.dropsets.length > 0;
-        const restSeconds = exercise.restSeconds || 0;
-        if (!currentSet.completed && restSeconds > 0 && !hasDropsets) {
-            void startRestTimer(exerciseId, setIndex, restSeconds);
-        }
-    };
-
-    const updateSetValue = (exerciseId: string, setIndex: number, field: 'reps' | 'weight', value: number) => {
-        if (!activeWorkout) return;
-
-        const exercise = activeWorkout.exercises.find(ex => ex && ex.exerciseId === exerciseId);
-        if (!exercise) return;
-
-        const updatedSets = exercise.sets.map((set, idx) =>
-            idx === setIndex ? { ...set, [field]: value } : set
-        );
-
-        void updateWorkoutExerciseSets(exerciseId, updatedSets);
-        void setActiveWorkoutPosition(exerciseId, setIndex);
-    };
-
-    const updateDropsetValue = (exerciseId: string, setIndex: number, dropsetIndex: number, field: 'reps' | 'weight', value: number) => {
-        if (!activeWorkout) return;
-
-        const exercise = activeWorkout.exercises.find(ex => ex && ex.exerciseId === exerciseId);
-        if (!exercise) return;
-
-        const updatedSets = exercise.sets.map((set, idx) => {
-            if (idx !== setIndex || !set.dropsets) return set;
-            const updatedDropsets = set.dropsets.map((d: any, di: number) =>
-                di === dropsetIndex ? { ...d, [field]: value } : d
-            );
-            return { ...set, dropsets: updatedDropsets };
-        });
-
-        void updateWorkoutExerciseSets(exerciseId, updatedSets);
-    };
-
-    const handleSetDragEnd = (exerciseId: string, event: any) => {
-        if (!activeWorkout) return;
-        const { active, over } = event;
-        if (!over || active.id === over.id) return;
-
-        const exercise = activeWorkout.exercises.find(ex => ex && ex.exerciseId === exerciseId);
-        if (!exercise) return;
-
-        const oldIndex = exercise.sets.findIndex((set: any) => set.id === active.id);
-        const newIndex = exercise.sets.findIndex((set: any) => set.id === over.id);
-        if (oldIndex === -1 || newIndex === -1) return;
-
-        const reordered = arrayMove(exercise.sets, oldIndex, newIndex);
-        updateWorkoutExerciseSets(exerciseId, reordered);
-    };
-
-    const lastPerformanceByExercise = useMemo(
-        () => buildLastPerformanceMap(workoutHistory),
-        [workoutHistory]
-    );
-
-    const formatLastSet = (lastSet?: { reps?: number; weight?: number }) => {
-        if (!lastSet) return 'Sin datos previos';
-        const weightDefined = lastSet.weight !== undefined && lastSet.weight !== null;
-        const repsDefined = lastSet.reps !== undefined && lastSet.reps !== null;
-
-        if (!weightDefined && !repsDefined) return 'Sin datos previos';
-
-        const weightText = weightDefined ? `${lastSet.weight}kg` : null;
-        const repsText = repsDefined ? `${lastSet.reps} reps` : null;
-
-        if (weightText && repsText) return `Última: ${weightText} × ${repsText}`;
-        return `Última: ${weightText ?? repsText}`;
-    };
-
-    const addSet = (exerciseId: string) => {
-        if (!activeWorkout) return;
-
-        const exercise = activeWorkout.exercises.find(ex => ex && ex.exerciseId === exerciseId);
-        if (!exercise || exercise.sets.length === 0) return;
-
-        const lastSet = exercise.sets[exercise.sets.length - 1];
-        const newSet = {
-            reps: lastSet.reps,
-            weight: lastSet.weight,
-            completed: false
-        };
-
-        void updateWorkoutExerciseSets(exerciseId, [...exercise.sets, newSet]);
-        void setActiveWorkoutPosition(exerciseId, exercise.sets.length);
-    };
-
-    const removeSet = (exerciseId: string, setIndex: number) => {
-        if (!activeWorkout) return;
-
-        const exercise = activeWorkout.exercises.find(ex => ex && ex.exerciseId === exerciseId);
-        if (!exercise || exercise.sets.length <= 1) return;
-
-        const updatedSets = exercise.sets.filter((_, idx) => idx !== setIndex);
-        void updateWorkoutExerciseSets(exerciseId, updatedSets);
-    };
-
-    if (initializationError) {
-        return (
-            <div className="flex h-full w-full items-center justify-center p-4">
-                <div className="flex flex-col items-center gap-4 text-center">
-                    <div className="size-16 rounded-full bg-red-100 flex items-center justify-center">
-                        <span className="material-symbols-outlined text-red-500 text-3xl">error</span>
-                    </div>
-                    <h2 className="text-xl font-bold">Error</h2>
-                    <p className="text-gray-500">{initializationError}</p>
-                    <button
-                        onClick={() => navigate('/routine')}
-                        className="px-6 py-2 bg-primary text-white rounded-lg font-bold"
-                    >
-                        Volver a Rutinas
-                    </button>
-                </div>
-            </div>
-        );
+  useEffect(() => {
+    if (workoutHistory.length === 0) {
+      loadWorkoutHistory();
     }
+  }, [workoutHistory.length, loadWorkoutHistory]);
 
-    if (!activeWorkout) {
-        return (
-            <div className="flex h-full w-full items-center justify-center">
-                <div className="flex flex-col items-center gap-3">
-                    <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="material-symbols-outlined text-primary animate-spin">progress_activity</span>
-                    </div>
-                    <p className="text-gray-500">Cargando entrenamiento...</p>
-                </div>
-            </div>
-        );
-    }
+  useEffect(() => {
+    let cancelled = false;
 
-    const safeExercises = Array.isArray(activeWorkout.exercises)
-        ? activeWorkout.exercises.filter((ex): ex is typeof activeWorkout.exercises[number] => !!ex && typeof ex.name === 'string')
-        : [];
+    const initSession = async () => {
+      // Safe guards
+      if (activeWorkout) return;
 
-    const totalSets = safeExercises.reduce((acc, ex) => acc + ex.sets.length, 0);
-    const completedSets = safeExercises.reduce((acc, ex) =>
-        acc + ex.sets.filter(s => s.completed).length, 0
+      // The static route /routine/free/workout has no :id param,
+      // so id will be undefined. Detect both cases.
+      // Use location.pathname (from useLocation) instead of window.location.pathname
+      // because the app uses HashRouter.
+      const isFreeRoute = id === 'free' || (!id && location.pathname.includes('/free/'));
+
+      if (!isFreeRoute && savedRoutines.length === 0) return; // Wait for routines to load
+
+      if (isFreeRoute) {
+        try {
+          const dateParam = searchParams.get('date') || undefined;
+          const success = await startEmptyWorkout(dateParam);
+          if (cancelled) return;
+          if (!success) {
+            setInitializationError('No se pudo iniciar el entrenamiento libre.');
+          }
+        } catch (e) {
+          if (cancelled) return;
+          setInitializationError('Error al iniciar entrenamiento');
+        }
+        return;
+      }
+
+      if (id) {
+        const routine = savedRoutines.find((r) => r.id === id);
+        if (routine) {
+          try {
+            const dateParam = searchParams.get('date') || undefined;
+            const success = await startWorkout(routine, dateParam);
+            if (cancelled) return;
+            if (!success) {
+              setInitializationError('No se pudo iniciar el entrenamiento. Verifica tu conexión.');
+            }
+          } catch (e) {
+            if (cancelled) return;
+            setInitializationError('Error al iniciar entrenamiento');
+          }
+        } else {
+          if (savedRoutines.length > 0) {
+            navigate('/routine');
+          }
+        }
+      }
+    };
+
+    initSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    id,
+    savedRoutines,
+    activeWorkout,
+    startWorkout,
+    startEmptyWorkout,
+    navigate,
+    searchParams,
+    location,
+  ]);
+
+  useEffect(() => {
+    if (!activeWorkout?.currentExerciseId) return;
+    setExpandedExercise((current) => current || activeWorkout.currentExerciseId || null);
+  }, [activeWorkout?.currentExerciseId]);
+
+  useEffect(() => {
+    if (!activeWorkout?.currentExerciseId || typeof activeWorkout.currentSetIndex !== 'number')
+      return;
+    const anchor = `${activeWorkout.currentExerciseId}-${activeWorkout.currentSetIndex}`;
+    const timeout = setTimeout(() => {
+      const element = document.querySelector(`[data-set-anchor=\"${anchor}\"]`);
+      if (element && element instanceof HTMLElement) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 120);
+
+    return () => clearTimeout(timeout);
+  }, [activeWorkout?.currentExerciseId, activeWorkout?.currentSetIndex]);
+
+  const toggleSetComplete = (exerciseId: string, setIndex: number) => {
+    if (!activeWorkout) return;
+
+    const exercise = activeWorkout.exercises.find((ex) => ex && ex.exerciseId === exerciseId);
+    if (!exercise) return;
+
+    const updatedSets = exercise.sets.map((set, idx) =>
+      idx === setIndex ? { ...set, completed: !set.completed } : set
     );
-    const progress = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
-    const isPartial = totalSets > 0 && completedSets < totalSets;
-    const isFreeWorkout = !activeWorkout.routineId;
 
-    const handleFinish = () => {
-        setFinishConfirmOpen(true);
+    void updateWorkoutExerciseSets(exerciseId, updatedSets);
+    void setActiveWorkoutPosition(exerciseId, setIndex);
+
+    // Start rest timer if completing a set (not uncompleting)
+    // Skip rest timer if this set has dropsets (no rest between dropset sub-series)
+    const currentSet = exercise.sets[setIndex];
+    const hasDropsets = currentSet.dropsets && currentSet.dropsets.length > 0;
+    const restSeconds = exercise.restSeconds || 0;
+    if (!currentSet.completed && restSeconds > 0 && !hasDropsets) {
+      void startRestTimer(exerciseId, setIndex, restSeconds);
+    }
+  };
+
+  const updateSetValue = (
+    exerciseId: string,
+    setIndex: number,
+    field: 'reps' | 'weight',
+    value: number
+  ) => {
+    if (!activeWorkout) return;
+
+    const exercise = activeWorkout.exercises.find((ex) => ex && ex.exerciseId === exerciseId);
+    if (!exercise) return;
+
+    const updatedSets = exercise.sets.map((set, idx) =>
+      idx === setIndex ? { ...set, [field]: value } : set
+    );
+
+    void updateWorkoutExerciseSets(exerciseId, updatedSets);
+    void setActiveWorkoutPosition(exerciseId, setIndex);
+  };
+
+  const updateDropsetValue = (
+    exerciseId: string,
+    setIndex: number,
+    dropsetIndex: number,
+    field: 'reps' | 'weight',
+    value: number
+  ) => {
+    if (!activeWorkout) return;
+
+    const exercise = activeWorkout.exercises.find((ex) => ex && ex.exerciseId === exerciseId);
+    if (!exercise) return;
+
+    const updatedSets = exercise.sets.map((set, idx) => {
+      if (idx !== setIndex || !set.dropsets) return set;
+      const updatedDropsets = set.dropsets.map((d: any, di: number) =>
+        di === dropsetIndex ? { ...d, [field]: value } : d
+      );
+      return { ...set, dropsets: updatedDropsets };
+    });
+
+    void updateWorkoutExerciseSets(exerciseId, updatedSets);
+  };
+
+  const handleSetDragEnd = (exerciseId: string, event: any) => {
+    if (!activeWorkout) return;
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const exercise = activeWorkout.exercises.find((ex) => ex && ex.exerciseId === exerciseId);
+    if (!exercise) return;
+
+    const oldIndex = exercise.sets.findIndex((set: any) => set.id === active.id);
+    const newIndex = exercise.sets.findIndex((set: any) => set.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(exercise.sets, oldIndex, newIndex);
+    updateWorkoutExerciseSets(exerciseId, reordered);
+  };
+
+  const lastPerformanceByExercise = useMemo(
+    () => buildLastPerformanceMap(workoutHistory),
+    [workoutHistory]
+  );
+
+  const formatLastSet = (lastSet?: { reps?: number; weight?: number }) => {
+    if (!lastSet) return 'Sin datos previos';
+    const weightDefined = lastSet.weight !== undefined && lastSet.weight !== null;
+    const repsDefined = lastSet.reps !== undefined && lastSet.reps !== null;
+
+    if (!weightDefined && !repsDefined) return 'Sin datos previos';
+
+    const weightText = weightDefined ? `${lastSet.weight}kg` : null;
+    const repsText = repsDefined ? `${lastSet.reps} reps` : null;
+
+    if (weightText && repsText) return `Última: ${weightText} × ${repsText}`;
+    return `Última: ${weightText ?? repsText}`;
+  };
+
+  const addSet = (exerciseId: string) => {
+    if (!activeWorkout) return;
+
+    const exercise = activeWorkout.exercises.find((ex) => ex && ex.exerciseId === exerciseId);
+    if (!exercise || exercise.sets.length === 0) return;
+
+    const lastSet = exercise.sets[exercise.sets.length - 1];
+    const newSet = {
+      reps: lastSet.reps,
+      weight: lastSet.weight,
+      completed: false,
     };
 
-    const confirmFinish = () => {
-        setFinishConfirmOpen(false);
-        navigate('/dashboard');
-        setTimeout(() => {
-            finishWorkout();
-        }, 100);
-    };
+    void updateWorkoutExerciseSets(exerciseId, [...exercise.sets, newSet]);
+    void setActiveWorkoutPosition(exerciseId, exercise.sets.length);
+  };
 
-    const confirmCancel = () => {
-        setCancelConfirmOpen(false);
-        navigate('/dashboard');
-        setTimeout(() => {
-            cancelWorkout();
-        }, 100);
-    };
+  const removeSet = (exerciseId: string, setIndex: number) => {
+    if (!activeWorkout) return;
 
-    const handleAddExercise = (exercise: any) => {
-        if (!exercise || !exercise.name) return;
-        addActiveWorkoutExercise(exercise);
-        setIsLibraryOpen(false);
-    };
+    const exercise = activeWorkout.exercises.find((ex) => ex && ex.exerciseId === exerciseId);
+    if (!exercise || exercise.sets.length <= 1) return;
 
+    const updatedSets = exercise.sets.filter((_, idx) => idx !== setIndex);
+    void updateWorkoutExerciseSets(exerciseId, updatedSets);
+  };
+
+  if (initializationError) {
     return (
-        <div className="h-full w-full flex overflow-hidden bg-white dark:bg-background-dark">
-            {/* Main Content Area */}
-            <div className="flex-1 overflow-y-auto mobile-scroll">
-                <div className="flex flex-col max-w-3xl mx-auto pb-[calc(9rem+env(safe-area-inset-bottom)+var(--keyboard-inset,0px))]">
-                    {/* Header (Mobile Only for Sidebar items) */}
-                    <div className="sticky top-0 z-10 bg-white dark:bg-background-dark border-b border-gray-200 dark:border-surface-border p-4 lg:p-6">
-                        <div className="flex items-center justify-between mb-3">
-                            <Link
-                                to="/routine"
-                                className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-primary"
-                            >
-                                <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-                                Rutinas
-                            </Link>
+      <div className="flex h-full w-full items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="size-16 rounded-full bg-red-100 flex items-center justify-center">
+            <span className="material-symbols-outlined text-red-500 text-3xl">error</span>
+          </div>
+          <h2 className="text-xl font-bold">Error</h2>
+          <p className="text-gray-500">{initializationError}</p>
+          <button
+            onClick={() => navigate('/routine')}
+            className="px-6 py-2 bg-primary text-white rounded-lg font-bold"
+          >
+            Volver a Rutinas
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-                            {/* Mobile Timer */}
-                            <div className="lg:hidden">
-                                <WorkoutTimer startedAt={activeWorkout.overrideDate ? realStartedAtRef.current : activeWorkout.startedAt} />
-                            </div>
-                        </div>
+  if (!activeWorkout) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <span className="material-symbols-outlined text-primary animate-spin">
+              progress_activity
+            </span>
+          </div>
+          <p className="text-gray-500">Cargando entrenamiento...</p>
+        </div>
+      </div>
+    );
+  }
 
-                        <div className="flex items-start justify-between gap-3">
-                            <h1 className="text-2xl md:text-3xl font-black mb-2">{activeWorkout.routineName}</h1>
-                            {activeWorkout.overrideDate && (
-                                <div className="mb-2 px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-sm font-medium flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-base">calendar_month</span>
-                                    Registrando entrenamiento del {new Date(activeWorkout.overrideDate + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                                </div>
-                            )}
-                            <button
-                                onClick={() => setIsLibraryOpen(true)}
-                                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-primary/10 text-primary font-bold hover:bg-primary/20 transition-all"
-                            >
-                                <span className="material-symbols-outlined text-[18px]">add</span>
-                                <span className="hidden sm:inline">Añadir</span>
-                            </button>
-                        </div>
+  const safeExercises = Array.isArray(activeWorkout.exercises)
+    ? activeWorkout.exercises.filter(
+        (ex): ex is (typeof activeWorkout.exercises)[number] => !!ex && typeof ex.name === 'string'
+      )
+    : [];
 
-                        {/* Mobile Progress Bar */}
-                        <div className="lg:hidden flex items-center gap-3">
-                            <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                <div
-                                    className="bg-gradient-to-r from-primary to-orange-600 h-2 rounded-full transition-all duration-300"
-                                    style={{ width: `${progress}%` }}
-                                />
-                            </div>
-                            <span className="text-sm font-bold text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                                {completedSets}/{totalSets}
-                            </span>
-                        </div>
-                    </div>
+  const totalSets = safeExercises.reduce((acc, ex) => acc + ex.sets.length, 0);
+  const completedSets = safeExercises.reduce(
+    (acc, ex) => acc + ex.sets.filter((s) => s.completed).length,
+    0
+  );
+  const progress = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
+  const isPartial = totalSets > 0 && completedSets < totalSets;
+  const isFreeWorkout = !activeWorkout.routineId;
 
-                    {/* Exercises */}
-                    <div className="p-4 lg:p-6 flex flex-col gap-4">
-                        {safeExercises.length === 0 && (
-                            <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 p-6 text-center text-gray-500 dark:text-gray-400">
-                                <div className="flex flex-col items-center gap-3">
-                                    <span className="material-symbols-outlined text-3xl text-primary">playlist_add</span>
-                                    <div>
-                                        <p className="font-semibold">Rutina libre vacía</p>
-                                        <p className="text-sm">Añade ejercicios para empezar tu sesión.</p>
-                                    </div>
-                                    <button
-                                        onClick={() => setIsLibraryOpen(true)}
-                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-white font-bold hover:bg-primary/90 transition-all"
-                                    >
-                                        <span className="material-symbols-outlined text-[18px]">add</span>
-                                        Añadir ejercicio
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+  const handleFinish = () => {
+    setFinishConfirmOpen(true);
+  };
 
-                        {safeExercises.map((exercise, exIndex) => (
-                            <div
-                                key={exercise.exerciseId}
-                                className="rounded-2xl bg-white dark:bg-[#1a2632] border border-slate-200 dark:border-[#233648] overflow-hidden shadow-sm"
-                            >
-                                {/* Exercise Header */}
-                                <div
-                                    className="p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-[#1f2d3a] transition-colors"
-                                    onClick={() => {
-                                        const nextExpanded = expandedExercise === exercise.exerciseId ? null : exercise.exerciseId;
-                                        setExpandedExercise(nextExpanded);
-                                        if (nextExpanded) {
-                                            void setActiveWorkoutPosition(exercise.exerciseId, 0);
-                                        }
-                                    }}
-                                >
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
-                                                    #{exIndex + 1}
-                                                </span>
-                                                <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-bold">
-                                                    {exercise.primaryMuscle}
-                                                </span>
-                                            </div>
-                                            <h3 className="text-lg font-bold">{exercise.name}</h3>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                                {exercise.sets.filter(s => s.completed).length}/{exercise.sets.length} series completadas
-                                            </p>
-                                        </div>
-                                        <button className="p-2">
-                                            <span className="material-symbols-outlined text-gray-400">
-                                                {expandedExercise === exercise.exerciseId ? 'expand_less' : 'expand_more'}
-                                            </span>
-                                        </button>
-                                    </div>
-                                </div>
+  const confirmFinish = () => {
+    setFinishConfirmOpen(false);
+    navigate('/dashboard');
+    setTimeout(() => {
+      finishWorkout();
+    }, 100);
+  };
 
-                                {/* Sets (collapsible) */}
-                                {expandedExercise === exercise.exerciseId && (
-                                    <div className="border-t border-gray-200 dark:border-[#233648] p-4 bg-gray-50 dark:bg-[#0f1820]">
-                                        {/* Notes Field */}
-                                        <div className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
-                                            <div className="relative">
-                                                <span className="material-symbols-outlined absolute left-3 top-3 text-gray-400 text-[18px]">edit_note</span>
-                                                <textarea
-                                                    value={exercise.notes || ''}
-                                                    onChange={(e) => void updateActiveWorkoutExerciseNotes(exercise.exerciseId, e.target.value)}
-                                                    placeholder="Notas del ejercicio..."
-                                                    rows={2}
-                                                    className="w-full bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all resize-none"
-                                                />
-                                            </div>
-                                            <div className="relative w-full sm:w-24">
-                                                <span className="material-symbols-outlined absolute left-2 top-3 text-gray-400 text-[16px]">timer</span>
-                                                <input
-                                                    type="number"
-                                                    value={exercise.restSeconds}
-                                                    min={0}
-                                                    max={600}
-                                                    onChange={(e) =>
-                                                        void updateActiveWorkoutExerciseRest(
-                                                            exercise.exerciseId,
-                                                            parseInt(e.target.value, 10) || 0
-                                                        )
-                                                    }
-                                                    title="Descanso del ejercicio (segundos)"
-                                                    className="w-full bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] rounded-xl py-2.5 pl-8 pr-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center transition-all"
-                                                />
-                                            </div>
-                                            {isFreeWorkout && (
-                                                <button
-                                                    onClick={() => setExpandedExercise(null)}
-                                                    className="rounded-xl px-3 py-2 text-sm font-bold border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary transition-colors"
-                                                >
-                                                    Cerrar ejercicio
-                                                </button>
-                                            )}
-                                        </div>
+  const confirmCancel = () => {
+    setCancelConfirmOpen(false);
+    navigate('/dashboard');
+    setTimeout(() => {
+      cancelWorkout();
+    }, 100);
+  };
 
-                                        <div className="flex flex-col gap-2">
-                                            <DndContext
-                                                sensors={setSensors}
-                                                collisionDetection={closestCenter}
-                                                onDragEnd={(event) => handleSetDragEnd(exercise.exerciseId, event)}
-                                            >
-                                                <SortableContext
-                                                    items={exercise.sets.map((set: any) => set.id)}
-                                                    strategy={verticalListSortingStrategy}
-                                                >
-                                                    {exercise.sets.map((set, setIndex) => {
-                                                        const lastExercise = lastPerformanceByExercise[exercise.name];
-                                                        const lastSet = lastExercise?.sets?.[setIndex];
-                                                        const lastLabel = formatLastSet(lastSet);
+  const handleAddExercise = (exercise: any) => {
+    if (!exercise || !exercise.name) return;
+    addActiveWorkoutExercise(exercise);
+    setIsLibraryOpen(false);
+  };
 
-                                                        return (
-                                                            <SortableWorkoutSetRow
-                                                                key={set.id}
-                                                                set={set}
-                                                                setIndex={setIndex}
-                                                                exerciseId={exercise.exerciseId}
-                                                                totalSets={exercise.sets.length}
-                                                                isCurrentSet={
-                                                                    activeWorkout.currentExerciseId === exercise.exerciseId &&
-                                                                    activeWorkout.currentSetIndex === setIndex
-                                                                }
-                                                                trackingType={exercise.trackingType || 'reps'}
-                                                                toggleSetComplete={toggleSetComplete}
-                                                                updateSetValue={updateSetValue}
-                                                                updateDropsetValue={updateDropsetValue}
-                                                                removeSet={removeSet}
-                                                                lastLabel={lastLabel}
-                                                            />
-                                                        );
-                                                    })}
-                                                </SortableContext>
-                                            </DndContext>
+  return (
+    <div className="h-full w-full flex overflow-hidden bg-white dark:bg-background-dark">
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-y-auto mobile-scroll">
+        <div className="flex flex-col max-w-3xl mx-auto pb-[calc(9rem+env(safe-area-inset-bottom)+var(--keyboard-inset,0px))]">
+          {/* Header (Mobile Only for Sidebar items) */}
+          <div className="sticky top-0 z-10 bg-white dark:bg-background-dark border-b border-gray-200 dark:border-surface-border p-4 lg:p-6">
+            <div className="flex items-center justify-between mb-3">
+              <Link
+                to="/routine"
+                className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-primary"
+              >
+                <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+                Rutinas
+              </Link>
 
-                                            {/* Add Set Button */}
-                                            <button
-                                                onClick={() => addSet(exercise.exerciseId)}
-                                                className="py-2 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-primary dark:hover:border-primary text-gray-500 dark:text-gray-400 hover:text-primary font-bold text-sm transition-colors"
-                                            >
-                                                + Añadir Serie
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Static Footer Container (Mobile Only) */}
-                    <div className="lg:hidden fixed bottom-[var(--keyboard-inset,0px)] left-0 right-0 bg-white dark:bg-background-dark border-t border-gray-200 dark:border-surface-border z-30 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-                        <div className="w-full space-y-2">
-                            {/* Timer (if active) - Footer version */}
-                            {activeWorkout.restTimer && (
-                                <div className="mb-3 border-b border-gray-200 dark:border-surface-border pb-3">
-                                    <RestTimer
-                                        key={activeWorkout.restTimer.instanceId}
-                                        variant="footer"
-                                        timer={activeWorkout.restTimer}
-                                        onComplete={() => void clearRestTimer()}
-                                        onPause={() => void pauseRestTimer()}
-                                        onResume={() => void resumeRestTimer()}
-                                        onAddSeconds={(seconds) => void extendRestTimer(seconds)}
-                                        completeLabel="Siguiente serie"
-                                    />
-                                </div>
-                            )}
-
-                            <div className="grid grid-cols-2 gap-2">
-                                {/* Finish Button */}
-                                <button
-                                    onClick={handleFinish}
-                                    className="py-3 rounded-xl bg-gradient-to-r from-primary to-orange-600 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all"
-                                >
-                                    {progress === 100 ? 'Finalizar' : 'Guardar progreso'}
-                                </button>
-
-                                {/* Cancel Button */}
-                                <button
-                                    onClick={() => setCancelConfirmOpen(true)}
-                                    className="py-3 rounded-xl border-2 border-red-500 text-red-500 dark:text-red-400 font-bold text-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
-                                >
-                                    Cancelar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+              {/* Mobile Timer */}
+              <div className="lg:hidden">
+                <WorkoutTimer
+                  startedAt={
+                    activeWorkout.overrideDate ? realStartedAtRef.current : activeWorkout.startedAt
+                  }
+                />
+              </div>
             </div>
 
-            {/* Sidebar (Desktop) */}
-            <aside className="hidden lg:flex flex-col w-[360px] bg-white dark:bg-background-dark border-l border-gray-200 dark:border-surface-border h-full shrink-0 shadow-2xl z-20">
-                <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
-                    {/* Timer Widget */}
-                    <div className="bg-gray-50 dark:bg-surface-dark rounded-2xl p-6 border border-gray-100 dark:border-surface-border shadow-sm">
-                        <h3 className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase mb-2 text-center">Tiempo Transcurrido</h3>
-                        <div className="flex justify-center">
-                            <WorkoutTimer startedAt={activeWorkout.overrideDate ? realStartedAtRef.current : activeWorkout.startedAt} className="text-4xl" />
-                        </div>
-                    </div>
-
-                    {/* Progress Widget */}
-                    <div className="bg-gray-50 dark:bg-surface-dark rounded-2xl p-6 border border-gray-100 dark:border-surface-border shadow-sm">
-                        <div className="flex justify-between items-center mb-2">
-                            <h3 className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase">Progreso</h3>
-                            <span className="text-sm font-bold text-primary dark:text-white">{Math.round(progress)}%</span>
-                        </div>
-                        <div className="bg-gray-200 dark:bg-gray-700 rounded-full h-3 mb-2">
-                            <div
-                                className="bg-gradient-to-r from-primary to-orange-600 h-3 rounded-full transition-all duration-300"
-                                style={{ width: `${progress}%` }}
-                            />
-                        </div>
-                        <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-                            {completedSets} de {totalSets} series completadas
-                        </p>
-                    </div>
-
-                    {/* Active Rest Timer Widget */}
-                    {activeWorkout.restTimer && (
-                        <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl p-6 border border-primary/20 shadow-sm">
-                            <RestTimer
-                                key={activeWorkout.restTimer.instanceId}
-                                variant="inline"
-                                timer={activeWorkout.restTimer}
-                                onComplete={() => void clearRestTimer()}
-                                onPause={() => void pauseRestTimer()}
-                                onResume={() => void resumeRestTimer()}
-                                onAddSeconds={(seconds) => void extendRestTimer(seconds)}
-                                completeLabel="Siguiente serie"
-                            />
-                        </div>
-                    )}
-
-                    <div className="mt-auto space-y-3">
-                        <button
-                            onClick={handleFinish}
-                            className="w-full py-4 rounded-xl bg-gradient-to-r from-primary to-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
-                        >
-                            <span className="material-symbols-outlined">flag</span>
-                            {progress === 100 ? 'Finalizar' : 'Guardar progreso'}
-                        </button>
-
-                        <button
-                            onClick={() => setCancelConfirmOpen(true)}
-                            className="w-full py-3 rounded-xl border-2 border-red-100 dark:border-red-900/30 text-red-500 dark:text-red-400 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 transition-all flex items-center justify-center gap-2"
-                        >
-                            <span className="material-symbols-outlined">close</span>
-                            Cancelar
-                        </button>
-                    </div>
+            <div className="flex items-start justify-between gap-3">
+              <h1 className="text-2xl md:text-3xl font-black mb-2">{activeWorkout.routineName}</h1>
+              {activeWorkout.overrideDate && (
+                <div className="mb-2 px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-sm font-medium flex items-center gap-2">
+                  <span className="material-symbols-outlined text-base">calendar_month</span>
+                  Registrando entrenamiento del{' '}
+                  {new Date(activeWorkout.overrideDate + 'T12:00:00').toLocaleDateString('es-ES', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                  })}
                 </div>
-            </aside>
+              )}
+              <button
+                onClick={() => setIsLibraryOpen(true)}
+                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-primary/10 text-primary font-bold hover:bg-primary/20 transition-all"
+              >
+                <span className="material-symbols-outlined text-[18px]">add</span>
+                <span className="hidden sm:inline">Añadir</span>
+              </button>
+            </div>
 
-            <ConfirmDialog
-                isOpen={finishConfirmOpen}
-                title={isPartial ? 'Guardar progreso' : 'Finalizar entrenamiento'}
-                description={isPartial
-                    ? '¿Guardar progreso y finalizar? Se guardará como parcial en tu historial.'
-                    : '¿Finalizar entrenamiento? Se guardará en tu historial.'}
-                confirmLabel={isPartial ? 'Guardar' : 'Finalizar'}
-                variant="danger"
-                onCancel={() => setFinishConfirmOpen(false)}
-                onConfirm={confirmFinish}
-            />
+            {/* Mobile Progress Bar */}
+            <div className="lg:hidden flex items-center gap-3">
+              <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                <div
+                  className="bg-gradient-to-r from-primary to-orange-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <span className="text-sm font-bold text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                {completedSets}/{totalSets}
+              </span>
+            </div>
+          </div>
 
-            <ConfirmDialog
-                isOpen={cancelConfirmOpen}
-                title="Cancelar entrenamiento"
-                description="¿Cancelar entrenamiento? Se perderá todo el progreso."
-                confirmLabel="Cancelar entrenamiento"
-                variant="danger"
-                onCancel={() => setCancelConfirmOpen(false)}
-                onConfirm={confirmCancel}
-            />
+          {/* Exercises */}
+          <div className="p-4 lg:p-6 flex flex-col gap-4">
+            {safeExercises.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 p-6 text-center text-gray-500 dark:text-gray-400">
+                <div className="flex flex-col items-center gap-3">
+                  <span className="material-symbols-outlined text-3xl text-primary">
+                    playlist_add
+                  </span>
+                  <div>
+                    <p className="font-semibold">Rutina libre vacía</p>
+                    <p className="text-sm">Añade ejercicios para empezar tu sesión.</p>
+                  </div>
+                  <button
+                    onClick={() => setIsLibraryOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-white font-bold hover:bg-primary/90 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">add</span>
+                    Añadir ejercicio
+                  </button>
+                </div>
+              </div>
+            )}
 
-            <ExerciseLibrarySheet
-                isOpen={isLibraryOpen}
-                onClose={() => setIsLibraryOpen(false)}
-                onAddExercise={handleAddExercise}
-            />
+            {safeExercises.map((exercise, exIndex) => (
+              <div
+                key={exercise.exerciseId}
+                className="rounded-2xl bg-white dark:bg-[#1a2632] border border-slate-200 dark:border-[#233648] overflow-hidden shadow-sm"
+              >
+                {/* Exercise Header */}
+                <div
+                  className="p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-[#1f2d3a] transition-colors"
+                  onClick={() => {
+                    const nextExpanded =
+                      expandedExercise === exercise.exerciseId ? null : exercise.exerciseId;
+                    setExpandedExercise(nextExpanded);
+                    if (nextExpanded) {
+                      void setActiveWorkoutPosition(exercise.exerciseId, 0);
+                    }
+                  }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
+                          #{exIndex + 1}
+                        </span>
+                        <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-bold">
+                          {exercise.primaryMuscle}
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-bold">{exercise.name}</h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        {exercise.sets.filter((s) => s.completed).length}/{exercise.sets.length}{' '}
+                        series completadas
+                      </p>
+                    </div>
+                    <button className="p-2">
+                      <span className="material-symbols-outlined text-gray-400">
+                        {expandedExercise === exercise.exerciseId ? 'expand_less' : 'expand_more'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sets (collapsible) */}
+                {expandedExercise === exercise.exerciseId && (
+                  <div className="border-t border-gray-200 dark:border-[#233648] p-4 bg-gray-50 dark:bg-[#0f1820]">
+                    {/* Notes Field */}
+                    <div className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+                      <div className="relative">
+                        <span className="material-symbols-outlined absolute left-3 top-3 text-gray-400 text-[18px]">
+                          edit_note
+                        </span>
+                        <textarea
+                          value={exercise.notes || ''}
+                          onChange={(e) =>
+                            void updateActiveWorkoutExerciseNotes(
+                              exercise.exerciseId,
+                              e.target.value
+                            )
+                          }
+                          placeholder="Notas del ejercicio..."
+                          rows={2}
+                          className="w-full bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all resize-none"
+                        />
+                      </div>
+                      <div className="relative w-full sm:w-24">
+                        <span className="material-symbols-outlined absolute left-2 top-3 text-gray-400 text-[16px]">
+                          timer
+                        </span>
+                        <input
+                          type="number"
+                          value={exercise.restSeconds}
+                          min={0}
+                          max={600}
+                          onChange={(e) =>
+                            void updateActiveWorkoutExerciseRest(
+                              exercise.exerciseId,
+                              parseInt(e.target.value, 10) || 0
+                            )
+                          }
+                          title="Descanso del ejercicio (segundos)"
+                          className="w-full bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] rounded-xl py-2.5 pl-8 pr-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center transition-all"
+                        />
+                      </div>
+                      {isFreeWorkout && (
+                        <button
+                          onClick={() => setExpandedExercise(null)}
+                          className="rounded-xl px-3 py-2 text-sm font-bold border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary transition-colors"
+                        >
+                          Cerrar ejercicio
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <DndContext
+                        sensors={setSensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={(event) => handleSetDragEnd(exercise.exerciseId, event)}
+                      >
+                        <SortableContext
+                          items={exercise.sets.map((set: any) => set.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          {exercise.sets.map((set, setIndex) => {
+                            const lastExercise = lastPerformanceByExercise[exercise.name];
+                            const lastSet = lastExercise?.sets?.[setIndex];
+                            const lastLabel = formatLastSet(lastSet);
+
+                            return (
+                              <SortableWorkoutSetRow
+                                key={set.id}
+                                set={set}
+                                setIndex={setIndex}
+                                exerciseId={exercise.exerciseId}
+                                totalSets={exercise.sets.length}
+                                isCurrentSet={
+                                  activeWorkout.currentExerciseId === exercise.exerciseId &&
+                                  activeWorkout.currentSetIndex === setIndex
+                                }
+                                trackingType={exercise.trackingType || 'reps'}
+                                toggleSetComplete={toggleSetComplete}
+                                updateSetValue={updateSetValue}
+                                updateDropsetValue={updateDropsetValue}
+                                removeSet={removeSet}
+                                lastLabel={lastLabel}
+                              />
+                            );
+                          })}
+                        </SortableContext>
+                      </DndContext>
+
+                      {/* Add Set Button */}
+                      <button
+                        onClick={() => addSet(exercise.exerciseId)}
+                        className="py-2 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-primary dark:hover:border-primary text-gray-500 dark:text-gray-400 hover:text-primary font-bold text-sm transition-colors"
+                      >
+                        + Añadir Serie
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Static Footer Container (Mobile Only) */}
+          <div className="lg:hidden fixed bottom-[var(--keyboard-inset,0px)] left-0 right-0 bg-white dark:bg-background-dark border-t border-gray-200 dark:border-surface-border z-30 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div className="w-full space-y-2">
+              {/* Timer (if active) - Footer version */}
+              {activeWorkout.restTimer && (
+                <div className="mb-3 border-b border-gray-200 dark:border-surface-border pb-3">
+                  <RestTimer
+                    key={activeWorkout.restTimer.instanceId}
+                    variant="footer"
+                    timer={activeWorkout.restTimer}
+                    onComplete={() => void clearRestTimer()}
+                    onPause={() => void pauseRestTimer()}
+                    onResume={() => void resumeRestTimer()}
+                    onAddSeconds={(seconds) => void extendRestTimer(seconds)}
+                    completeLabel="Siguiente serie"
+                  />
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2">
+                {/* Finish Button */}
+                <button
+                  onClick={handleFinish}
+                  className="py-3 rounded-xl bg-gradient-to-r from-primary to-orange-600 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all"
+                >
+                  {progress === 100 ? 'Finalizar' : 'Guardar progreso'}
+                </button>
+
+                {/* Cancel Button */}
+                <button
+                  onClick={() => setCancelConfirmOpen(true)}
+                  className="py-3 rounded-xl border-2 border-red-500 text-red-500 dark:text-red-400 font-bold text-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-    );
+      </div>
+
+      {/* Sidebar (Desktop) */}
+      <aside className="hidden lg:flex flex-col w-[360px] bg-white dark:bg-background-dark border-l border-gray-200 dark:border-surface-border h-full shrink-0 shadow-2xl z-20">
+        <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+          {/* Timer Widget */}
+          <div className="bg-gray-50 dark:bg-surface-dark rounded-2xl p-6 border border-gray-100 dark:border-surface-border shadow-sm">
+            <h3 className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase mb-2 text-center">
+              Tiempo Transcurrido
+            </h3>
+            <div className="flex justify-center">
+              <WorkoutTimer
+                startedAt={
+                  activeWorkout.overrideDate ? realStartedAtRef.current : activeWorkout.startedAt
+                }
+                className="text-4xl"
+              />
+            </div>
+          </div>
+
+          {/* Progress Widget */}
+          <div className="bg-gray-50 dark:bg-surface-dark rounded-2xl p-6 border border-gray-100 dark:border-surface-border shadow-sm">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase">
+                Progreso
+              </h3>
+              <span className="text-sm font-bold text-primary dark:text-white">
+                {Math.round(progress)}%
+              </span>
+            </div>
+            <div className="bg-gray-200 dark:bg-gray-700 rounded-full h-3 mb-2">
+              <div
+                className="bg-gradient-to-r from-primary to-orange-600 h-3 rounded-full transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+              {completedSets} de {totalSets} series completadas
+            </p>
+          </div>
+
+          {/* Active Rest Timer Widget */}
+          {activeWorkout.restTimer && (
+            <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl p-6 border border-primary/20 shadow-sm">
+              <RestTimer
+                key={activeWorkout.restTimer.instanceId}
+                variant="inline"
+                timer={activeWorkout.restTimer}
+                onComplete={() => void clearRestTimer()}
+                onPause={() => void pauseRestTimer()}
+                onResume={() => void resumeRestTimer()}
+                onAddSeconds={(seconds) => void extendRestTimer(seconds)}
+                completeLabel="Siguiente serie"
+              />
+            </div>
+          )}
+
+          <div className="mt-auto space-y-3">
+            <button
+              onClick={handleFinish}
+              className="w-full py-4 rounded-xl bg-gradient-to-r from-primary to-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined">flag</span>
+              {progress === 100 ? 'Finalizar' : 'Guardar progreso'}
+            </button>
+
+            <button
+              onClick={() => setCancelConfirmOpen(true)}
+              className="w-full py-3 rounded-xl border-2 border-red-100 dark:border-red-900/30 text-red-500 dark:text-red-400 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 transition-all flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined">close</span>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <ConfirmDialog
+        isOpen={finishConfirmOpen}
+        title={isPartial ? 'Guardar progreso' : 'Finalizar entrenamiento'}
+        description={
+          isPartial
+            ? '¿Guardar progreso y finalizar? Se guardará como parcial en tu historial.'
+            : '¿Finalizar entrenamiento? Se guardará en tu historial.'
+        }
+        confirmLabel={isPartial ? 'Guardar' : 'Finalizar'}
+        variant="danger"
+        onCancel={() => setFinishConfirmOpen(false)}
+        onConfirm={confirmFinish}
+      />
+
+      <ConfirmDialog
+        isOpen={cancelConfirmOpen}
+        title="Cancelar entrenamiento"
+        description="¿Cancelar entrenamiento? Se perderá todo el progreso."
+        confirmLabel="Cancelar entrenamiento"
+        variant="danger"
+        onCancel={() => setCancelConfirmOpen(false)}
+        onConfirm={confirmCancel}
+      />
+
+      <ExerciseLibrarySheet
+        isOpen={isLibraryOpen}
+        onClose={() => setIsLibraryOpen(false)}
+        onAddExercise={handleAddExercise}
+      />
+    </div>
+  );
 };
 
 const SortableWorkoutSetRow: React.FC<{
-    set: any;
-    setIndex: number;
-    exerciseId: string;
-    totalSets: number;
-    isCurrentSet: boolean;
-    trackingType: 'reps' | 'time';
-    toggleSetComplete: (exerciseId: string, setIndex: number) => void;
-    updateSetValue: (exerciseId: string, setIndex: number, field: 'reps' | 'weight', value: number) => void;
-    updateDropsetValue: (exerciseId: string, setIndex: number, dropsetIndex: number, field: 'reps' | 'weight', value: number) => void;
-    removeSet: (exerciseId: string, setIndex: number) => void;
-    lastLabel: string;
-}> = ({ set, setIndex, exerciseId, totalSets, isCurrentSet, trackingType, toggleSetComplete, updateSetValue, updateDropsetValue, removeSet, lastLabel }) => {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging,
-    } = useSortable({ id: set.id });
+  set: any;
+  setIndex: number;
+  exerciseId: string;
+  totalSets: number;
+  isCurrentSet: boolean;
+  trackingType: 'reps' | 'time';
+  toggleSetComplete: (exerciseId: string, setIndex: number) => void;
+  updateSetValue: (
+    exerciseId: string,
+    setIndex: number,
+    field: 'reps' | 'weight',
+    value: number
+  ) => void;
+  updateDropsetValue: (
+    exerciseId: string,
+    setIndex: number,
+    dropsetIndex: number,
+    field: 'reps' | 'weight',
+    value: number
+  ) => void;
+  removeSet: (exerciseId: string, setIndex: number) => void;
+  lastLabel: string;
+}> = ({
+  set,
+  setIndex,
+  exerciseId,
+  totalSets,
+  isCurrentSet,
+  trackingType,
+  toggleSetComplete,
+  updateSetValue,
+  updateDropsetValue,
+  removeSet,
+  lastLabel,
+}) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: set.id,
+  });
 
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.7 : 1,
-        zIndex: isDragging ? 5 : 'auto',
-    };
-    const [weightDraft, setWeightDraft] = useState(set.weight ? String(set.weight) : '');
-    const [isWeightFocused, setIsWeightFocused] = useState(false);
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.7 : 1,
+    zIndex: isDragging ? 5 : 'auto',
+  };
+  const [weightDraft, setWeightDraft] = useState(set.weight ? String(set.weight) : '');
+  const [isWeightFocused, setIsWeightFocused] = useState(false);
 
-    useEffect(() => {
-        if (!isWeightFocused) {
-            setWeightDraft(set.weight ? String(set.weight) : '');
-        }
-    }, [set.weight, isWeightFocused]);
+  useEffect(() => {
+    if (!isWeightFocused) {
+      setWeightDraft(set.weight ? String(set.weight) : '');
+    }
+  }, [set.weight, isWeightFocused]);
 
-    return (
-        <div
-            ref={setNodeRef}
-            data-set-anchor={`${exerciseId}-${setIndex}`}
-            style={style}
-            className={`p-3 rounded-lg border-2 transition-all ${set.completed
-                ? 'bg-primary/10 border-primary'
-                : isCurrentSet
-                    ? 'bg-amber-50/60 dark:bg-amber-900/10 border-amber-400'
-                    : set.isWarmup
-                        ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-gray-200 dark:border-[#233648] opacity-75'
-                        : 'bg-white dark:bg-[#1a2632] border-gray-200 dark:border-[#233648]'
-                }`}
-        >
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-                <div className="flex items-center gap-2">
-                    <button
-                        {...attributes}
-                        {...listeners}
-                        className="cursor-grab touch-none active:cursor-grabbing text-gray-400 hover:text-primary flex items-center justify-center"
-                        title="Arrastrar serie"
-                        aria-label="Arrastrar serie"
-                    >
-                        <span className="material-symbols-outlined text-[18px]">drag_indicator</span>
-                    </button>
-                    {/* Checkbox */}
-                    <button
-                        onClick={() => toggleSetComplete(exerciseId, setIndex)}
-                        className={`size-8 rounded-full border-2 flex items-center justify-center transition-all ${set.completed
-                            ? 'bg-primary border-primary'
-                            : 'border-gray-300 dark:border-gray-600'
-                            }`}
-                    >
-                        {set.completed && (
-                            <span className="material-symbols-outlined text-white text-[18px]">check</span>
-                        )}
-                    </button>
-
-                    <span className="text-sm font-bold text-gray-600 dark:text-gray-400 w-16 shrink-0">
-                        Serie {setIndex + 1}
-                    </span>
-
-                    {/* Dropset/Warmup badge */}
-                    {set.dropsets && set.dropsets.length > 0 && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-500 text-white" title={`Dropset con ${set.dropsets.length} sub-series`}>
-                            D+{set.dropsets.length}
-                        </span>
-                    )}
-                    {set.isWarmup && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500 text-white" title="Calentamiento">W</span>
-                    )}
-                </div>
-
-                <div className={`grid ${trackingType === 'time' ? 'grid-cols-1' : 'grid-cols-2'} gap-2 sm:flex sm:items-center sm:gap-2 sm:flex-1`}>
-                    {/* Weight - hide for time-based exercises */}
-                    {trackingType !== 'time' && (
-                        <div className="flex items-center gap-1">
-                            <input
-                                type="text"
-                                inputMode="decimal"
-                                value={weightDraft}
-                                onFocus={() => setIsWeightFocused(true)}
-                                onBlur={() => {
-                                    setIsWeightFocused(false);
-                                    if (!weightDraft.trim()) {
-                                        updateSetValue(exerciseId, setIndex, 'weight', 0);
-                                        setWeightDraft('');
-                                        return;
-                                    }
-                                    const parsed = parseLocaleDecimal(weightDraft);
-                                    if (parsed === null) {
-                                        setWeightDraft(set.weight ? String(set.weight) : '');
-                                        return;
-                                    }
-                                    updateSetValue(exerciseId, setIndex, 'weight', parsed);
-                                    setWeightDraft(String(parsed));
-                                }}
-                                onChange={(e) => {
-                                    const next = e.target.value;
-                                    if (!/^[0-9]*[.,]?[0-9]*$/.test(next)) return;
-                                    setWeightDraft(next);
-                                    if (!next.trim()) {
-                                        updateSetValue(exerciseId, setIndex, 'weight', 0);
-                                        return;
-                                    }
-                                    const parsed = parseLocaleDecimal(next);
-                                    if (parsed !== null) {
-                                        updateSetValue(exerciseId, setIndex, 'weight', parsed);
-                                    }
-                                }}
-                                className="w-full min-w-[60px] sm:w-16 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
-                            />
-                            <span className="text-xs text-gray-500">kg</span>
-                        </div>
-                    )}
-
-                    {/* Reps or Duration */}
-                    <div className="flex items-center gap-1">
-                        <input
-                            type="text"
-                            inputMode="numeric"
-                            value={set.reps ? String(set.reps) : ''}
-                            onChange={(e) => {
-                                const raw = e.target.value;
-                                if (!/^[0-9]*$/.test(raw)) return;
-                                updateSetValue(exerciseId, setIndex, 'reps', raw === '' ? 0 : parseInt(raw, 10));
-                            }}
-                            className="w-full min-w-[52px] sm:w-14 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
-                        />
-                        <span className="text-xs text-gray-500">{trackingType === 'time' ? 'seg' : 'reps'}</span>
-                    </div>
-                </div>
-
-                {/* Delete Set */}
-                {totalSets > 1 && (
-                    <button
-                        onClick={() => removeSet(exerciseId, setIndex)}
-                        className="self-start sm:self-center sm:ml-auto p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                    >
-                        <span className="material-symbols-outlined text-red-500 text-[18px]">close</span>
-                    </button>
-                )}
-            </div>
-
-            <p className="mt-1 ml-10 text-xs text-gray-500 dark:text-gray-400">
-                {lastLabel}
-            </p>
-
-            {/* Dropset sub-series */}
-            {set.dropsets && set.dropsets.length > 0 && (
-                <div className="ml-6 mt-1 space-y-1">
-                    {set.dropsets.map((dropset: any, dIndex: number) => (
-                        <div
-                            key={`${setIndex}-${dIndex}`}
-                            className="flex items-center gap-2 p-2 pl-4 rounded-lg bg-orange-50/50 dark:bg-orange-900/10 border-l-2 border-orange-400"
-                        >
-                            <span className="text-xs font-bold text-orange-600 dark:text-orange-400 w-8">
-                                {setIndex + 1}.{dIndex + 1}
-                            </span>
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-500 text-white">D</span>
-                            <div className="flex items-center gap-1">
-                                <input
-                                    type="number"
-                                    value={dropset.weight}
-                                    onChange={(e) => updateDropsetValue(exerciseId, setIndex, dIndex, 'weight', parseFloat(e.target.value) || 0)}
-                                    className="w-12 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-orange-200 dark:border-orange-700 text-sm font-bold"
-                                />
-                                <span className="text-xs text-gray-500">kg</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <input
-                                    type="number"
-                                    value={dropset.reps}
-                                    onChange={(e) => updateDropsetValue(exerciseId, setIndex, dIndex, 'reps', parseInt(e.target.value) || 0)}
-                                    className="w-12 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-orange-200 dark:border-orange-700 text-sm font-bold"
-                                />
-                                <span className="text-xs text-gray-500">reps</span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+  return (
+    <div
+      ref={setNodeRef}
+      data-set-anchor={`${exerciseId}-${setIndex}`}
+      style={style}
+      className={`p-3 rounded-lg border-2 transition-all ${
+        set.completed
+          ? 'bg-primary/10 border-primary'
+          : isCurrentSet
+            ? 'bg-amber-50/60 dark:bg-amber-900/10 border-amber-400'
+            : set.isWarmup
+              ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-gray-200 dark:border-[#233648] opacity-75'
+              : 'bg-white dark:bg-[#1a2632] border-gray-200 dark:border-[#233648]'
+      }`}
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            {...attributes}
+            {...listeners}
+            className="cursor-grab touch-none active:cursor-grabbing text-gray-400 hover:text-primary flex items-center justify-center"
+            title="Arrastrar serie"
+            aria-label="Arrastrar serie"
+          >
+            <span className="material-symbols-outlined text-[18px]">drag_indicator</span>
+          </button>
+          {/* Checkbox */}
+          <button
+            onClick={() => toggleSetComplete(exerciseId, setIndex)}
+            className={`size-8 rounded-full border-2 flex items-center justify-center transition-all ${
+              set.completed ? 'bg-primary border-primary' : 'border-gray-300 dark:border-gray-600'
+            }`}
+          >
+            {set.completed && (
+              <span className="material-symbols-outlined text-white text-[18px]">check</span>
             )}
+          </button>
+
+          <span className="text-sm font-bold text-gray-600 dark:text-gray-400 w-16 shrink-0">
+            Serie {setIndex + 1}
+          </span>
+
+          {/* Dropset/Warmup badge */}
+          {set.dropsets && set.dropsets.length > 0 && (
+            <span
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-500 text-white"
+              title={`Dropset con ${set.dropsets.length} sub-series`}
+            >
+              D+{set.dropsets.length}
+            </span>
+          )}
+          {set.isWarmup && (
+            <span
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500 text-white"
+              title="Calentamiento"
+            >
+              W
+            </span>
+          )}
         </div>
-    );
+
+        <div
+          className={`grid ${trackingType === 'time' ? 'grid-cols-1' : 'grid-cols-2'} gap-2 sm:flex sm:items-center sm:gap-2 sm:flex-1`}
+        >
+          {/* Weight - hide for time-based exercises */}
+          {trackingType !== 'time' && (
+            <div className="flex items-center gap-1">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={weightDraft}
+                onFocus={() => setIsWeightFocused(true)}
+                onBlur={() => {
+                  setIsWeightFocused(false);
+                  if (!weightDraft.trim()) {
+                    updateSetValue(exerciseId, setIndex, 'weight', 0);
+                    setWeightDraft('');
+                    return;
+                  }
+                  const parsed = parseLocaleDecimal(weightDraft);
+                  if (parsed === null) {
+                    setWeightDraft(set.weight ? String(set.weight) : '');
+                    return;
+                  }
+                  updateSetValue(exerciseId, setIndex, 'weight', parsed);
+                  setWeightDraft(String(parsed));
+                }}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  if (!/^[0-9]*[.,]?[0-9]*$/.test(next)) return;
+                  setWeightDraft(next);
+                  if (!next.trim()) {
+                    updateSetValue(exerciseId, setIndex, 'weight', 0);
+                    return;
+                  }
+                  const parsed = parseLocaleDecimal(next);
+                  if (parsed !== null) {
+                    updateSetValue(exerciseId, setIndex, 'weight', parsed);
+                  }
+                }}
+                className="w-full min-w-[60px] sm:w-16 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
+              />
+              <span className="text-xs text-gray-500">kg</span>
+            </div>
+          )}
+
+          {/* Reps or Duration */}
+          <div className="flex items-center gap-1">
+            <input
+              type="text"
+              inputMode="numeric"
+              value={set.reps ? String(set.reps) : ''}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (!/^[0-9]*$/.test(raw)) return;
+                updateSetValue(exerciseId, setIndex, 'reps', raw === '' ? 0 : parseInt(raw, 10));
+              }}
+              className="w-full min-w-[52px] sm:w-14 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
+            />
+            <span className="text-xs text-gray-500">
+              {trackingType === 'time' ? 'seg' : 'reps'}
+            </span>
+          </div>
+        </div>
+
+        {/* Delete Set */}
+        {totalSets > 1 && (
+          <button
+            onClick={() => removeSet(exerciseId, setIndex)}
+            className="self-start sm:self-center sm:ml-auto p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+          >
+            <span className="material-symbols-outlined text-red-500 text-[18px]">close</span>
+          </button>
+        )}
+      </div>
+
+      <p className="mt-1 ml-10 text-xs text-gray-500 dark:text-gray-400">{lastLabel}</p>
+
+      {/* Dropset sub-series */}
+      {set.dropsets && set.dropsets.length > 0 && (
+        <div className="ml-6 mt-1 space-y-1">
+          {set.dropsets.map((dropset: any, dIndex: number) => (
+            <div
+              key={`${setIndex}-${dIndex}`}
+              className="flex items-center gap-2 p-2 pl-4 rounded-lg bg-orange-50/50 dark:bg-orange-900/10 border-l-2 border-orange-400"
+            >
+              <span className="text-xs font-bold text-orange-600 dark:text-orange-400 w-8">
+                {setIndex + 1}.{dIndex + 1}
+              </span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-500 text-white">
+                D
+              </span>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  value={dropset.weight}
+                  onChange={(e) =>
+                    updateDropsetValue(
+                      exerciseId,
+                      setIndex,
+                      dIndex,
+                      'weight',
+                      parseFloat(e.target.value) || 0
+                    )
+                  }
+                  className="w-12 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-orange-200 dark:border-orange-700 text-sm font-bold"
+                />
+                <span className="text-xs text-gray-500">kg</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  value={dropset.reps}
+                  onChange={(e) =>
+                    updateDropsetValue(
+                      exerciseId,
+                      setIndex,
+                      dIndex,
+                      'reps',
+                      parseInt(e.target.value) || 0
+                    )
+                  }
+                  className="w-12 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-orange-200 dark:border-orange-700 text-sm font-bold"
+                />
+                <span className="text-xs text-gray-500">reps</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default WorkoutSession;

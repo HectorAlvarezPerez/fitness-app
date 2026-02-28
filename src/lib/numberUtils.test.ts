@@ -15,4 +15,3 @@ describe('parseLocaleDecimal', () => {
     expect(parseLocaleDecimal('')).toBeNull();
   });
 });
-

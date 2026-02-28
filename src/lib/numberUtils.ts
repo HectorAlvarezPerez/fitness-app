@@ -9,4 +9,3 @@ export const parseLocaleDecimal = (rawValue: string): number | null => {
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
 };
-

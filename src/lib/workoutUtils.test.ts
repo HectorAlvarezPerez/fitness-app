@@ -4,9 +4,7 @@ import { buildLastPerformanceMap, getSetCompletionCounts, isPartialWorkout } fro
 describe('workoutUtils', () => {
   it('detects partial workouts', () => {
     const workout = {
-      exercises_completed: [
-        { sets: [{ completed: true }, { completed: false }] },
-      ],
+      exercises_completed: [{ sets: [{ completed: true }, { completed: false }] }],
     };
 
     const counts = getSetCompletionCounts(workout);
@@ -17,9 +15,7 @@ describe('workoutUtils', () => {
 
   it('detects completed workouts', () => {
     const workout = {
-      exercises_completed: [
-        { sets: [{ completed: true }, { completed: true }] },
-      ],
+      exercises_completed: [{ sets: [{ completed: true }, { completed: true }] }],
     };
 
     expect(isPartialWorkout(workout)).toBe(false);
@@ -45,9 +41,7 @@ describe('workoutUtils', () => {
         ],
       },
       {
-        exercises_completed: [
-          { name: 'Squat', sets: [{ reps: 3, weight: 110 }] },
-        ],
+        exercises_completed: [{ name: 'Squat', sets: [{ reps: 3, weight: 110 }] }],
       },
     ];
 

@@ -32,4 +32,3 @@ describe('activeWorkout utils', () => {
     expect(restored.exercises).toHaveLength(1);
   });
 });
-

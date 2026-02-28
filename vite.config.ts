@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src'),
-      }
+      },
     },
     build: {
       chunkSizeWarningLimit: 1000,
@@ -23,10 +23,10 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: {
             vendor: ['react', 'react-dom', 'react-router-dom', '@supabase/supabase-js'],
-            ui: ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities', 'recharts']
-          }
-        }
-      }
-    }
+            ui: ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities', 'recharts'],
+          },
+        },
+      },
+    },
   };
 });

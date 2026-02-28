@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  buildExercisePayload,
-  canEditExercise,
-  validateExerciseName,
-} from './exerciseUtils';
+import { buildExercisePayload, canEditExercise, validateExerciseName } from './exerciseUtils';
 
 describe('exerciseUtils', () => {
   it('validates name rules and duplicate names', () => {

@@ -47,4 +47,3 @@ describe('accumulateMuscleSeriesDistribution', () => {
     expect(distribution.biceps).toBe(4);
   });
 });
-

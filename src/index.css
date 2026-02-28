@@ -9,7 +9,9 @@ body {
   padding: 0;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
 }
 
@@ -25,11 +27,11 @@ html, body, #root {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0F1214;
+  background: #0f1214;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2A2E35;
+  background: #2a2e35;
   border-radius: 4px;
 }
 

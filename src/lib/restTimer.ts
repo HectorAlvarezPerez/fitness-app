@@ -28,4 +28,3 @@ export const getRestTimerRemainingSeconds = (
   const elapsed = getRestTimerElapsedSeconds(timer, nowMs);
   return clampNonNegative(timer.durationSeconds - elapsed);
 };
-

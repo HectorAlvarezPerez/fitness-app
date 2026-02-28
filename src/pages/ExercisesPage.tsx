@@ -133,7 +133,9 @@ const ExercisesPage: React.FC = () => {
         <section className="rounded-2xl border border-slate-200 dark:border-[#233648] bg-white dark:bg-[#1a2632] p-4 md:p-5">
           <div className="grid gap-3 md:grid-cols-4">
             <label className="md:col-span-2 space-y-1">
-              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Buscar</span>
+              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                Buscar
+              </span>
               <input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
@@ -145,7 +147,9 @@ const ExercisesPage: React.FC = () => {
 
             {muscleOptions.length > 0 && (
               <label className="space-y-1">
-                <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Músculo</span>
+                <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                  Músculo
+                </span>
                 <select
                   value={selectedMuscle}
                   onChange={(event) => setSelectedMuscle(event.target.value)}
@@ -163,7 +167,9 @@ const ExercisesPage: React.FC = () => {
 
             {equipmentOptions.length > 0 && (
               <label className="space-y-1">
-                <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Equipo</span>
+                <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                  Equipo
+                </span>
                 <select
                   value={selectedEquipment}
                   onChange={(event) => setSelectedEquipment(event.target.value)}
@@ -188,13 +194,17 @@ const ExercisesPage: React.FC = () => {
         )}
 
         {!isLoading && error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700">{error}</div>
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700">
+            {error}
+          </div>
         )}
 
         {!isLoading && !error && filteredExercises.length === 0 && (
           <div className="rounded-2xl border border-slate-200 dark:border-[#233648] bg-white dark:bg-[#1a2632] p-10 text-center">
             <p className="font-bold">No hay ejercicios para mostrar.</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Crea un ejercicio nuevo o ajusta los filtros.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Crea un ejercicio nuevo o ajusta los filtros.
+            </p>
           </div>
         )}
 
@@ -214,9 +224,15 @@ const ExercisesPage: React.FC = () => {
                     <div className="flex items-center gap-3">
                       <div className="size-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 dark:border-[#233648] bg-gray-100 dark:bg-[#0f1820] flex items-center justify-center">
                         {hasImage ? (
-                          <img src={exercise.image_url || ''} alt={exercise.name} className="h-full w-full object-cover" />
+                          <img
+                            src={exercise.image_url || ''}
+                            alt={exercise.name}
+                            className="h-full w-full object-cover"
+                          />
                         ) : (
-                          <span className="text-sm font-bold text-gray-500">{exercise.name[0]}</span>
+                          <span className="text-sm font-bold text-gray-500">
+                            {exercise.name[0]}
+                          </span>
                         )}
                       </div>
 

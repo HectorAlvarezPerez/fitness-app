@@ -2,11 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { ExerciseLibraryItem } from '../store/useStore';
-import {
-  buildExercisePayload,
-  canEditExercise,
-  validateExerciseName,
-} from '../lib/exerciseUtils';
+import { buildExercisePayload, canEditExercise, validateExerciseName } from '../lib/exerciseUtils';
 
 type ExerciseRecord = ExerciseLibraryItem & {
   user_id?: string | null;
@@ -38,7 +34,15 @@ const MUSCLE_OPTIONS = [
   'Full Body',
 ];
 
-const EQUIPMENT_OPTIONS = ['Barbell', 'Dumbbell', 'Cable', 'Machine', 'Bodyweight', 'Kettlebell', 'Other'];
+const EQUIPMENT_OPTIONS = [
+  'Barbell',
+  'Dumbbell',
+  'Cable',
+  'Machine',
+  'Bodyweight',
+  'Kettlebell',
+  'Other',
+];
 const CATEGORY_OPTIONS = ['Strength', 'Hypertrophy', 'Cardio', 'Mobility', 'Other'];
 
 const getInitialForm = (): ExerciseFormState => ({
@@ -58,7 +62,9 @@ const ExerciseEditorPage: React.FC = () => {
 
   const [form, setForm] = useState<ExerciseFormState>(getInitialForm());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [existingExercises, setExistingExercises] = useState<Array<{ id: string; name: string }>>([]);
+  const [existingExercises, setExistingExercises] = useState<Array<{ id: string; name: string }>>(
+    []
+  );
   const [isEditable, setIsEditable] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -79,7 +85,10 @@ const ExerciseEditorPage: React.FC = () => {
         setCurrentUserId(user?.id || null);
       }
 
-      const listPromise = supabase.from('exercises').select('id,name').order('name', { ascending: true });
+      const listPromise = supabase
+        .from('exercises')
+        .select('id,name')
+        .order('name', { ascending: true });
       const editPromise = isEditMode
         ? supabase.from('exercises').select('*').eq('id', id!).maybeSingle()
         : Promise.resolve({ data: null, error: null } as const);
@@ -94,7 +103,9 @@ const ExerciseEditorPage: React.FC = () => {
         return;
       }
 
-      setExistingExercises((listResult.data || []).map((item) => ({ id: item.id, name: item.name })));
+      setExistingExercises(
+        (listResult.data || []).map((item) => ({ id: item.id, name: item.name }))
+      );
 
       if (isEditMode) {
         if (editResult.error || !editResult.data) {
@@ -138,7 +149,8 @@ const ExerciseEditorPage: React.FC = () => {
   const validationError = useMemo(() => {
     if (!nameValidation.error) return null;
     if (nameValidation.error === 'Name is required') return 'El nombre es obligatorio.';
-    if (nameValidation.error === 'Name is too long') return 'El nombre no puede superar 120 caracteres.';
+    if (nameValidation.error === 'Name is too long')
+      return 'El nombre no puede superar 120 caracteres.';
     if (nameValidation.error === 'Exercise with this name already exists') {
       return 'Ya existe un ejercicio con ese nombre.';
     }
@@ -236,7 +248,9 @@ const ExerciseEditorPage: React.FC = () => {
         )}
 
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
         )}
 
         <section className="rounded-2xl border border-slate-200 dark:border-[#233648] bg-white dark:bg-[#1a2632] p-4 md:p-5 space-y-5">
@@ -255,7 +269,9 @@ const ExerciseEditorPage: React.FC = () => {
 
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-1 block">
-              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Músculo principal</span>
+              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                Músculo principal
+              </span>
               <select
                 value={form.primary_muscle}
                 onChange={(event) =>
@@ -273,10 +289,14 @@ const ExerciseEditorPage: React.FC = () => {
             </label>
 
             <label className="space-y-1 block">
-              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Equipo</span>
+              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                Equipo
+              </span>
               <select
                 value={form.equipment}
-                onChange={(event) => setForm((current) => ({ ...current, equipment: event.target.value }))}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, equipment: event.target.value }))
+                }
                 className="w-full rounded-xl border border-slate-200 dark:border-[#233648] bg-gray-50 dark:bg-[#0f1820] px-3 py-2.5 text-sm outline-none focus:border-primary"
                 disabled={!isEditable || isSaving}
               >
@@ -289,10 +309,14 @@ const ExerciseEditorPage: React.FC = () => {
             </label>
 
             <label className="space-y-1 block">
-              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Categoría</span>
+              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                Categoría
+              </span>
               <select
                 value={form.category}
-                onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, category: event.target.value }))
+                }
                 className="w-full rounded-xl border border-slate-200 dark:border-[#233648] bg-gray-50 dark:bg-[#0f1820] px-3 py-2.5 text-sm outline-none focus:border-primary"
                 disabled={!isEditable || isSaving}
               >
@@ -305,11 +329,16 @@ const ExerciseEditorPage: React.FC = () => {
             </label>
 
             <label className="space-y-1 block">
-              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Tracking</span>
+              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                Tracking
+              </span>
               <select
                 value={form.tracking_type}
                 onChange={(event) =>
-                  setForm((current) => ({ ...current, tracking_type: event.target.value as 'reps' | 'time' }))
+                  setForm((current) => ({
+                    ...current,
+                    tracking_type: event.target.value as 'reps' | 'time',
+                  }))
                 }
                 className="w-full rounded-xl border border-slate-200 dark:border-[#233648] bg-gray-50 dark:bg-[#0f1820] px-3 py-2.5 text-sm outline-none focus:border-primary"
                 disabled={!isEditable || isSaving}
@@ -321,7 +350,9 @@ const ExerciseEditorPage: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Músculos secundarios</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
+              Músculos secundarios
+            </p>
             <div className="flex flex-wrap gap-2">
               {MUSCLE_OPTIONS.filter((muscle) => muscle !== form.primary_muscle).map((muscle) => {
                 const selected = form.secondary_muscles.includes(muscle);
@@ -330,10 +361,11 @@ const ExerciseEditorPage: React.FC = () => {
                     key={muscle}
                     type="button"
                     onClick={() => handleToggleSecondaryMuscle(muscle)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${selected
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
+                      selected
                         ? 'border-primary bg-primary/10 text-primary'
                         : 'border-slate-200 dark:border-[#233648] text-gray-500 hover:border-primary/40'
-                      }`}
+                    }`}
                     disabled={!isEditable || isSaving}
                   >
                     {muscle}
@@ -344,7 +376,9 @@ const ExerciseEditorPage: React.FC = () => {
           </div>
 
           <label className="space-y-1 block">
-            <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Notas / instrucciones</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+              Notas / instrucciones
+            </span>
             <textarea
               value={form.instructions}
               onChange={(event) =>

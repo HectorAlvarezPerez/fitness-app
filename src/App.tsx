@@ -54,22 +54,26 @@ const App: React.FC = () => {
             <Route path="/exercises/new" element={<ExerciseEditorPage />} />
             <Route path="/exercises/:id/edit" element={<ExerciseEditorPage />} />
 
-
             <Route path="/progress" element={<ProgressPage />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/profile-data" element={<ProfileData />} />
             <Route path="/guide" element={<AppGuide />} />
 
             {/* Catch-all route for diagnostics */}
-            <Route path="*" element={
-              <div className="flex min-h-screen items-center justify-center bg-black text-white">
-                <div className="text-center">
-                  <h1 className="text-4xl font-bold text-red-500 mb-4">404</h1>
-                  <p className="text-xl">Route not found</p>
-                  <p className="text-sm text-gray-500 mt-2">Current Path: {window.location.hash}</p>
+            <Route
+              path="*"
+              element={
+                <div className="flex min-h-screen items-center justify-center bg-black text-white">
+                  <div className="text-center">
+                    <h1 className="text-4xl font-bold text-red-500 mb-4">404</h1>
+                    <p className="text-xl">Route not found</p>
+                    <p className="text-sm text-gray-500 mt-2">
+                      Current Path: {window.location.hash}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            } />
+              }
+            />
           </Route>
         </Routes>
       </ErrorBoundary>
@@ -85,6 +89,6 @@ const ScrollToTop = () => {
   }, [pathname]);
 
   return null;
-}
+};
 
 export default App;

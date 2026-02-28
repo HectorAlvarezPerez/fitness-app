@@ -103,7 +103,9 @@ const PersonalRecordsPage: React.FC = () => {
         <section className="rounded-2xl border border-slate-200 dark:border-[#233648] bg-white dark:bg-[#1a2632] p-4 md:p-5">
           <div className="grid gap-3 md:grid-cols-4">
             <label className="md:col-span-2 space-y-1">
-              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Buscar</span>
+              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                Buscar
+              </span>
               <input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
@@ -114,7 +116,9 @@ const PersonalRecordsPage: React.FC = () => {
             </label>
 
             <label className="space-y-1">
-              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Filtro</span>
+              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                Filtro
+              </span>
               <select
                 value={prType}
                 onChange={(event) => setPrType(event.target.value as PersonalRecordTypeFilter)}
@@ -128,7 +132,9 @@ const PersonalRecordsPage: React.FC = () => {
             </label>
 
             <label className="space-y-1">
-              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Ordenar</span>
+              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                Ordenar
+              </span>
               <select
                 value={sortBy}
                 onChange={(event) => setSortBy(event.target.value as PersonalRecordSort)}
@@ -199,7 +205,9 @@ const PersonalRecordsPage: React.FC = () => {
                     <div>
                       <p className="font-bold text-slate-900 dark:text-white">{row.exerciseName}</p>
                       {row.primaryMuscle && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{row.primaryMuscle}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                          {row.primaryMuscle}
+                        </p>
                       )}
                     </div>
 
@@ -213,7 +221,9 @@ const PersonalRecordsPage: React.FC = () => {
                     </p>
                     <p className="text-sm text-slate-700 dark:text-gray-200">
                       <span className="md:hidden text-gray-500">Time: </span>
-                      {typeof row.bestTimeSeconds === 'number' ? formatDuration(row.bestTimeSeconds) : '—'}
+                      {typeof row.bestTimeSeconds === 'number'
+                        ? formatDuration(row.bestTimeSeconds)
+                        : '—'}
                     </p>
                     <p className="text-sm text-slate-500 dark:text-gray-400">
                       <span className="md:hidden text-gray-500">Updated: </span>

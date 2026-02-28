@@ -43,4 +43,3 @@ describe('restTimer utils', () => {
     ).toBe(75);
   });
 });
-

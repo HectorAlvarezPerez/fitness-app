@@ -15,12 +15,15 @@ export const normalizeMuscleName = (rawMuscle: string) => {
   const muscle = rawMuscle.toLowerCase();
 
   if (muscle.includes('pecho') || muscle.includes('chest')) return 'pecho';
-  if (muscle.includes('espald') || muscle.includes('back') || muscle.includes('dorsal')) return 'espalda';
-  if (muscle.includes('hombro') || muscle.includes('shoulder') || muscle.includes('deltoid')) return 'hombros';
+  if (muscle.includes('espald') || muscle.includes('back') || muscle.includes('dorsal'))
+    return 'espalda';
+  if (muscle.includes('hombro') || muscle.includes('shoulder') || muscle.includes('deltoid'))
+    return 'hombros';
   if (muscle.includes('biceps') || muscle.includes('bíceps')) return 'biceps';
   if (muscle.includes('triceps') || muscle.includes('tríceps')) return 'triceps';
   if (muscle.includes('cuad') || muscle.includes('quad')) return 'cuadriceps';
-  if (muscle.includes('femoral') || muscle.includes('isquio') || muscle.includes('hamstring')) return 'isquios';
+  if (muscle.includes('femoral') || muscle.includes('isquio') || muscle.includes('hamstring'))
+    return 'isquios';
   if (muscle.includes('gemel') || muscle.includes('calves')) return 'gemelos';
   if (muscle.includes('glut') || muscle.includes('glutes')) return 'gluteos';
   if (muscle.includes('abdo') || muscle.includes('core')) return 'abs';
@@ -47,7 +50,8 @@ export const accumulateMuscleSeriesDistribution = (
     const seriesCount = getExerciseSeriesCount(exercise);
     if (seriesCount <= 0) return;
 
-    const primaryRaw = exercise.primaryMuscle || exercise.primary_muscle || exercise.muscleGroup || '';
+    const primaryRaw =
+      exercise.primaryMuscle || exercise.primary_muscle || exercise.muscleGroup || '';
     const primary = primaryRaw ? normalizeMuscleName(primaryRaw) : '';
     if (!primary) return;
 
@@ -78,4 +82,3 @@ export const accumulateMuscleSeriesDistribution = (
 
   return distribution;
 };
-

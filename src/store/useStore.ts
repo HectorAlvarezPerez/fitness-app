@@ -47,7 +47,6 @@ export interface UserData {
   default_weight_kg?: number;
 }
 
-
 export interface ExerciseLibraryItem {
   id: string;
   name: string;
@@ -95,7 +94,7 @@ export interface ActiveWorkoutExercise {
   }>;
 }
 
-export interface ActiveWorkoutRestTimer extends PersistedRestTimer { }
+export interface ActiveWorkoutRestTimer extends PersistedRestTimer {}
 
 export interface ActiveWorkout {
   id?: string;
@@ -140,11 +139,11 @@ const normalizeActiveWorkoutExercises = (exercises: ActiveWorkoutExercise[]) =>
       restSeconds: Number.isFinite(exercise.restSeconds)
         ? Math.max(0, Math.round(exercise.restSeconds))
         : Math.max(
-          0,
-          Math.round(
-            exercise.sets?.find((set) => typeof set.restSeconds === 'number')?.restSeconds || 90
-          )
-        ),
+            0,
+            Math.round(
+              exercise.sets?.find((set) => typeof set.restSeconds === 'number')?.restSeconds || 90
+            )
+          ),
       sets: Array.isArray(exercise.sets) ? ensureSetIds(exercise.sets) : [],
     }));
 
@@ -245,7 +244,9 @@ interface AppState {
   // Body Measurements
   bodyMeasurements: BodyMeasurement[];
   loadBodyMeasurements: () => Promise<void>;
-  addBodyMeasurement: (measurement: Omit<BodyMeasurement, 'id' | 'user_id' | 'created_at'>) => Promise<void>;
+  addBodyMeasurement: (
+    measurement: Omit<BodyMeasurement, 'id' | 'user_id' | 'created_at'>
+  ) => Promise<void>;
   deleteBodyMeasurement: (id: string) => Promise<void>;
 
   // Personal Records
@@ -267,7 +268,13 @@ interface AppState {
 
   // Routine CRUD
   loadRoutines: () => Promise<void>;
-  saveRoutine: (name: string, exercises: Exercise[], id?: string, folderId?: string | null, defaultRestSeconds?: number) => Promise<{ data: Routine | null; error: string | null }>;
+  saveRoutine: (
+    name: string,
+    exercises: Exercise[],
+    id?: string,
+    folderId?: string | null,
+    defaultRestSeconds?: number
+  ) => Promise<{ data: Routine | null; error: string | null }>;
   deleteRoutine: (id: string) => Promise<void>;
   setCurrentRoutineId: (id: string | null) => void;
 
@@ -280,7 +287,9 @@ interface AppState {
 
   // Workout History
   loadWorkoutHistory: () => Promise<void>;
-  saveWorkoutSession: (session: Omit<WorkoutSession, 'id' | 'user_id' | 'created_at'>) => Promise<void>;
+  saveWorkoutSession: (
+    session: Omit<WorkoutSession, 'id' | 'user_id' | 'created_at'>
+  ) => Promise<void>;
   deleteWorkoutSession: (sessionId: string) => Promise<void>;
   deleteWorkoutSessions: (ids: string[]) => Promise<void>;
 
@@ -291,7 +300,10 @@ interface AppState {
   addActiveWorkoutExercise: (exercise: ExerciseLibraryItem) => Promise<void>;
   updateActiveWorkoutExerciseNotes: (exerciseId: string, notes: string) => Promise<void>;
   updateActiveWorkoutExerciseRest: (exerciseId: string, restSeconds: number) => Promise<void>;
-  updateWorkoutExerciseSets: (exerciseId: string, sets: ActiveWorkoutExercise['sets']) => Promise<void>;
+  updateWorkoutExerciseSets: (
+    exerciseId: string,
+    sets: ActiveWorkoutExercise['sets']
+  ) => Promise<void>;
   setActiveWorkoutPosition: (exerciseId: string, setIndex: number) => Promise<void>;
   startRestTimer: (exerciseId: string, setIndex: number, durationSeconds: number) => Promise<void>;
   clearRestTimer: () => Promise<void>;
@@ -315,7 +327,11 @@ export const useStore = create<AppState>()(
           id: '1',
           name: 'Press de Banca Plano',
           muscleGroup: 'Pecho',
-          sets: [{ reps: 8, weight: 85 }, { reps: 8, weight: 85 }, { reps: 8, weight: 85 }]
+          sets: [
+            { reps: 8, weight: 85 },
+            { reps: 8, weight: 85 },
+            { reps: 8, weight: 85 },
+          ],
         },
       ],
       stats: {
@@ -360,7 +376,9 @@ export const useStore = create<AppState>()(
       userData: null,
 
       loadUserData: async () => {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (user) {
           // Fetch additional profile data
           const { data: profile } = await supabase
@@ -380,7 +398,7 @@ export const useStore = create<AppState>()(
               default_sets_count: profile?.default_sets_count || 3,
               default_reps_count: profile?.default_reps_count || 10,
               default_weight_kg: profile?.default_weight_kg || 20,
-            }
+            },
           });
         } else {
           set({ userData: null });
@@ -388,27 +406,33 @@ export const useStore = create<AppState>()(
       },
 
       setRoutineName: (name) => set({ routineName: name }),
-      addExercise: (exercise) => set((state) => ({
-        exercises: [...state.exercises, normalizeExerciseSets(exercise)],
-      })),
-      removeExercise: (id) => set((state) => ({ exercises: state.exercises.filter((e) => e.id !== id) })),
-      updateExercise: (id, updates) => set((state) => {
-        const normalizedUpdates = {
-          ...updates,
-          sets: Array.isArray(updates.sets) ? ensureSetIds(updates.sets) : updates.sets,
-        };
-        return {
-          exercises: state.exercises.map((e) =>
-            e.id === id ? { ...e, ...normalizedUpdates } : e
-          ),
-        };
-      }),
+      addExercise: (exercise) =>
+        set((state) => ({
+          exercises: [...state.exercises, normalizeExerciseSets(exercise)],
+        })),
+      removeExercise: (id) =>
+        set((state) => ({ exercises: state.exercises.filter((e) => e.id !== id) })),
+      updateExercise: (id, updates) =>
+        set((state) => {
+          const normalizedUpdates = {
+            ...updates,
+            sets: Array.isArray(updates.sets) ? ensureSetIds(updates.sets) : updates.sets,
+          };
+          return {
+            exercises: state.exercises.map((e) =>
+              e.id === id ? { ...e, ...normalizedUpdates } : e
+            ),
+          };
+        }),
       setExercises: (exercises) => set({ exercises: exercises.map(normalizeExerciseSets) }),
-      updateOnboardingData: (data) => set((state) => ({ onboardingData: { ...state.onboardingData, ...data } })),
+      updateOnboardingData: (data) =>
+        set((state) => ({ onboardingData: { ...state.onboardingData, ...data } })),
 
       // Routine Management Functions
       loadRoutines: async () => {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return;
 
         const { data, error } = await supabase
@@ -422,11 +446,22 @@ export const useStore = create<AppState>()(
         }
       },
 
-      saveRoutine: async (name: string, exercises: Exercise[], id?: string, folderId?: string | null, defaultRestSeconds?: number) => {
-        const { data: { user } } = await supabase.auth.getUser();
+      saveRoutine: async (
+        name: string,
+        exercises: Exercise[],
+        id?: string,
+        folderId?: string | null,
+        defaultRestSeconds?: number
+      ) => {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) {
           console.error('saveRoutine: No authenticated user');
-          return { data: null, error: 'No se detectó un usuario autenticado. Por favor inicia sesión.' };
+          return {
+            data: null,
+            error: 'No se detectó un usuario autenticado. Por favor inicia sesión.',
+          };
         }
 
         const routineData: any = {
@@ -490,7 +525,9 @@ export const useStore = create<AppState>()(
 
       // --- Folder Management Functions ---
       loadFolders: async () => {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return;
 
         const { data, error } = await supabase
@@ -505,20 +542,24 @@ export const useStore = create<AppState>()(
       },
 
       createFolder: async (name: string, color?: string) => {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return null;
 
         const folders = get().routineFolders;
-        const maxOrder = folders.length > 0 ? Math.max(...folders.map(f => f.order_index)) : 0;
+        const maxOrder = folders.length > 0 ? Math.max(...folders.map((f) => f.order_index)) : 0;
 
         const { data, error } = await supabase
           .from('routine_folders')
-          .insert([{
-            user_id: user.id,
-            name,
-            color: color || '#3b82f6',
-            order_index: maxOrder + 1
-          }])
+          .insert([
+            {
+              user_id: user.id,
+              name,
+              color: color || '#3b82f6',
+              order_index: maxOrder + 1,
+            },
+          ])
           .select()
           .single();
 
@@ -542,10 +583,7 @@ export const useStore = create<AppState>()(
 
       deleteFolder: async (id: string) => {
         // Move routines out of the folder before deleting
-        await supabase
-          .from('routines')
-          .update({ folder_id: null })
-          .eq('folder_id', id);
+        await supabase.from('routines').update({ folder_id: null }).eq('folder_id', id);
 
         await supabase.from('routine_folders').delete().eq('id', id);
         await get().loadFolders();
@@ -564,20 +602,24 @@ export const useStore = create<AppState>()(
       },
 
       duplicateRoutine: async (routineId: string) => {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return null;
 
-        const routine = get().savedRoutines.find(r => r.id === routineId);
+        const routine = get().savedRoutines.find((r) => r.id === routineId);
         if (!routine) return null;
 
         const { data, error } = await supabase
           .from('routines')
-          .insert([{
-            user_id: user.id,
-            name: `${routine.name} (copia)`,
-            exercises: routine.exercises,
-            folder_id: routine.folder_id
-          }])
+          .insert([
+            {
+              user_id: user.id,
+              name: `${routine.name} (copia)`,
+              exercises: routine.exercises,
+              folder_id: routine.folder_id,
+            },
+          ])
           .select()
           .single();
 
@@ -606,25 +648,28 @@ export const useStore = create<AppState>()(
 
       getFilteredExercises: () => {
         const state = get();
-        let filtered = state.exerciseLibrary.filter((ex): ex is ExerciseLibraryItem => !!ex && typeof ex.name === 'string');
+        let filtered = state.exerciseLibrary.filter(
+          (ex): ex is ExerciseLibraryItem => !!ex && typeof ex.name === 'string'
+        );
 
         if (state.selectedMuscleFilter) {
-          filtered = filtered.filter(ex => ex.primary_muscle === state.selectedMuscleFilter);
+          filtered = filtered.filter((ex) => ex.primary_muscle === state.selectedMuscleFilter);
         }
 
         if (state.selectedEquipmentFilter) {
-          filtered = filtered.filter(ex => ex.equipment === state.selectedEquipmentFilter);
+          filtered = filtered.filter((ex) => ex.equipment === state.selectedEquipmentFilter);
         }
 
         if (state.exerciseSearchQuery) {
           const normalize = (str: string) =>
-            str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            str
+              .toLowerCase()
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '');
 
           const query = normalize(state.exerciseSearchQuery);
 
-          filtered = filtered.filter(ex =>
-            normalize(ex.name).includes(query)
-          );
+          filtered = filtered.filter((ex) => normalize(ex.name).includes(query));
         }
 
         return filtered;
@@ -632,7 +677,9 @@ export const useStore = create<AppState>()(
 
       // Workout History Functions
       loadWorkoutHistory: async () => {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return;
 
         const { data, error } = await supabase
@@ -660,7 +707,7 @@ export const useStore = create<AppState>()(
           // 3. Consistency (Workouts in last 7 days vs Goal of 3)
           const oneWeekAgo = new Date();
           oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-          const workoutsLastWeek = data.filter(w => new Date(w.completed_at) > oneWeekAgo).length;
+          const workoutsLastWeek = data.filter((w) => new Date(w.completed_at) > oneWeekAgo).length;
           const consistency = Math.min(100, Math.round((workoutsLastWeek / 3) * 100)); // Assuming 3 workouts/week goal
 
           // 4. Streak (Weeks with at least 1 workout) - Simple approximation
@@ -676,14 +723,16 @@ export const useStore = create<AppState>()(
               recovery,
               totalVolume,
               consistency,
-              streak
-            }
+              streak,
+            },
           });
         }
       },
 
       saveWorkoutSession: async (session) => {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return;
 
         const { error } = await supabase
@@ -697,7 +746,9 @@ export const useStore = create<AppState>()(
 
       deleteWorkoutSession: async (id: string) => {
         try {
-          const { data: { user } } = await supabase.auth.getUser();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
           if (!user) return;
 
           const { error } = await supabase
@@ -719,7 +770,9 @@ export const useStore = create<AppState>()(
 
       deleteWorkoutSessions: async (ids: string[]) => {
         try {
-          const { data: { user } } = await supabase.auth.getUser();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
           if (!user) return;
 
           const { error } = await supabase
@@ -741,7 +794,9 @@ export const useStore = create<AppState>()(
 
       // Active Workout Functions
       loadActiveWorkout: async () => {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return;
 
         const { data, error } = await supabase
@@ -768,28 +823,33 @@ export const useStore = create<AppState>()(
               restTimer: workoutData.restTimer,
               exercises: normalizedExercises,
               overrideDate: workoutData.overrideDate,
-            }
+            },
           });
         }
       },
 
-      updateWorkoutExerciseSets: async (exerciseId: string, sets: ActiveWorkoutExercise['sets']) => {
+      updateWorkoutExerciseSets: async (
+        exerciseId: string,
+        sets: ActiveWorkoutExercise['sets']
+      ) => {
         const state = get();
         if (!state.activeWorkout) return;
 
         const normalizedSets = ensureSetIds(sets);
         const safeExercises = Array.isArray(state.activeWorkout.exercises)
-          ? state.activeWorkout.exercises.filter((ex): ex is ActiveWorkoutExercise => !!ex && typeof ex.exerciseId === 'string')
+          ? state.activeWorkout.exercises.filter(
+              (ex): ex is ActiveWorkoutExercise => !!ex && typeof ex.exerciseId === 'string'
+            )
           : [];
-        const updatedExercises = safeExercises.map(ex =>
+        const updatedExercises = safeExercises.map((ex) =>
           ex.exerciseId === exerciseId
             ? {
-              ...ex,
-              sets: normalizedSets.map((set) => ({
-                ...set,
-                restSeconds: ex.restSeconds,
-              })),
-            }
+                ...ex,
+                sets: normalizedSets.map((set) => ({
+                  ...set,
+                  restSeconds: ex.restSeconds,
+                })),
+              }
             : ex
         );
 
@@ -797,8 +857,8 @@ export const useStore = create<AppState>()(
           activeWorkout: {
             ...state.activeWorkout,
             currentExerciseId: exerciseId,
-            exercises: updatedExercises
-          }
+            exercises: updatedExercises,
+          },
         });
 
         await get().saveActiveWorkoutProgress();
@@ -809,9 +869,11 @@ export const useStore = create<AppState>()(
         if (!state.activeWorkout) return;
 
         const safeExercises = Array.isArray(state.activeWorkout.exercises)
-          ? state.activeWorkout.exercises.filter((ex): ex is ActiveWorkoutExercise => !!ex && typeof ex.exerciseId === 'string')
+          ? state.activeWorkout.exercises.filter(
+              (ex): ex is ActiveWorkoutExercise => !!ex && typeof ex.exerciseId === 'string'
+            )
           : [];
-        const updatedExercises = safeExercises.map(ex =>
+        const updatedExercises = safeExercises.map((ex) =>
           ex.exerciseId === exerciseId ? { ...ex, notes } : ex
         );
 
@@ -819,8 +881,8 @@ export const useStore = create<AppState>()(
           activeWorkout: {
             ...state.activeWorkout,
             currentExerciseId: exerciseId,
-            exercises: updatedExercises
-          }
+            exercises: updatedExercises,
+          },
         });
 
         await get().saveActiveWorkoutProgress();
@@ -832,7 +894,9 @@ export const useStore = create<AppState>()(
 
         const safeRestSeconds = toSafeRestSeconds(restSeconds);
         const safeExercises = Array.isArray(state.activeWorkout.exercises)
-          ? state.activeWorkout.exercises.filter((ex): ex is ActiveWorkoutExercise => !!ex && typeof ex.exerciseId === 'string')
+          ? state.activeWorkout.exercises.filter(
+              (ex): ex is ActiveWorkoutExercise => !!ex && typeof ex.exerciseId === 'string'
+            )
           : [];
 
         const updatedExercises = safeExercises.map((exercise) => {
@@ -979,11 +1043,15 @@ export const useStore = create<AppState>()(
         const state = get();
         if (!state.activeWorkout) return;
 
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return;
 
         const safeExercises = Array.isArray(state.activeWorkout.exercises)
-          ? state.activeWorkout.exercises.filter((ex): ex is ActiveWorkoutExercise => !!ex && typeof ex.exerciseId === 'string')
+          ? state.activeWorkout.exercises.filter(
+              (ex): ex is ActiveWorkoutExercise => !!ex && typeof ex.exerciseId === 'string'
+            )
           : [];
 
         const workoutData = buildActiveWorkoutDataPayload({
@@ -1003,14 +1071,16 @@ export const useStore = create<AppState>()(
               paused_at: state.activeWorkout.pausedAt || null,
               total_paused_ms: state.activeWorkout.totalPausedMs || 0,
             },
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           })
           .eq('user_id', user.id);
       },
 
       startEmptyWorkout: async (overrideDate?: string) => {
         try {
-          const { data: { user } } = await supabase.auth.getUser();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
           if (!user) {
             console.error('No user found');
             return false;
@@ -1034,18 +1104,21 @@ export const useStore = create<AppState>()(
           const workoutData = buildActiveWorkoutDataPayload(activeWorkout);
           const { data, error } = await supabase
             .from('active_workouts')
-            .upsert({
-              user_id: user.id,
-              routine_id: null,
-              routine_name: activeWorkout.routineName,
-              started_at: activeWorkout.startedAt,
-              workout_data: {
-                ...workoutData,
-                is_paused: false,
-                paused_at: null,
-                total_paused_ms: 0,
-              }
-            }, { onConflict: 'user_id' })
+            .upsert(
+              {
+                user_id: user.id,
+                routine_id: null,
+                routine_name: activeWorkout.routineName,
+                started_at: activeWorkout.startedAt,
+                workout_data: {
+                  ...workoutData,
+                  is_paused: false,
+                  paused_at: null,
+                  total_paused_ms: 0,
+                },
+              },
+              { onConflict: 'user_id' }
+            )
             .select()
             .single();
 
@@ -1072,7 +1145,8 @@ export const useStore = create<AppState>()(
 
         const trackingType = exercise.tracking_type || 'reps';
         const defaultSets = state.userData?.default_sets_count || 3;
-        const defaultReps = state.userData?.default_reps_count ?? (trackingType === 'time' ? 30 : 10);
+        const defaultReps =
+          state.userData?.default_reps_count ?? (trackingType === 'time' ? 30 : 10);
         const defaultWeight = state.userData?.default_weight_kg ?? 0;
         const restSeconds = state.userData?.default_rest_seconds ?? 90;
 
@@ -1088,8 +1162,8 @@ export const useStore = create<AppState>()(
             id: createId('set'),
             reps: defaultReps,
             weight: trackingType === 'time' ? 0 : defaultWeight,
-            completed: false
-          }))
+            completed: false,
+          })),
         };
 
         const updatedExercises = [...state.activeWorkout.exercises, newExercise];
@@ -1099,8 +1173,8 @@ export const useStore = create<AppState>()(
             ...state.activeWorkout,
             currentExerciseId: newExercise.exerciseId,
             currentSetIndex: 0,
-            exercises: updatedExercises
-          }
+            exercises: updatedExercises,
+          },
         });
 
         await get().saveActiveWorkoutProgress();
@@ -1108,7 +1182,9 @@ export const useStore = create<AppState>()(
 
       startWorkout: async (routine: Routine, overrideDate?: string) => {
         try {
-          const { data: { user } } = await supabase.auth.getUser();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
           if (!user) {
             console.error('No user found');
             return false;
@@ -1121,18 +1197,23 @@ export const useStore = create<AppState>()(
             history = get().workoutHistory;
           }
 
-          const exercises: ActiveWorkoutExercise[] = routine.exercises.map(ex => {
+          const exercises: ActiveWorkoutExercise[] = routine.exercises.map((ex) => {
             // Handle new format (sets array) vs old format (sets number)
-            let parsedSets: { reps: number; weight: number; isWarmup?: boolean; dropsets?: Array<{ reps: number; weight: number }> }[] = [];
+            let parsedSets: {
+              reps: number;
+              weight: number;
+              isWarmup?: boolean;
+              dropsets?: Array<{ reps: number; weight: number }>;
+            }[] = [];
 
             if (Array.isArray(ex.sets)) {
               // New format - preserve dropsets and isWarmup
-              parsedSets = ex.sets.map(s => ({
+              parsedSets = ex.sets.map((s) => ({
                 id: s.id || createId('set'),
                 reps: s.reps,
                 weight: s.weight,
                 isWarmup: s.isWarmup,
-                dropsets: s.dropsets
+                dropsets: s.dropsets,
               }));
             } else if (typeof ex.sets === 'number') {
               // Backward compatibility for old format
@@ -1142,7 +1223,7 @@ export const useStore = create<AppState>()(
               parsedSets = Array.from({ length: setsCount }, () => ({
                 id: createId('set'),
                 reps,
-                weight
+                weight,
               }));
             } else {
               // Fallback
@@ -1150,12 +1231,14 @@ export const useStore = create<AppState>()(
             }
 
             // Find last session with this exercise (by name)
-            const lastSession = history.find(session =>
+            const lastSession = history.find((session) =>
               session.exercises_completed?.some((e: any) => e.name === ex.name)
             );
 
             if (lastSession) {
-              const lastExercise = lastSession.exercises_completed.find((e: any) => e.name === ex.name);
+              const lastExercise = lastSession.exercises_completed.find(
+                (e: any) => e.name === ex.name
+              );
               if (lastExercise && lastExercise.sets) {
                 // Apply last weights/reps to current sets
                 parsedSets = parsedSets.map((defaultSet, index) => {
@@ -1164,7 +1247,7 @@ export const useStore = create<AppState>()(
                     return {
                       ...defaultSet,
                       reps: lastSet.reps,
-                      weight: lastSet.weight
+                      weight: lastSet.weight,
                     };
                   }
                   return defaultSet;
@@ -1174,7 +1257,10 @@ export const useStore = create<AppState>()(
 
             // Use exercise's restSeconds, fallback to routine's default, then user's default, then 90
             const restSeconds = toSafeRestSeconds(
-              ex.restSeconds || routine.default_rest_seconds || get().userData?.default_rest_seconds || 90
+              ex.restSeconds ||
+                routine.default_rest_seconds ||
+                get().userData?.default_rest_seconds ||
+                90
             );
 
             return {
@@ -1189,14 +1275,14 @@ export const useStore = create<AppState>()(
               notes: ex.notes, // Copy notes from routine
               includesBodyweight: ex.includesBodyweight, // Pass bodyweight flag
               trackingType: ex.trackingType || 'reps', // Pass tracking type (reps or time)
-              sets: parsedSets.map(s => ({
+              sets: parsedSets.map((s) => ({
                 id: s.id || createId('set'),
                 reps: s.reps,
                 weight: s.weight,
                 completed: false,
                 isWarmup: s.isWarmup,
-                dropsets: s.dropsets?.map(d => ({ ...d, completed: false }))
-              }))
+                dropsets: s.dropsets?.map((d) => ({ ...d, completed: false })),
+              })),
             };
           });
 
@@ -1212,24 +1298,27 @@ export const useStore = create<AppState>()(
             currentExerciseId: exercises[0]?.exerciseId,
             currentSetIndex: 0,
             restTimer: null,
-            exercises
+            exercises,
           };
 
           const workoutData = buildActiveWorkoutDataPayload(activeWorkout);
           const { data, error } = await supabase
             .from('active_workouts')
-            .upsert({
-              user_id: user.id,
-              routine_id: routine.id,
-              routine_name: routine.name,
-              started_at: activeWorkout.startedAt,
-              workout_data: {
-                ...workoutData,
-                is_paused: false,
-                paused_at: null,
-                total_paused_ms: 0,
-              }
-            }, { onConflict: 'user_id' })
+            .upsert(
+              {
+                user_id: user.id,
+                routine_id: routine.id,
+                routine_name: routine.name,
+                started_at: activeWorkout.startedAt,
+                workout_data: {
+                  ...workoutData,
+                  is_paused: false,
+                  paused_at: null,
+                  total_paused_ms: 0,
+                },
+              },
+              { onConflict: 'user_id' }
+            )
             .select()
             .single();
 
@@ -1249,13 +1338,13 @@ export const useStore = create<AppState>()(
         }
       },
 
-
-
       finishWorkout: async () => {
         const state = get();
         if (!state.activeWorkout) return;
 
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return;
 
         const startTime = new Date(state.activeWorkout.startedAt);
@@ -1264,23 +1353,23 @@ export const useStore = create<AppState>()(
 
         let totalVolume = 0;
         const completedExercises = Array.isArray(state.activeWorkout.exercises)
-          ? state.activeWorkout.exercises.filter((ex): ex is ActiveWorkoutExercise => !!ex && Array.isArray(ex.sets))
+          ? state.activeWorkout.exercises.filter(
+              (ex): ex is ActiveWorkoutExercise => !!ex && Array.isArray(ex.sets)
+            )
           : [];
         const userWeight = state.onboardingData?.weight || 0;
 
-        completedExercises.forEach(ex => {
-          ex.sets.forEach(set => {
+        completedExercises.forEach((ex) => {
+          ex.sets.forEach((set) => {
             // Only count completed sets that are NOT warmup sets
             if (set.completed && !set.isWarmup) {
               // For bodyweight exercises (like dips), add user's bodyweight to the weight
-              const effectiveWeight = ex.includesBodyweight
-                ? set.weight + userWeight
-                : set.weight;
+              const effectiveWeight = ex.includesBodyweight ? set.weight + userWeight : set.weight;
               totalVolume += effectiveWeight * set.reps;
 
               // Also count dropset sub-series volume
               if (set.dropsets && set.dropsets.length > 0) {
-                set.dropsets.forEach(dropset => {
+                set.dropsets.forEach((dropset) => {
                   const dropsetWeight = ex.includesBodyweight
                     ? dropset.weight + userWeight
                     : dropset.weight;
@@ -1308,7 +1397,7 @@ export const useStore = create<AppState>()(
           completed_at: completedAt,
           exercises_completed: completedExercises,
           total_volume: totalVolume,
-          duration_minutes: overrideDate ? 60 : durationMinutes
+          duration_minutes: overrideDate ? 60 : durationMinutes,
         });
 
         await supabase.from('active_workouts').delete().eq('user_id', user.id);
@@ -1326,7 +1415,7 @@ export const useStore = create<AppState>()(
           let maxWeight = 0;
           let maxReps = 0;
 
-          ex.sets.forEach(s => {
+          ex.sets.forEach((s) => {
             if (s.completed && s.weight > maxWeight) {
               maxWeight = s.weight;
               maxReps = s.reps;
@@ -1345,12 +1434,24 @@ export const useStore = create<AppState>()(
                 .maybeSingle();
 
               if (existing) {
-                await supabase.from('personal_records').update({ weight: maxWeight, reps: maxReps, date: new Date().toISOString() }).eq('id', existing.id);
+                await supabase
+                  .from('personal_records')
+                  .update({ weight: maxWeight, reps: maxReps, date: new Date().toISOString() })
+                  .eq('id', existing.id);
               } else {
-                await supabase.from('personal_records').insert({ user_id: user.id, exercise_name: ex.name, weight: maxWeight, reps: maxReps });
+                await supabase.from('personal_records').insert({
+                  user_id: user.id,
+                  exercise_name: ex.name,
+                  weight: maxWeight,
+                  reps: maxReps,
+                });
               }
 
-              notificationToShow = { title: '¡Nuevo Récord Personal!', message: `${ex.name}: ${maxWeight}kg`, type: 'pr' as const };
+              notificationToShow = {
+                title: '¡Nuevo Récord Personal!',
+                message: `${ex.name}: ${maxWeight}kg`,
+                type: 'pr' as const,
+              };
             }
           }
         }
@@ -1373,7 +1474,7 @@ export const useStore = create<AppState>()(
               ...state.activeWorkout,
               isPaused: true,
               pausedAt: new Date().toISOString(),
-            }
+            },
           });
           void get().saveActiveWorkoutProgress();
         }
@@ -1382,7 +1483,8 @@ export const useStore = create<AppState>()(
       resumeWorkout: () => {
         const state = get();
         if (state.activeWorkout && state.activeWorkout.isPaused && state.activeWorkout.pausedAt) {
-          const pausedDuration = new Date().getTime() - new Date(state.activeWorkout.pausedAt).getTime();
+          const pausedDuration =
+            new Date().getTime() - new Date(state.activeWorkout.pausedAt).getTime();
           const currentPausedMs = state.activeWorkout.totalPausedMs || 0;
 
           set({
@@ -1391,7 +1493,7 @@ export const useStore = create<AppState>()(
               isPaused: false,
               pausedAt: undefined,
               totalPausedMs: currentPausedMs + pausedDuration,
-            }
+            },
           });
           void get().saveActiveWorkoutProgress();
         }
@@ -1402,13 +1504,12 @@ export const useStore = create<AppState>()(
         if (!state.activeWorkout) return;
 
         try {
-          const { data: { user } } = await supabase.auth.getUser();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
           if (user && state.activeWorkout.id) {
             // Delete from active_workouts table
-            await supabase
-              .from('active_workouts')
-              .delete()
-              .eq('id', state.activeWorkout.id);
+            await supabase.from('active_workouts').delete().eq('id', state.activeWorkout.id);
           }
 
           // Clear local state
@@ -1420,7 +1521,9 @@ export const useStore = create<AppState>()(
 
       // Body Measurements Functions
       loadBodyMeasurements: async () => {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return;
 
         const { data, error } = await supabase
@@ -1435,7 +1538,9 @@ export const useStore = create<AppState>()(
       },
 
       addBodyMeasurement: async (measurement) => {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return;
 
         const { error } = await supabase
@@ -1448,7 +1553,9 @@ export const useStore = create<AppState>()(
       },
 
       deleteBodyMeasurement: async (id: string) => {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return;
 
         const { error } = await supabase
@@ -1465,7 +1572,9 @@ export const useStore = create<AppState>()(
       // Personal Records Implementation
 
       loadPersonalRecords: async () => {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return;
 
         const { data } = await supabase
@@ -1475,7 +1584,7 @@ export const useStore = create<AppState>()(
 
         if (data) {
           const records: Record<string, { weight: number; reps: number; date: string }> = {};
-          data.forEach(r => {
+          data.forEach((r) => {
             records[r.exercise_name] = { weight: r.weight, reps: r.reps, date: r.date };
           });
           set({ personalRecords: records });
@@ -1486,7 +1595,9 @@ export const useStore = create<AppState>()(
 
       syncPersonalRecords: async () => {
         try {
-          const { data: { user } } = await supabase.auth.getUser();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
           if (!user) return;
 
           // 1. Fetch ALL workout history
@@ -1499,16 +1610,21 @@ export const useStore = create<AppState>()(
           if (error || !history) return;
 
           // 2. Recalculate PRs
-          const recalculatedPRs: Record<string, { weight: number; reps: number; date: string }> = {};
+          const recalculatedPRs: Record<string, { weight: number; reps: number; date: string }> =
+            {};
 
-          history.forEach(session => {
+          history.forEach((session) => {
             session.exercises_completed?.forEach((ex: any) => {
               if (ex.sets && Array.isArray(ex.sets)) {
                 ex.sets.forEach((s: any) => {
                   if (s.completed) {
                     const currentMax = recalculatedPRs[ex.name]?.weight || 0;
                     if (s.weight > currentMax) {
-                      recalculatedPRs[ex.name] = { weight: s.weight, reps: s.reps, date: session.completed_at };
+                      recalculatedPRs[ex.name] = {
+                        weight: s.weight,
+                        reps: s.reps,
+                        date: session.completed_at,
+                      };
                     }
                   }
                 });
@@ -1525,18 +1641,17 @@ export const useStore = create<AppState>()(
               exercise_name: name,
               weight: data.weight,
               reps: data.reps,
-              date: data.date
+              date: data.date,
             }));
             await supabase.from('personal_records').insert(prsToInsert);
           }
 
           // 4. Update Local State
           set({
-            personalRecords: recalculatedPRs
+            personalRecords: recalculatedPRs,
           });
-
         } catch (err) {
-          console.error("Error syncing PRs:", err);
+          console.error('Error syncing PRs:', err);
         }
       },
     }),

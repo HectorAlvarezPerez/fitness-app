@@ -1,7 +1,7 @@
-import js from '@eslint/js'
-import globals from 'globals'
-import tseslint from 'typescript-eslint'
-import eslintConfigPrettier from 'eslint-config-prettier'
+import js from '@eslint/js';
+import globals from 'globals';
+import tseslint from 'typescript-eslint';
+import eslintConfigPrettier from 'eslint-config-prettier';
 
 export default [
   {
@@ -26,8 +26,8 @@ export default [
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/ban-ts-comment': 'warn',
-      '@typescript-eslint/no-empty-object-type': 'warn'
+      '@typescript-eslint/no-empty-object-type': 'warn',
     },
   },
   eslintConfigPrettier,
-]
+];
