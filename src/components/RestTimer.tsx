@@ -34,6 +34,8 @@ const playDoneTone = () => {
     }
 };
 
+const notifiedRestTimerInstances = new Set<string>();
+
 const notifyRestDone = () => {
     const notifPref = localStorage.getItem('fitness-rest-timer-notifications');
     if (notifPref === 'off') return;
@@ -86,7 +88,16 @@ export const RestTimer: React.FC<RestTimerProps> = ({
 
     const completeTimer = useCallback(() => {
         if (completedTimerRef.current === timer.instanceId) return;
+        if (notifiedRestTimerInstances.has(timer.instanceId)) return;
+
         completedTimerRef.current = timer.instanceId;
+        notifiedRestTimerInstances.add(timer.instanceId);
+
+        // Avoid unbounded growth in very long sessions.
+        if (notifiedRestTimerInstances.size > 200) {
+            notifiedRestTimerInstances.clear();
+            notifiedRestTimerInstances.add(timer.instanceId);
+        }
 
         playDoneTone();
         notifyRestDone();
