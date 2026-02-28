@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RestTimerStateLike, getRestTimerRemainingSeconds } from '../lib/restTimer';
 
 interface RestTimerProps {
@@ -34,6 +34,37 @@ const playDoneTone = () => {
     }
 };
 
+const notifyRestDone = () => {
+    const notifPref = localStorage.getItem('fitness-rest-timer-notifications');
+    if (notifPref === 'off') return;
+
+    if (!('Notification' in window)) return;
+
+    const show = () => {
+        try {
+            new Notification('⏱ Descanso terminado', {
+                body: 'Hora de la siguiente serie',
+                icon: '/favicon.ico'
+            });
+        } catch {
+            // ignore
+        }
+    };
+
+    if (Notification.permission === 'granted') {
+        show();
+        return;
+    }
+
+    if (Notification.permission === 'default' && document.visibilityState === 'visible') {
+        Notification.requestPermission().then((permission) => {
+            if (permission === 'granted') show();
+        }).catch(() => {
+            // ignore
+        });
+    }
+};
+
 export const RestTimer: React.FC<RestTimerProps> = ({
     timer,
     onComplete,
@@ -53,6 +84,20 @@ export const RestTimer: React.FC<RestTimerProps> = ({
     );
     const isPaused = Boolean(timer.pausedAt);
 
+    const completeTimer = useCallback(() => {
+        if (completedTimerRef.current === timer.instanceId) return;
+        completedTimerRef.current = timer.instanceId;
+
+        playDoneTone();
+        notifyRestDone();
+
+        if (navigator.vibrate) {
+            navigator.vibrate([200, 100, 200]);
+        }
+
+        onComplete?.();
+    }, [timer.instanceId, onComplete]);
+
     useEffect(() => {
         setNowMs(Date.now());
         const interval = setInterval(() => {
@@ -62,6 +107,42 @@ export const RestTimer: React.FC<RestTimerProps> = ({
         return () => clearInterval(interval);
     }, [timer.instanceId, timer.startedAt, timer.durationSeconds, timer.pausedAt, timer.pausedElapsedSeconds]);
 
+    // Fallback for mobile/browser throttling: schedule a one-shot completion check.
+    useEffect(() => {
+        if (isPaused) return;
+
+        const timeoutMs = Math.max(remaining, 0) * 1000;
+        const timeout = window.setTimeout(() => {
+            const liveRemaining = getRestTimerRemainingSeconds(timer, Date.now());
+            if (liveRemaining <= 0) {
+                completeTimer();
+            }
+        }, timeoutMs + 50);
+
+        return () => window.clearTimeout(timeout);
+    }, [timer, remaining, isPaused, completeTimer]);
+
+    // When app returns to foreground (common on iPhone lock/unlock), re-check immediately.
+    useEffect(() => {
+        const syncNow = () => {
+            const now = Date.now();
+            setNowMs(now);
+            if (!timer.pausedAt && getRestTimerRemainingSeconds(timer, now) <= 0) {
+                completeTimer();
+            }
+        };
+
+        window.addEventListener('focus', syncNow);
+        window.addEventListener('pageshow', syncNow);
+        document.addEventListener('visibilitychange', syncNow);
+
+        return () => {
+            window.removeEventListener('focus', syncNow);
+            window.removeEventListener('pageshow', syncNow);
+            document.removeEventListener('visibilitychange', syncNow);
+        };
+    }, [timer, completeTimer]);
+
     useEffect(() => {
         if (remaining > 0) {
             if (completedTimerRef.current === timer.instanceId) {
@@ -70,34 +151,8 @@ export const RestTimer: React.FC<RestTimerProps> = ({
             return;
         }
 
-        if (completedTimerRef.current === timer.instanceId) return;
-
-        completedTimerRef.current = timer.instanceId;
-        playDoneTone();
-
-        // Browser notification (lazy permission request)
-        const notifPref = localStorage.getItem('fitness-rest-timer-notifications');
-        if (notifPref !== 'off') {
-            if ('Notification' in window) {
-                if (Notification.permission === 'granted') {
-                    try { new Notification('⏱ Descanso terminado', { body: 'Hora de la siguiente serie', icon: '/favicon.ico' }); } catch { /* ignore */ }
-                } else if (Notification.permission === 'default') {
-                    Notification.requestPermission().then(p => {
-                        if (p === 'granted') {
-                            try { new Notification('⏱ Descanso terminado', { body: 'Hora de la siguiente serie', icon: '/favicon.ico' }); } catch { /* ignore */ }
-                        }
-                    });
-                }
-            }
-        }
-
-        // Device vibration
-        if (navigator.vibrate) {
-            navigator.vibrate([200, 100, 200]);
-        }
-
-        onComplete?.();
-    }, [remaining, timer.instanceId, onComplete]);
+        completeTimer();
+    }, [remaining, timer.instanceId, completeTimer]);
 
     const progress = timer.durationSeconds > 0
         ? ((timer.durationSeconds - remaining) / timer.durationSeconds) * 100
