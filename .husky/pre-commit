@@ -1,6 +1,9 @@
 #!/usr/bin/env sh
 
-# Block commits if staged changes contain secrets.
+# Format/lint only staged files
+npx lint-staged || exit 1
+
+# Block commits if staged changes contain secrets
 if command -v gitleaks >/dev/null 2>&1; then
   gitleaks protect --staged --redact --verbose
 else
