@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import logoUrl from '../assets/logo-fitness.png';
+import { useStore } from '../store/useStore';
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
+  const resetUserScopedState = useStore((state) => state.resetUserScopedState);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -51,6 +53,15 @@ const LandingPage: React.FC = () => {
       }
     }
     setLoading(false);
+  };
+
+  const handleGuestMode = async () => {
+    setLoading(true);
+    setMessage(null);
+
+    await supabase.auth.signOut();
+    resetUserScopedState();
+    navigate('/onboarding/step1');
   };
 
   return (
@@ -209,12 +220,13 @@ const LandingPage: React.FC = () => {
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
                 ¿Solo quieres echar un vistazo?
               </p>
-              <Link
-                to="/onboarding/step1"
+              <button
+                type="button"
+                onClick={handleGuestMode}
                 className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full border-2 border-gray-200 dark:border-gray-700 font-bold text-sm text-gray-600 dark:text-gray-300 hover:border-primary hover:text-primary transition-all"
               >
                 <span>Continuar como invitado</span>
-              </Link>
+              </button>
             </div>
           </div>
         </div>

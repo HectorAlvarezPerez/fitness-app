@@ -210,6 +210,26 @@ export interface BodyMeasurement {
   created_at: string;
 }
 
+const defaultStats: UserStats = {
+  recovery: 92,
+  totalVolume: 12400,
+  consistency: 15,
+  streak: 5,
+};
+
+const getInitialUserScopedState = () => ({
+  stats: { ...defaultStats },
+  savedRoutines: [] as Routine[],
+  currentRoutineId: null as string | null,
+  routineFolders: [] as RoutineFolder[],
+  workoutHistory: [] as WorkoutSession[],
+  activeWorkout: null as ActiveWorkout | null,
+  bodyMeasurements: [] as BodyMeasurement[],
+  personalRecords: {} as Record<string, { weight: number; reps: number; date: string }>,
+  notification: null as { title: string; message: string; type: 'pr' } | null,
+  userData: null as UserData | null,
+});
+
 interface AppState {
   routineName: string;
   exercises: Exercise[];
@@ -258,6 +278,7 @@ interface AppState {
 
   userData: UserData | null;
   loadUserData: () => Promise<void>;
+  resetUserScopedState: () => void;
 
   setRoutineName: (name: string) => void;
   addExercise: (exercise: Exercise) => void;
@@ -334,12 +355,7 @@ export const useStore = create<AppState>()(
           ],
         },
       ],
-      stats: {
-        recovery: 92,
-        totalVolume: 12400,
-        consistency: 15,
-        streak: 5,
-      },
+      ...getInitialUserScopedState(),
       onboardingData: {
         level: 'Intermedio',
         mainGoal: 'Fuerza',
@@ -347,33 +363,12 @@ export const useStore = create<AppState>()(
         weight: 75,
         height: 175,
       },
-      savedRoutines: [],
-      currentRoutineId: null,
-
-      // Routine Folders
-      routineFolders: [],
 
       // Exercise Library
       exerciseLibrary: [],
       selectedMuscleFilter: null,
       selectedEquipmentFilter: null,
       exerciseSearchQuery: '',
-
-      // Workout History
-      workoutHistory: [],
-
-      // Active Workout
-      activeWorkout: null,
-
-      // Body Measurements
-      bodyMeasurements: [],
-
-      // Personal Records
-
-      personalRecords: {},
-      notification: null,
-
-      userData: null,
 
       loadUserData: async () => {
         const {
@@ -404,6 +399,8 @@ export const useStore = create<AppState>()(
           set({ userData: null });
         }
       },
+
+      resetUserScopedState: () => set(getInitialUserScopedState()),
 
       setRoutineName: (name) => set({ routineName: name }),
       addExercise: (exercise) =>
@@ -1657,6 +1654,35 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'fitness-app-storage',
+      partialize: (state) => ({
+        routineName: state.routineName,
+        exercises: state.exercises,
+        onboardingData: state.onboardingData,
+        exerciseLibrary: state.exerciseLibrary,
+        selectedMuscleFilter: state.selectedMuscleFilter,
+        selectedEquipmentFilter: state.selectedEquipmentFilter,
+        exerciseSearchQuery: state.exerciseSearchQuery,
+      }),
+      merge: (persistedState, currentState) => {
+        if (!persistedState || typeof persistedState !== 'object') {
+          return currentState;
+        }
+
+        const typedPersistedState = persistedState as Partial<AppState>;
+        return {
+          ...currentState,
+          routineName: typedPersistedState.routineName ?? currentState.routineName,
+          exercises: typedPersistedState.exercises ?? currentState.exercises,
+          onboardingData: typedPersistedState.onboardingData ?? currentState.onboardingData,
+          exerciseLibrary: typedPersistedState.exerciseLibrary ?? currentState.exerciseLibrary,
+          selectedMuscleFilter:
+            typedPersistedState.selectedMuscleFilter ?? currentState.selectedMuscleFilter,
+          selectedEquipmentFilter:
+            typedPersistedState.selectedEquipmentFilter ?? currentState.selectedEquipmentFilter,
+          exerciseSearchQuery:
+            typedPersistedState.exerciseSearchQuery ?? currentState.exerciseSearchQuery,
+        };
+      },
     }
   )
 );
