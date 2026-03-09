@@ -619,7 +619,6 @@ const WorkoutSession: React.FC = () => {
                     onPause={() => void pauseRestTimer()}
                     onResume={() => void resumeRestTimer()}
                     onAddSeconds={(seconds) => void extendRestTimer(seconds)}
-                    completeLabel="Siguiente serie"
                   />
                 </div>
               )}
@@ -696,7 +695,6 @@ const WorkoutSession: React.FC = () => {
                 onPause={() => void pauseRestTimer()}
                 onResume={() => void resumeRestTimer()}
                 onAddSeconds={(seconds) => void extendRestTimer(seconds)}
-                completeLabel="Siguiente serie"
               />
             </div>
           )}

@@ -15,6 +15,26 @@ type WorkerBindings = {
 
 const app = new Hono<{ Bindings: WorkerBindings }>();
 
+app.use('*', async (c, next) => {
+  await next();
+
+  c.header('X-Content-Type-Options', 'nosniff');
+  c.header('X-Frame-Options', 'DENY');
+  c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+  c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  c.header('Cross-Origin-Opener-Policy', 'same-origin');
+  c.header('Cross-Origin-Resource-Policy', 'same-origin');
+  c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+});
+
+app.get('/health', (c) =>
+  c.json({
+    ok: true,
+    service: 'fitness-app-worker',
+    timestamp: new Date().toISOString(),
+  })
+);
+
 const getSupabaseClient = (c: { env: WorkerBindings }, accessToken: string) =>
   createClient(c.env.SUPABASE_URL, c.env.SUPABASE_ANON_KEY, {
     global: {

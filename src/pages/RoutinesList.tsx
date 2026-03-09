@@ -132,14 +132,24 @@ const RoutinesList: React.FC = () => {
     const success = await startWorkout(routine);
     if (success) {
       navigate(`/routine/${routine.id}/workout`);
+      return;
     }
+
+    window.alert(
+      'No se pudo iniciar la rutina. Revisa que tengas sesión iniciada y vuelve a intentar.'
+    );
   };
 
   const handleStartEmptyWorkout = async () => {
     const success = await startEmptyWorkout();
     if (success) {
       navigate('/routine/free/workout');
+      return;
     }
+
+    window.alert(
+      'No se pudo iniciar el entrenamiento. Revisa que tengas sesión iniciada y vuelve a intentar.'
+    );
   };
 
   // Group routines by folder

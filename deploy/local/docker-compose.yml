@@ -1,0 +1,23 @@
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: deploy/local/Dockerfile
+      args:
+        # Empty => frontend falls back to window.location.origin
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+    image: fitness-local-app:latest
+    container_name: fitness-local-app
+    restart: unless-stopped
+    network_mode: host
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: fitness-local-tunnel
+    restart: unless-stopped
+    depends_on:
+      - app
+    profiles: ['tunnel']
+    network_mode: host
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}

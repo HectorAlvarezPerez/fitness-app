@@ -1,11 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || window.location.origin;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('CRITICAL WARNING: Missing Supabase environment variables. Detailed logs:');
-  console.log('VITE_SUPABASE_URL:', supabaseUrl ? 'Defined' : 'Undefined/Empty');
+if (!supabaseAnonKey) {
+  console.error('CRITICAL WARNING: Missing Supabase anon key. Detailed logs:');
+  console.log('VITE_SUPABASE_URL:', supabaseUrl ? 'Defined/Fallback origin' : 'Undefined/Empty');
   console.log('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'Defined' : 'Undefined/Empty');
   // We do not throw here to allow the app to render the error boundary or landing page.
   // However, Supabase calls will likely fail.

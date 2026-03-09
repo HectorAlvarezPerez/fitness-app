@@ -9,7 +9,6 @@ interface RestTimerProps {
   onResume?: () => void;
   onAddSeconds?: (seconds: number) => void;
   variant?: 'modal' | 'footer' | 'inline';
-  completeLabel?: string;
 }
 
 const playDoneTone = () => {
@@ -77,7 +76,6 @@ export const RestTimer: React.FC<RestTimerProps> = ({
   onResume,
   onAddSeconds,
   variant = 'modal',
-  completeLabel = 'Saltar',
 }) => {
   const [nowMs, setNowMs] = useState(Date.now());
   const completedTimerRef = useRef<string | null>(null);
@@ -195,8 +193,8 @@ export const RestTimer: React.FC<RestTimerProps> = ({
 
   if (variant === 'footer') {
     return (
-      <div className="bg-slate-900 text-white p-4 flex items-center justify-between shadow-lg border-t border-white/10">
-        <div className="flex items-center gap-4">
+      <div className="bg-slate-900 text-white p-3 sm:p-4 shadow-lg border-t border-white/10">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col">
             <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
               Descanso
@@ -205,28 +203,31 @@ export const RestTimer: React.FC<RestTimerProps> = ({
               {formatTime(remaining)}
             </span>
           </div>
-        </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => onAddSeconds?.(10)}
-            className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 transition-colors text-sm"
-          >
-            +10s
-          </button>
-          <button
-            onClick={handlePauseToggle}
-            className="px-4 py-2 rounded-lg bg-slate-800 text-slate-200 font-bold hover:bg-slate-700 transition-colors text-sm"
-          >
-            {isPaused ? 'Reanudar' : 'Pausar'}
-          </button>
-          <button
-            onClick={handleComplete}
-            className="px-6 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold transition-colors flex items-center gap-2"
-          >
-            {completeLabel}
-            <span className="material-symbols-outlined text-sm">skip_next</span>
-          </button>
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full sm:w-auto">
+            <button
+              onClick={() => onAddSeconds?.(-10)}
+              className="px-3 py-2 rounded-lg bg-slate-800 text-slate-200 font-bold hover:bg-slate-700 transition-colors text-sm"
+            >
+              -10s
+            </button>
+            <button
+              onClick={handlePauseToggle}
+              className="px-3 py-2 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors flex items-center justify-center"
+              aria-label={isPaused ? 'Reanudar descanso' : 'Pausar descanso'}
+              title={isPaused ? 'Reanudar' : 'Pausar'}
+            >
+              <span className="material-symbols-outlined text-[20px]">
+                {isPaused ? 'play_arrow' : 'pause'}
+              </span>
+            </button>
+            <button
+              onClick={() => onAddSeconds?.(10)}
+              className="px-3 py-2 rounded-lg bg-slate-800 text-slate-200 font-bold hover:bg-slate-700 transition-colors text-sm"
+            >
+              +10s
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -271,24 +272,28 @@ export const RestTimer: React.FC<RestTimerProps> = ({
           </div>
         </div>
 
-        <div className="flex gap-2 w-full">
+        <div className="grid grid-cols-3 gap-2 w-full">
+          <button
+            onClick={() => onAddSeconds?.(-10)}
+            className="py-2.5 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-bold text-sm"
+          >
+            -10s
+          </button>
           <button
             onClick={handlePauseToggle}
-            className="flex-1 py-2.5 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-bold text-sm"
+            className="py-2.5 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
+            aria-label={isPaused ? 'Reanudar descanso' : 'Pausar descanso'}
+            title={isPaused ? 'Reanudar' : 'Pausar'}
           >
-            {isPaused ? 'Reanudar' : 'Pausar'}
+            <span className="material-symbols-outlined text-[20px]">
+              {isPaused ? 'play_arrow' : 'pause'}
+            </span>
           </button>
           <button
             onClick={() => onAddSeconds?.(10)}
-            className="flex-1 py-2.5 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-bold text-sm"
+            className="py-2.5 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-bold text-sm"
           >
             +10s
-          </button>
-          <button
-            onClick={handleComplete}
-            className="flex-1 py-2.5 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors font-bold text-sm"
-          >
-            {completeLabel}
           </button>
         </div>
 
@@ -339,24 +344,28 @@ export const RestTimer: React.FC<RestTimerProps> = ({
             </div>
           </div>
 
-          <div className="flex gap-3 w-full">
+          <div className="grid grid-cols-3 gap-3 w-full">
+            <button
+              onClick={() => onAddSeconds?.(-10)}
+              className="py-3 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-bold"
+            >
+              -10s
+            </button>
             <button
               onClick={handlePauseToggle}
-              className="flex-1 py-3 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-bold"
+              className="py-3 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
+              aria-label={isPaused ? 'Reanudar descanso' : 'Pausar descanso'}
+              title={isPaused ? 'Reanudar' : 'Pausar'}
             >
-              {isPaused ? 'Reanudar' : 'Pausar'}
+              <span className="material-symbols-outlined text-[22px]">
+                {isPaused ? 'play_arrow' : 'pause'}
+              </span>
             </button>
             <button
               onClick={() => onAddSeconds?.(10)}
-              className="flex-1 py-3 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-bold"
+              className="py-3 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-bold"
             >
               +10s
-            </button>
-            <button
-              onClick={handleComplete}
-              className="flex-1 py-3 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors font-bold"
-            >
-              {completeLabel}
             </button>
           </div>
 
