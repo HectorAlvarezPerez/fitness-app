@@ -377,12 +377,12 @@ const WorkoutSession: React.FC = () => {
   };
 
   return (
-    <div className="h-full w-full flex overflow-hidden bg-white dark:bg-background-dark">
+    <div className="h-full w-full flex overflow-hidden bg-[linear-gradient(180deg,#08111d_0%,#06101a_40%,#040b13_100%)]">
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto mobile-scroll">
         <div className="flex flex-col max-w-3xl mx-auto pb-[calc(9rem+env(safe-area-inset-bottom)+var(--keyboard-inset,0px))]">
           {/* Header (Mobile Only for Sidebar items) */}
-          <div className="sticky top-0 z-10 bg-white dark:bg-background-dark border-b border-gray-200 dark:border-surface-border p-4 lg:p-6">
+          <div className="sticky top-0 z-10 border-b border-[rgba(73,133,214,0.12)] bg-[rgba(6,14,24,0.92)] p-4 backdrop-blur-xl lg:p-6">
             <div className="flex items-center justify-between mb-3">
               <Link
                 to="/routine"
@@ -417,7 +417,7 @@ const WorkoutSession: React.FC = () => {
               )}
               <button
                 onClick={() => setIsLibraryOpen(true)}
-                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-primary/10 text-primary font-bold hover:bg-primary/20 transition-all"
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[rgba(47,140,255,0.14)] px-3 py-2 font-bold text-[#4ea0ff] transition-all"
               >
                 <span className="material-symbols-outlined text-[18px]">add</span>
                 <span className="hidden sm:inline">Añadir</span>
@@ -426,7 +426,7 @@ const WorkoutSession: React.FC = () => {
 
             {/* Mobile Progress Bar */}
             <div className="lg:hidden flex items-center gap-3">
-              <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div className="h-2 flex-1 rounded-full bg-[rgba(73,133,214,0.12)]">
                 <div
                   className="bg-gradient-to-r from-primary to-orange-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${progress}%` }}
@@ -441,7 +441,7 @@ const WorkoutSession: React.FC = () => {
           {/* Exercises */}
           <div className="p-4 lg:p-6 flex flex-col gap-4">
             {safeExercises.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 p-6 text-center text-gray-500 dark:text-gray-400">
+              <div className="mobile-card border-dashed p-6 text-center text-slate-400">
                 <div className="flex flex-col items-center gap-3">
                   <span className="material-symbols-outlined text-3xl text-primary">
                     playlist_add
@@ -452,7 +452,7 @@ const WorkoutSession: React.FC = () => {
                   </div>
                   <button
                     onClick={() => setIsLibraryOpen(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-white font-bold hover:bg-primary/90 transition-all"
+                    className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] px-4 py-2 font-bold text-white transition-all"
                   >
                     <span className="material-symbols-outlined text-[18px]">add</span>
                     Añadir ejercicio
@@ -464,11 +464,11 @@ const WorkoutSession: React.FC = () => {
             {safeExercises.map((exercise, exIndex) => (
               <div
                 key={exercise.exerciseId}
-                className="rounded-2xl bg-white dark:bg-[#1a2632] border border-slate-200 dark:border-[#233648] overflow-hidden shadow-sm"
+                className="mobile-card overflow-hidden shadow-sm"
               >
                 {/* Exercise Header */}
                 <div
-                  className="p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-[#1f2d3a] transition-colors"
+                  className="cursor-pointer p-4 transition-colors hover:bg-[rgba(47,140,255,0.05)]"
                   onClick={() => {
                     const nextExpanded =
                       expandedExercise === exercise.exerciseId ? null : exercise.exerciseId;
@@ -481,7 +481,7 @@ const WorkoutSession: React.FC = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
+                        <span className="text-xs font-bold text-slate-500">
                           #{exIndex + 1}
                         </span>
                         <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-bold">
@@ -489,13 +489,13 @@ const WorkoutSession: React.FC = () => {
                         </span>
                       </div>
                       <h3 className="text-lg font-bold">{exercise.name}</h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="mt-1 text-sm text-slate-400">
                         {exercise.sets.filter((s) => s.completed).length}/{exercise.sets.length}{' '}
                         series completadas
                       </p>
                     </div>
                     <button className="p-2">
-                      <span className="material-symbols-outlined text-gray-400">
+                      <span className="material-symbols-outlined text-slate-500">
                         {expandedExercise === exercise.exerciseId ? 'expand_less' : 'expand_more'}
                       </span>
                     </button>
@@ -504,7 +504,7 @@ const WorkoutSession: React.FC = () => {
 
                 {/* Sets (collapsible) */}
                 {expandedExercise === exercise.exerciseId && (
-                  <div className="border-t border-gray-200 dark:border-[#233648] p-4 bg-gray-50 dark:bg-[#0f1820]">
+                  <div className="border-t border-[rgba(73,133,214,0.12)] bg-[rgba(10,20,34,0.72)] p-4">
                     {/* Notes Field */}
                     <div className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
                       <div className="relative">
@@ -521,7 +521,7 @@ const WorkoutSession: React.FC = () => {
                           }
                           placeholder="Notas del ejercicio..."
                           rows={2}
-                          className="w-full bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all resize-none"
+                          className="w-full rounded-xl border border-[rgba(73,133,214,0.16)] bg-[rgba(7,16,27,0.86)] py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 transition-all resize-none focus:outline-none focus:border-[#2f8cff] focus:ring-1 focus:ring-[#2f8cff]"
                         />
                       </div>
                       <div className="relative w-full sm:w-24">
@@ -540,7 +540,7 @@ const WorkoutSession: React.FC = () => {
                             )
                           }
                           title="Descanso del ejercicio (segundos)"
-                          className="w-full bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] rounded-xl py-2.5 pl-8 pr-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center transition-all"
+                          className="w-full rounded-xl border border-[rgba(73,133,214,0.16)] bg-[rgba(7,16,27,0.86)] py-2.5 pl-8 pr-2 text-center text-sm text-white transition-all focus:outline-none focus:border-[#2f8cff] focus:ring-1 focus:ring-[#2f8cff]"
                         />
                       </div>
                       {isFreeWorkout && (
@@ -606,7 +606,7 @@ const WorkoutSession: React.FC = () => {
           </div>
 
           {/* Static Footer Container (Mobile Only) */}
-          <div className="lg:hidden fixed bottom-[var(--keyboard-inset,0px)] left-0 right-0 bg-white dark:bg-background-dark border-t border-gray-200 dark:border-surface-border z-30 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="lg:hidden fixed bottom-[var(--keyboard-inset,0px)] left-0 right-0 z-30 border-t border-[rgba(73,133,214,0.12)] bg-[rgba(6,14,24,0.94)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl">
             <div className="w-full space-y-2">
               {/* Timer (if active) - Footer version */}
               {activeWorkout.restTimer && (
@@ -627,7 +627,7 @@ const WorkoutSession: React.FC = () => {
                 {/* Finish Button */}
                 <button
                   onClick={handleFinish}
-                  className="py-3 rounded-xl bg-gradient-to-r from-primary to-orange-600 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all"
+                  className="rounded-xl bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
                 >
                   {progress === 100 ? 'Finalizar' : 'Guardar progreso'}
                 </button>
@@ -646,10 +646,10 @@ const WorkoutSession: React.FC = () => {
       </div>
 
       {/* Sidebar (Desktop) */}
-      <aside className="hidden lg:flex flex-col w-[360px] bg-white dark:bg-background-dark border-l border-gray-200 dark:border-surface-border h-full shrink-0 shadow-2xl z-20">
+      <aside className="hidden lg:flex h-full w-[360px] shrink-0 flex-col border-l border-[rgba(73,133,214,0.12)] bg-[rgba(6,14,24,0.92)] shadow-2xl z-20">
         <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
           {/* Timer Widget */}
-          <div className="bg-gray-50 dark:bg-surface-dark rounded-2xl p-6 border border-gray-100 dark:border-surface-border shadow-sm">
+          <div className="mobile-card p-6 shadow-sm">
             <h3 className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase mb-2 text-center">
               Tiempo Transcurrido
             </h3>
@@ -664,7 +664,7 @@ const WorkoutSession: React.FC = () => {
           </div>
 
           {/* Progress Widget */}
-          <div className="bg-gray-50 dark:bg-surface-dark rounded-2xl p-6 border border-gray-100 dark:border-surface-border shadow-sm">
+          <div className="mobile-card p-6 shadow-sm">
             <div className="flex justify-between items-center mb-2">
               <h3 className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase">
                 Progreso
@@ -673,7 +673,7 @@ const WorkoutSession: React.FC = () => {
                 {Math.round(progress)}%
               </span>
             </div>
-            <div className="bg-gray-200 dark:bg-gray-700 rounded-full h-3 mb-2">
+            <div className="mb-2 h-3 rounded-full bg-[rgba(73,133,214,0.12)]">
               <div
                 className="bg-gradient-to-r from-primary to-orange-600 h-3 rounded-full transition-all duration-300"
                 style={{ width: `${progress}%` }}
@@ -686,7 +686,7 @@ const WorkoutSession: React.FC = () => {
 
           {/* Active Rest Timer Widget */}
           {activeWorkout.restTimer && (
-            <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl p-6 border border-primary/20 shadow-sm">
+            <div className="mobile-card border-[rgba(47,140,255,0.2)] bg-[rgba(47,140,255,0.08)] p-6 shadow-sm">
               <RestTimer
                 key={activeWorkout.restTimer.instanceId}
                 variant="inline"

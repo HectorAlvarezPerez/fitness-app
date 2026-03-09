@@ -219,47 +219,48 @@ const ExerciseEditorPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="h-full w-full overflow-y-auto p-4 md:p-8">
-        <div className="max-w-3xl mx-auto rounded-2xl border border-slate-200 dark:border-[#233648] bg-white dark:bg-[#1a2632] p-8 text-center text-gray-500">
+      <div className="h-full w-full overflow-y-auto">
+        <div className="mobile-page">
+          <div className="mobile-card max-w-3xl mx-auto p-8 text-center text-slate-400">
           Cargando...
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full w-full overflow-y-auto p-4 md:p-8">
-      <div className="max-w-3xl mx-auto pb-20 space-y-6">
-        <header className="flex items-center justify-between gap-3">
+    <div className="h-full w-full overflow-y-auto">
+      <div className="mobile-page max-w-3xl space-y-6">
+        <header className="mobile-hero">
           <div>
-            <h1 className="text-3xl md:text-4xl font-black">
-              {isEditMode ? 'Editar ejercicio' : 'Nuevo ejercicio'}
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <p className="mobile-kicker">Exercise editor</p>
+            <h1 className="mobile-title">{isEditMode ? 'Editar ejercicio' : 'Nuevo ejercicio'}</h1>
+            <p className="mobile-subtitle">
               Se actualiza solo el metadata del ejercicio; el historial de sesiones no se modifica.
             </p>
           </div>
         </header>
 
         {!isEditable && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          <div className="mobile-card border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
             Este ejercicio no es editable con tu cuenta actual.
           </div>
         )}
 
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mobile-card border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             {error}
           </div>
         )}
 
-        <section className="rounded-2xl border border-slate-200 dark:border-[#233648] bg-white dark:bg-[#1a2632] p-4 md:p-5 space-y-5">
+        <section className="mobile-card p-4 md:p-5 space-y-5">
           <label className="space-y-1 block">
             <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Nombre</span>
             <input
               value={form.name}
               onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-              className="w-full rounded-xl border border-slate-200 dark:border-[#233648] bg-gray-50 dark:bg-[#0f1820] px-3 py-2.5 text-sm outline-none focus:border-primary"
+              className="w-full rounded-xl border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] px-3 py-2.5 text-sm text-white outline-none focus:border-[#2f8cff]"
               placeholder="Ejemplo: Press de banca inclinado"
               type="text"
               maxLength={120}
@@ -277,7 +278,7 @@ const ExerciseEditorPage: React.FC = () => {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, primary_muscle: event.target.value }))
                 }
-                className="w-full rounded-xl border border-slate-200 dark:border-[#233648] bg-gray-50 dark:bg-[#0f1820] px-3 py-2.5 text-sm outline-none focus:border-primary"
+                className="w-full rounded-xl border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] px-3 py-2.5 text-sm text-white outline-none focus:border-[#2f8cff]"
                 disabled={!isEditable || isSaving}
               >
                 {MUSCLE_OPTIONS.map((muscle) => (
@@ -297,7 +298,7 @@ const ExerciseEditorPage: React.FC = () => {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, equipment: event.target.value }))
                 }
-                className="w-full rounded-xl border border-slate-200 dark:border-[#233648] bg-gray-50 dark:bg-[#0f1820] px-3 py-2.5 text-sm outline-none focus:border-primary"
+                className="w-full rounded-xl border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] px-3 py-2.5 text-sm text-white outline-none focus:border-[#2f8cff]"
                 disabled={!isEditable || isSaving}
               >
                 {EQUIPMENT_OPTIONS.map((equipment) => (
@@ -317,7 +318,7 @@ const ExerciseEditorPage: React.FC = () => {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, category: event.target.value }))
                 }
-                className="w-full rounded-xl border border-slate-200 dark:border-[#233648] bg-gray-50 dark:bg-[#0f1820] px-3 py-2.5 text-sm outline-none focus:border-primary"
+                className="w-full rounded-xl border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] px-3 py-2.5 text-sm text-white outline-none focus:border-[#2f8cff]"
                 disabled={!isEditable || isSaving}
               >
                 {CATEGORY_OPTIONS.map((category) => (
@@ -340,7 +341,7 @@ const ExerciseEditorPage: React.FC = () => {
                     tracking_type: event.target.value as 'reps' | 'time',
                   }))
                 }
-                className="w-full rounded-xl border border-slate-200 dark:border-[#233648] bg-gray-50 dark:bg-[#0f1820] px-3 py-2.5 text-sm outline-none focus:border-primary"
+                className="w-full rounded-xl border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] px-3 py-2.5 text-sm text-white outline-none focus:border-[#2f8cff]"
                 disabled={!isEditable || isSaving}
               >
                 <option value="reps">Reps</option>
@@ -364,7 +365,7 @@ const ExerciseEditorPage: React.FC = () => {
                     className={`rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
                       selected
                         ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-slate-200 dark:border-[#233648] text-gray-500 hover:border-primary/40'
+                        : 'border-[rgba(73,133,214,0.16)] text-slate-400 hover:border-[#2f8cff]'
                     }`}
                     disabled={!isEditable || isSaving}
                   >
@@ -384,7 +385,7 @@ const ExerciseEditorPage: React.FC = () => {
               onChange={(event) =>
                 setForm((current) => ({ ...current, instructions: event.target.value }))
               }
-              className="w-full min-h-28 rounded-xl border border-slate-200 dark:border-[#233648] bg-gray-50 dark:bg-[#0f1820] px-3 py-2.5 text-sm outline-none focus:border-primary"
+              className="w-full min-h-28 rounded-xl border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] px-3 py-2.5 text-sm text-white outline-none focus:border-[#2f8cff]"
               placeholder="Técnica, configuración, notas útiles..."
               disabled={!isEditable || isSaving}
             />
@@ -394,7 +395,7 @@ const ExerciseEditorPage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/exercises')}
-              className="rounded-full border border-slate-200 dark:border-[#233648] px-4 py-2 text-sm font-bold"
+              className="rounded-full border border-[rgba(73,133,214,0.16)] bg-[rgba(16,30,47,0.78)] px-4 py-2 text-sm font-bold text-slate-300"
               disabled={isSaving}
             >
               Cancelar

@@ -558,7 +558,7 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
     <div
       ref={setNodeRef}
       style={style}
-      className="rounded-2xl border border-slate-200 dark:border-[#233648] bg-white dark:bg-[#1a2632] p-4 md:p-5"
+      className="mobile-card p-4 md:p-5"
     >
       <div className="flex items-center gap-3 mb-4">
         <button
@@ -604,7 +604,7 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
             value={exercise.notes || ''}
             onChange={(e) => updateExercise(exercise.id, { notes: e.target.value })}
             placeholder="Añadir notas (ej: Asiento 4, Agarre cerrado...)"
-            className="w-full bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-gray-400 dark:placeholder:text-text-muted/70 transition-all"
+            className="w-full rounded-xl border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 transition-all focus:outline-none focus:border-[#2f8cff] focus:ring-1 focus:ring-[#2f8cff]"
           />
         </div>
         <div className="relative w-24">
@@ -618,7 +618,7 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
               updateExercise(exercise.id, { restSeconds: parseInt(e.target.value) || undefined })
             }
             placeholder="90"
-            className="w-full bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border rounded-xl py-2.5 pl-8 pr-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-gray-400 text-center transition-all"
+            className="w-full rounded-xl border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] py-2.5 pl-8 pr-2 text-center text-sm text-white placeholder:text-slate-500 transition-all focus:outline-none focus:border-[#2f8cff] focus:ring-1 focus:ring-[#2f8cff]"
             title="Tiempo de descanso (segundos)"
           />
         </div>
@@ -673,7 +673,7 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
 
         <button
           onClick={addSet}
-          className="mt-2 py-2 flex items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 dark:border-surface-border hover:border-primary hover:text-primary transition-all text-sm font-medium text-gray-500"
+          className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-dashed border-[rgba(73,133,214,0.22)] py-2 text-sm font-medium text-slate-400 transition-all hover:border-[#2f8cff] hover:text-[#4ea0ff]"
         >
           <span className="material-symbols-outlined text-[18px]">add</span>
           Añadir Serie
