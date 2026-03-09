@@ -14,6 +14,7 @@ type WorkerBindings = {
 };
 
 const app = new Hono<{ Bindings: WorkerBindings }>();
+const stripLeadingSlash = (path: string) => path.replace(/^\/+/, '');
 
 app.use('*', async (c, next) => {
   await next();
@@ -229,10 +230,22 @@ app.patch('/api/exercises/:id', async (c) => {
   return c.json({ data: updated });
 });
 
-// Serve static files
-app.use('/*', serveStatic({ root: './', manifest }));
+// Serve hashed frontend assets from the Workers Sites manifest.
+app.get(
+  '/assets/*',
+  serveStatic({
+    manifest,
+    rewriteRequestPath: stripLeadingSlash,
+  })
+);
 
 // Fallback to index.html for SPA routing
-app.get('*', serveStatic({ path: './index.html', manifest }));
+app.get(
+  '*',
+  serveStatic({
+    path: 'index.html',
+    manifest,
+  })
+);
 
 export default app;
