@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import WorkoutStatisticsChart from '../components/dashboard/WorkoutStatisticsChart';
@@ -16,7 +16,6 @@ const Dashboard: React.FC = () => {
   }, [loadWorkoutHistory]);
 
   useEffect(() => {
-    // Calculate muscle group stats by weighted series distribution.
     const muscles: Record<string, number> = {};
 
     workoutHistory.forEach((workout) => {
@@ -34,38 +33,42 @@ const Dashboard: React.FC = () => {
   if (!stats) {
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <p className="text-gray-500">Cargando estadísticas...</p>
+        <p className="text-slate-400">Cargando estadísticas...</p>
       </div>
     );
   }
 
   return (
-    <div className="h-full w-full overflow-y-auto p-4 md:p-6">
-      <div className="flex flex-col max-w-4xl mx-auto flex-1 gap-4 pb-20">
-        <header className="flex flex-col gap-1">
-          <h1 className="text-2xl md:text-3xl font-black">Estadísticas</h1>
-          <p className="text-gray-500 dark:text-gray-400">Tu progreso semanal.</p>
-        </header>
+    <div className="h-full w-full overflow-y-auto">
+      <div className="mobile-page max-w-4xl space-y-4">
+        <section className="mobile-hero">
+          <p className="mobile-kicker">Insights</p>
+          <h1 className="mobile-title">Estadísticas</h1>
+          <p className="mobile-subtitle">
+            Un panel más compacto para entender rápido carga, consistencia y distribución muscular.
+          </p>
+        </section>
 
-        <GlobalStatsSummary />
+        <div className="mobile-card p-4">
+          <GlobalStatsSummary />
+        </div>
 
-        <div className="flex flex-col lg:flex-row gap-4">
-          {/* Advanced Statistics Chart */}
-          <div className="flex-[2] h-[350px]">
+        <div className="space-y-4 lg:grid lg:grid-cols-[1.6fr_1fr] lg:gap-4 lg:space-y-0">
+          <div className="mobile-card h-[350px] p-4">
             <WorkoutStatisticsChart />
           </div>
-
-          {/* Calendar */}
-          <div className="flex-1">
+          <div className="mobile-card p-4">
             <WorkoutCalendar />
           </div>
         </div>
 
-        {/* Muscle Group Statistics */}
-        <div className="rounded-2xl bg-white dark:bg-[#1a2632] p-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-base font-bold">Grupos Musculares</h3>
-            <Link to="/history" className="text-sm text-primary hover:underline font-medium">
+        <div className="mobile-card p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <p className="mobile-kicker">Distribution</p>
+              <h3 className="mt-2 text-xl font-bold text-white">Grupos musculares</h3>
+            </div>
+            <Link to="/history" className="text-sm font-semibold text-[#4ea0ff]">
               Ver historial
             </Link>
           </div>

@@ -105,29 +105,30 @@ const WorkoutHistory: React.FC = () => {
   };
 
   return (
-    <div className="h-full w-full overflow-y-auto p-4 md:p-8">
-      <div className="flex flex-col max-w-4xl mx-auto gap-6 pb-20">
+    <div className="h-full w-full overflow-y-auto">
+      <div className="mobile-page flex max-w-4xl flex-col gap-5 pb-28">
         {/* Header */}
-        <header className="flex items-center justify-between sticky top-0 bg-background-light dark:bg-background-dark z-10 py-2">
+        <header className="mobile-hero">
           <div>
-            <h1 className="text-3xl md:text-4xl font-black">Historial</h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">
+            <p className="mobile-kicker">Workout archive</p>
+            <h1 className="mobile-title">Historial</h1>
+            <p className="mobile-subtitle">
               {workoutHistory.length} entrenamientos completados
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="mt-4 flex items-center gap-2">
             {isSelectionMode ? (
               <>
                 <button
                   onClick={handleBulkDelete}
                   disabled={selectedIds.size === 0}
-                  className="px-4 py-2 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded-full font-bold text-sm hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50"
+                  className="rounded-full bg-red-500/10 px-4 py-2 text-sm font-bold text-red-300 disabled:opacity-50"
                 >
                   Eliminar ({selectedIds.size})
                 </button>
                 <button
                   onClick={toggleSelectionMode}
-                  className="px-4 py-2 bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300 rounded-full font-bold text-sm hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
+                  className="rounded-full border border-[rgba(73,133,214,0.16)] bg-[rgba(16,30,47,0.78)] px-4 py-2 text-sm font-bold text-slate-300"
                 >
                   Cancelar
                 </button>
@@ -135,7 +136,7 @@ const WorkoutHistory: React.FC = () => {
             ) : (
               <button
                 onClick={toggleSelectionMode}
-                className="px-4 py-2 bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 rounded-full font-bold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                className="rounded-full border border-[rgba(73,133,214,0.16)] bg-[rgba(16,30,47,0.78)] px-4 py-2 text-sm font-bold text-slate-300"
               >
                 Seleccionar
               </button>
@@ -145,17 +146,17 @@ const WorkoutHistory: React.FC = () => {
 
         {/* Workout List */}
         {workoutHistory.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="size-20 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
-              <span className="material-symbols-outlined text-4xl text-gray-400">history</span>
+          <div className="mobile-card flex flex-col items-center justify-center px-5 py-16 text-center">
+            <div className="mb-6 flex size-24 items-center justify-center rounded-full border border-[rgba(73,133,214,0.16)] bg-[rgba(47,140,255,0.08)]">
+              <span className="material-symbols-outlined text-5xl text-[#4ea0ff]">history</span>
             </div>
-            <h3 className="text-xl font-bold mb-2">Sin entrenamientos aún</h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">
+            <h3 className="mb-2 text-2xl font-bold text-white">Sin entrenamientos aún</h3>
+            <p className="mb-6 text-slate-400">
               Completa tu primer entrenamiento para verlo aquí
             </p>
             <Link
               to="/routine"
-              className="px-6 py-3 rounded-full bg-primary text-white font-bold hover:bg-primary/90 transition-all"
+              className="rounded-[1.1rem] bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] px-6 py-4 font-bold text-white shadow-lg shadow-[#2f8cff]/25"
             >
               Ir a Rutinas
             </Link>
@@ -173,10 +174,10 @@ const WorkoutHistory: React.FC = () => {
               return (
                 <div
                   key={workout.id}
-                  className={`rounded-2xl border bg-white dark:bg-[#1a2632] overflow-hidden transition-all relative ${
+                  className={`mobile-card relative overflow-hidden transition-all ${
                     isSelected
-                      ? 'border-primary ring-1 ring-primary bg-primary/5 dark:bg-primary/10'
-                      : 'border-slate-200 dark:border-[#233648] hover:border-primary/50'
+                      ? 'border-[#2f8cff] ring-1 ring-[#2f8cff] bg-[rgba(47,140,255,0.08)]'
+                      : 'hover:border-[rgba(73,133,214,0.3)]'
                   }`}
                 >
                   {/* Selection Checkbox Overlay */}

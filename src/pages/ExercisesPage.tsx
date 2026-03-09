@@ -106,74 +106,70 @@ const ExercisesPage: React.FC = () => {
   }, [exercises, searchQuery, selectedMuscle, selectedEquipment]);
 
   return (
-    <div className="h-full w-full overflow-y-auto p-4 md:p-8">
-      <div className="max-w-6xl mx-auto pb-20 space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-black">Exercises</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Gestiona tu base de ejercicios sin alterar el historial de entrenamientos.
-            </p>
-          </div>
-          <Link
-            to="/exercises/new"
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/20"
-          >
-            <span className="material-symbols-outlined text-[18px]">add</span>
-            New exercise
-          </Link>
-        </header>
+    <div className="h-full w-full overflow-y-auto">
+      <div className="mobile-page max-w-4xl space-y-4">
+        <section className="mobile-hero">
+          <p className="mobile-kicker">Exercise library</p>
+          <h1 className="mobile-title">Ejercicios</h1>
+          <p className="mobile-subtitle">
+            Una biblioteca más limpia para buscar, filtrar y editar sin perder ninguna capacidad.
+          </p>
+        </section>
 
         {successMessage && (
-          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          <div className="mobile-card border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-200">
             {successMessage}
           </div>
         )}
 
-        <section className="rounded-2xl border border-slate-200 dark:border-[#233648] bg-white dark:bg-[#1a2632] p-4 md:p-5">
-          <div className="grid gap-3 md:grid-cols-4">
-            <label className="md:col-span-2 space-y-1">
-              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                Buscar
-              </span>
-              <input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 dark:border-[#233648] bg-gray-50 dark:bg-[#0f1820] px-3 py-2.5 text-sm outline-none focus:border-primary"
-                placeholder="Buscar por nombre..."
-                type="text"
-              />
-            </label>
+        <section className="mobile-card p-4">
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+              search
+            </span>
+            <input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              className="w-full rounded-2xl border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] px-11 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-[#2f8cff]"
+              placeholder="Buscar ejercicios..."
+              type="text"
+            />
+          </div>
 
-            {muscleOptions.length > 0 && (
-              <label className="space-y-1">
-                <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                  Músculo
-                </span>
-                <select
-                  value={selectedMuscle}
-                  onChange={(event) => setSelectedMuscle(event.target.value)}
-                  className="w-full rounded-xl border border-slate-200 dark:border-[#233648] bg-gray-50 dark:bg-[#0f1820] px-3 py-2.5 text-sm outline-none focus:border-primary"
-                >
-                  <option value="">Todos</option>
-                  {muscleOptions.map((muscle) => (
-                    <option key={muscle} value={muscle}>
-                      {muscle}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+            <button
+              type="button"
+              onClick={() => setSelectedMuscle('')}
+              className={`mobile-pill whitespace-nowrap px-5 py-2 text-sm font-semibold ${
+                selectedMuscle === '' ? 'mobile-pill-active' : ''
+              }`}
+            >
+              Todos
+            </button>
+            {muscleOptions.map((muscle) => (
+              <button
+                key={muscle}
+                type="button"
+                onClick={() => setSelectedMuscle(muscle)}
+                className={`mobile-pill whitespace-nowrap px-5 py-2 text-sm font-semibold ${
+                  selectedMuscle === muscle ? 'mobile-pill-active' : ''
+                }`}
+              >
+                {muscle}
+              </button>
+            ))}
+          </div>
 
-            {equipmentOptions.length > 0 && (
-              <label className="space-y-1">
-                <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+          {equipmentOptions.length > 0 && (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label className="space-y-2">
+                <span className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-slate-500">
                   Equipo
                 </span>
                 <select
                   value={selectedEquipment}
                   onChange={(event) => setSelectedEquipment(event.target.value)}
-                  className="w-full rounded-xl border border-slate-200 dark:border-[#233648] bg-gray-50 dark:bg-[#0f1820] px-3 py-2.5 text-sm outline-none focus:border-primary"
+                  className="w-full rounded-2xl border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] px-4 py-3 text-sm text-white outline-none focus:border-[#2f8cff]"
                 >
                   <option value="">Todos</option>
                   {equipmentOptions.map((equipment) => (
@@ -183,74 +179,81 @@ const ExercisesPage: React.FC = () => {
                   ))}
                 </select>
               </label>
-            )}
-          </div>
+
+              <Link
+                to="/exercises/new"
+                className="mt-auto flex items-center justify-center gap-2 rounded-[1.1rem] bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#2f8cff]/25"
+              >
+                <span className="material-symbols-outlined text-[18px]">add</span>
+                Nuevo ejercicio
+              </Link>
+            </div>
+          )}
         </section>
 
         {isLoading && (
-          <div className="rounded-2xl border border-slate-200 dark:border-[#233648] bg-white dark:bg-[#1a2632] p-8 text-center text-gray-500">
-            Cargando ejercicios...
-          </div>
+          <div className="mobile-card p-8 text-center text-slate-400">Cargando ejercicios...</div>
         )}
 
         {!isLoading && error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700">
+          <div className="mobile-card border-red-500/20 bg-red-500/10 p-6 text-red-200">
             {error}
           </div>
         )}
 
         {!isLoading && !error && filteredExercises.length === 0 && (
-          <div className="rounded-2xl border border-slate-200 dark:border-[#233648] bg-white dark:bg-[#1a2632] p-10 text-center">
-            <p className="font-bold">No hay ejercicios para mostrar.</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <div className="mobile-card p-10 text-center">
+            <div className="mx-auto mb-5 flex size-20 items-center justify-center rounded-full border border-[rgba(73,133,214,0.16)] bg-[rgba(47,140,255,0.08)]">
+              <span className="material-symbols-outlined text-4xl text-[#4ea0ff]">search_off</span>
+            </div>
+            <p className="text-xl font-bold text-white">No hay ejercicios para mostrar.</p>
+            <p className="mt-2 text-sm text-slate-400">
               Crea un ejercicio nuevo o ajusta los filtros.
             </p>
           </div>
         )}
 
         {!isLoading && !error && filteredExercises.length > 0 && (
-          <section className="rounded-2xl border border-slate-200 dark:border-[#233648] bg-white dark:bg-[#1a2632] overflow-hidden">
-            <div className="divide-y divide-slate-200 dark:divide-[#233648]">
-              {filteredExercises.map((exercise) => {
-                const summarySecondary = exercise.secondary_muscles?.slice(0, 2).join(', ');
-                const hasImage = Boolean(exercise.image_url);
+          <section className="space-y-3">
+            {filteredExercises.map((exercise) => {
+              const summarySecondary = exercise.secondary_muscles?.slice(0, 2).join(', ');
+              const hasImage = Boolean(exercise.image_url);
 
-                return (
-                  <button
-                    key={exercise.id}
-                    onClick={() => navigate(`/exercises/${exercise.id}/edit`)}
-                    className="w-full px-4 md:px-5 py-4 text-left hover:bg-gray-50 dark:hover:bg-[#0f1820] transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="size-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 dark:border-[#233648] bg-gray-100 dark:bg-[#0f1820] flex items-center justify-center">
-                        {hasImage ? (
-                          <img
-                            src={exercise.image_url || ''}
-                            alt={exercise.name}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-sm font-bold text-gray-500">
-                            {exercise.name[0]}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <p className="font-bold truncate">{exercise.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-                          {exercise.primary_muscle || 'Sin músculo principal'}
-                          {summarySecondary ? ` • ${summarySecondary}` : ''}
-                          {exercise.equipment ? ` • ${exercise.equipment}` : ''}
-                        </p>
-                      </div>
-
-                      <span className="material-symbols-outlined text-gray-400">chevron_right</span>
+              return (
+                <button
+                  key={exercise.id}
+                  onClick={() => navigate(`/exercises/${exercise.id}/edit`)}
+                  className="mobile-list-row w-full p-3 text-left transition-all hover:border-[rgba(73,133,214,0.3)]"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[rgba(47,140,255,0.12)]">
+                      {hasImage ? (
+                        <img
+                          src={exercise.image_url || ''}
+                          alt={exercise.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-lg font-bold text-[#4ea0ff]">{exercise.name[0]}</span>
+                      )}
                     </div>
-                  </button>
-                );
-              })}
-            </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-lg font-semibold text-white">{exercise.name}</p>
+                      <p className="mt-1 truncate text-[0.7rem] font-bold uppercase tracking-[0.16em] text-slate-500">
+                        {exercise.primary_muscle || 'Sin músculo principal'}
+                      </p>
+                      <p className="mt-1 truncate text-xs text-slate-400">
+                        {summarySecondary ? `${summarySecondary} • ` : ''}
+                        {exercise.equipment || 'Sin equipo'}
+                      </p>
+                    </div>
+
+                    <span className="material-symbols-outlined text-slate-500">chevron_right</span>
+                  </div>
+                </button>
+              );
+            })}
           </section>
         )}
       </div>

@@ -221,22 +221,21 @@ export default function ProgressPage() {
     .filter((d) => d.value > 0);
 
   return (
-    <div className="p-6 h-full overflow-y-auto">
-      <div className="flex flex-col gap-6 max-w-4xl mx-auto pb-20">
-        <header>
-          <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white mb-2">
-            Progreso Físico
-          </h1>
-          <div className="flex gap-4 border-b border-gray-200 dark:border-gray-800">
+    <div className="h-full overflow-y-auto">
+      <div className="mobile-page flex max-w-4xl flex-col gap-6 pb-28">
+        <header className="mobile-hero">
+          <p className="mobile-kicker">Progress</p>
+          <h1 className="mobile-title mb-2">Progreso Físico</h1>
+          <div className="flex gap-3 border-b border-[rgba(73,133,214,0.12)]">
             <button
               onClick={() => setActiveTab('heatmap')}
-              className={`pb-2 px-1 font-bold text-sm transition-colors ${activeTab === 'heatmap' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+              className={`pb-3 px-1 font-bold text-sm transition-colors ${activeTab === 'heatmap' ? 'text-[#4ea0ff] border-b-2 border-[#2f8cff]' : 'text-slate-500 hover:text-slate-300'}`}
             >
               Mapa de Calor
             </button>
             <button
               onClick={() => setActiveTab('measurements')}
-              className={`pb-2 px-1 font-bold text-sm transition-colors ${activeTab === 'measurements' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+              className={`pb-3 px-1 font-bold text-sm transition-colors ${activeTab === 'measurements' ? 'text-[#4ea0ff] border-b-2 border-[#2f8cff]' : 'text-slate-500 hover:text-slate-300'}`}
             >
               Medidas Corporales
             </button>
@@ -246,10 +245,10 @@ export default function ProgressPage() {
         {activeTab === 'heatmap' ? (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Week Selector */}
-            <div className="flex items-center justify-between bg-white dark:bg-[#111a22] p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-[#233648]">
+            <div className="mobile-card flex items-center justify-between p-4">
               <button
                 onClick={() => setSelectedWeekOffset((prev) => prev - 1)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                className="rounded-lg p-2 transition-colors hover:bg-[rgba(47,140,255,0.08)]"
               >
                 <span className="material-symbols-outlined">chevron_left</span>
               </button>
@@ -265,7 +264,7 @@ export default function ProgressPage() {
                     month: 'short',
                   })}
                 </p>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-slate-400">
                   {selectedWeekOffset === 0
                     ? 'Esta Semana'
                     : `${Math.abs(selectedWeekOffset)} semana(s) ${selectedWeekOffset < 0 ? 'atrás' : 'adelante'}`}
@@ -274,14 +273,14 @@ export default function ProgressPage() {
               <button
                 onClick={() => setSelectedWeekOffset((prev) => prev + 1)}
                 disabled={selectedWeekOffset >= 0}
-                className={`p-2 rounded-lg transition-colors ${selectedWeekOffset >= 0 ? 'text-gray-300' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                className={`rounded-lg p-2 transition-colors ${selectedWeekOffset >= 0 ? 'text-slate-600' : 'hover:bg-[rgba(47,140,255,0.08)]'}`}
               >
                 <span className="material-symbols-outlined">chevron_right</span>
               </button>
             </div>
 
             {/* Heatmap Area */}
-            <div className="bg-white dark:bg-[#111a22] p-8 rounded-3xl shadow-lg border border-gray-100 dark:border-[#233648] flex justify-center min-h-[400px]">
+            <div className="mobile-card flex min-h-[400px] justify-center rounded-[1.75rem] p-8">
               {Object.keys(weeklyMuscleData.normalized).length === 0 ? (
                 <div className="flex flex-col items-center justify-center text-gray-400">
                   <span className="material-symbols-outlined text-4xl mb-2">fitness_center</span>
@@ -318,7 +317,7 @@ export default function ProgressPage() {
 
             {/* Muscle Distribution Pie Chart */}
             {musclePieData.length > 0 && (
-              <div className="bg-white dark:bg-[#111a22] p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-[#233648]">
+              <div className="mobile-card p-6">
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary">pie_chart</span>
                   Distribución por Músculo
@@ -356,7 +355,7 @@ export default function ProgressPage() {
                     {musclePieData.slice(0, 8).map((entry, index) => (
                       <div
                         key={index}
-                        className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-[#0f1820]"
+                        className="mobile-card-soft flex items-center justify-between p-3"
                       >
                         <div className="flex items-center gap-2">
                           <div
@@ -386,10 +385,10 @@ export default function ProgressPage() {
           // --- MEASUREMENTS CONTENT ---
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Sub-tabs for Measurements */}
-            <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl w-fit">
+            <div className="flex w-fit rounded-xl bg-[rgba(16,30,47,0.78)] p-1 border border-[rgba(73,133,214,0.16)]">
               <button
                 onClick={() => setMeasurementTab('chart')}
-                className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${measurementTab === 'chart' ? 'bg-white dark:bg-[#1a2632] shadow-sm text-primary' : 'text-gray-500'}`}
+                className={`rounded-lg px-4 py-2 text-sm font-bold transition-all ${measurementTab === 'chart' ? 'bg-[rgba(47,140,255,0.14)] text-[#4ea0ff]' : 'text-slate-500'}`}
               >
                 <span className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[18px]">show_chart</span>
@@ -398,7 +397,7 @@ export default function ProgressPage() {
               </button>
               <button
                 onClick={() => setMeasurementTab('history')}
-                className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${measurementTab === 'history' ? 'bg-white dark:bg-[#1a2632] shadow-sm text-primary' : 'text-gray-500'}`}
+                className={`rounded-lg px-4 py-2 text-sm font-bold transition-all ${measurementTab === 'history' ? 'bg-[rgba(47,140,255,0.14)] text-[#4ea0ff]' : 'text-slate-500'}`}
               >
                 <span className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[18px]">history</span>
@@ -407,7 +406,7 @@ export default function ProgressPage() {
               </button>
               <button
                 onClick={() => setMeasurementTab('add')}
-                className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${measurementTab === 'add' ? 'bg-white dark:bg-[#1a2632] shadow-sm text-primary' : 'text-gray-500'}`}
+                className={`rounded-lg px-4 py-2 text-sm font-bold transition-all ${measurementTab === 'add' ? 'bg-[rgba(47,140,255,0.14)] text-[#4ea0ff]' : 'text-slate-500'}`}
               >
                 <span className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[18px]">add</span>
@@ -417,14 +416,14 @@ export default function ProgressPage() {
             </div>
 
             {measurementTab === 'chart' && (
-              <div className="bg-white dark:bg-[#111a22] p-6 rounded-2xl border border-slate-200 dark:border-[#233648]">
+              <div className="mobile-card p-6">
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-lg font-bold">Histórico</h3>
                   <div className="relative">
                     <select
                       value={selectedMetric}
                       onChange={(e) => setSelectedMetric(e.target.value as any)}
-                      className="appearance-none pl-4 pr-10 py-2 rounded-lg bg-gray-50 dark:bg-[#0f1820] border border-gray-200 dark:border-[#233648] text-sm font-bold outline-none"
+                      className="appearance-none rounded-lg border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] py-2 pl-4 pr-10 text-sm font-bold text-white outline-none"
                     >
                       {metricOptions.map((opt) => (
                         <option key={opt.key} value={opt.key}>
@@ -484,7 +483,7 @@ export default function ProgressPage() {
             )}
 
             {measurementTab === 'history' && (
-              <div className="bg-white dark:bg-[#111a22] rounded-2xl border border-slate-200 dark:border-[#233648] overflow-hidden">
+              <div className="mobile-card overflow-hidden">
                 {bodyMeasurements.length === 0 ? (
                   <div className="p-8 text-center text-gray-500">
                     No hay registros todavía. Añade tu primer registro de medidas.
@@ -537,7 +536,7 @@ export default function ProgressPage() {
             {measurementTab === 'add' && (
               <form
                 onSubmit={handleSubmitMeasurement}
-                className="bg-white dark:bg-[#111a22] p-6 rounded-2xl border border-slate-200 dark:border-[#233648] space-y-6"
+                className="mobile-card space-y-6 p-6"
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="col-span-full">

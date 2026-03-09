@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabaseClient';
 import { ActiveWorkoutFooter } from './ActiveWorkoutFooter';
@@ -8,18 +8,68 @@ import MobileNav from './MobileNav';
 import logoUrl from '../assets/logo-fitness.png';
 import { applyTheme, initTheme, ThemeMode } from '../lib/theme';
 
+const getPageMeta = (pathname: string) => {
+  if (pathname.includes('/home')) {
+    return { title: 'Inicio', subtitle: 'Todo tu progreso en un vistazo' };
+  }
+  if (pathname.includes('/routine/new')) {
+    return { title: 'Nueva Rutina', subtitle: 'Crea un plan claro y reutilizable' };
+  }
+  if (pathname.includes('/routine/edit')) {
+    return { title: 'Editar Rutina', subtitle: 'Ajusta estructura, descansos y orden' };
+  }
+  if (pathname.includes('/routine') && pathname.includes('/workout')) {
+    return { title: 'Entrenando', subtitle: 'Mantén el ritmo y registra cada serie' };
+  }
+  if (pathname.includes('/routine')) {
+    return { title: 'Rutinas', subtitle: 'Organiza tus planes y carpetas' };
+  }
+  if (pathname.includes('/dashboard')) {
+    return { title: 'Estadísticas', subtitle: 'Lectura rápida de tu rendimiento' };
+  }
+  if (pathname.includes('/progress')) {
+    return { title: 'Progreso', subtitle: 'Medidas, evolución y cuerpo' };
+  }
+  if (pathname.includes('/pr')) {
+    return { title: 'PRs', subtitle: 'Tus mejores marcas' };
+  }
+  if (pathname.includes('/exercises/new')) {
+    return { title: 'Nuevo Ejercicio', subtitle: 'Añade un movimiento a tu biblioteca' };
+  }
+  if (pathname.includes('/exercises') && pathname.includes('/edit')) {
+    return { title: 'Editar Ejercicio', subtitle: 'Actualiza datos e instrucciones' };
+  }
+  if (pathname.includes('/exercises')) {
+    return { title: 'Ejercicios', subtitle: 'Biblioteca personal y base común' };
+  }
+  if (pathname.includes('/history')) {
+    return { title: 'Historial', subtitle: 'Entrenos pasados y detalle' };
+  }
+  if (pathname.includes('/settings')) {
+    return { title: 'Configuración', subtitle: 'Cuenta, notificaciones y seguridad' };
+  }
+  if (pathname.includes('/profile-data')) {
+    return { title: 'Perfil', subtitle: 'Tus datos y objetivos actuales' };
+  }
+  if (pathname.includes('/guide')) {
+    return { title: 'Guía', subtitle: 'Cómo sacar más partido a la app' };
+  }
+  return { title: 'Fitness App', subtitle: 'Entrena con estructura' };
+};
+
 const MainLayout: React.FC = () => {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const { loadActiveWorkout } = useStore();
   const [keyboardInset, setKeyboardInset] = useState(0);
   const [theme, setTheme] = useState<ThemeMode>('dark');
   const isKeyboardOpen = keyboardInset > 0;
+  const pageMeta = getPageMeta(pathname);
 
   useEffect(() => {
     void loadActiveWorkout();
   }, [loadActiveWorkout]);
 
-  // Initialize theme on mount
   useEffect(() => {
     const resolvedTheme = initTheme();
     setTheme(resolvedTheme);
@@ -50,8 +100,9 @@ const MainLayout: React.FC = () => {
           target instanceof HTMLTextAreaElement ||
           target instanceof HTMLSelectElement
         )
-      )
+      ) {
         return;
+      }
 
       setTimeout(() => {
         target.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -81,37 +132,16 @@ const MainLayout: React.FC = () => {
     };
   }, []);
 
-  // Mapping for title
-  const getTitle = () => {
-    if (pathname.includes('/home')) return 'Inicio';
-    if (pathname.includes('/routine/new')) return 'Nueva Rutina';
-    if (pathname.includes('/routine/edit')) return 'Editar Rutina';
-    if (pathname.includes('/routine') && pathname.includes('/workout')) return 'Entrenando';
-    if (pathname.includes('/routine')) return 'Rutinas';
-    if (pathname.includes('/dashboard')) return 'Estadísticas';
-    if (pathname.includes('/progress')) return 'Progreso';
-    if (pathname.includes('/pr')) return 'Personal Records';
-    if (pathname.includes('/exercises/new')) return 'Nuevo Ejercicio';
-    if (pathname.includes('/exercises') && pathname.includes('/edit')) return 'Editar Ejercicio';
-    if (pathname.includes('/exercises')) return 'Exercises';
-
-    if (pathname.includes('/history')) return 'Historial';
-    if (pathname.includes('/settings')) return 'Configuración';
-    if (pathname.includes('/profile-data')) return 'Mis Datos';
-    return 'Fitness App';
-  };
-
   const navItems = [
     { path: '/home', label: 'Inicio', icon: 'home' },
     { path: '/dashboard', label: 'Estadísticas', icon: 'bar_chart' },
     { path: '/routine', label: 'Rutinas', icon: 'fitness_center' },
     { path: '/pr', label: 'PR', icon: 'military_tech' },
-    { path: '/exercises', label: 'Exercises', icon: 'list_alt' },
+    { path: '/exercises', label: 'Ejercicios', icon: 'list_alt' },
     { path: '/progress', label: 'Progreso', icon: 'accessibility_new' },
     { path: '/history', label: 'Historial', icon: 'history' },
   ];
 
-  // Check if we should hide bottom nav (during workout or editor)
   const hideBottomNav =
     pathname.includes('/workout') ||
     pathname.includes('/routine/new') ||
@@ -120,27 +150,31 @@ const MainLayout: React.FC = () => {
     (pathname.includes('/exercises/') && pathname.includes('/edit'));
   const mainPadding = hideBottomNav
     ? 'pb-0'
-    : 'pb-[calc(72px+env(safe-area-inset-bottom)+var(--keyboard-inset,0px))] md:pb-0';
+    : 'pb-[calc(92px+env(safe-area-inset-bottom)+var(--keyboard-inset,0px))] md:pb-0';
 
   return (
-    <div className="flex flex-col min-h-[100dvh] h-[100dvh] bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display overflow-hidden">
+    <div className="flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-background-dark text-slate-100 font-display">
       <PRNotification />
-      {/* Desktop Header */}
-      <header className="hidden md:flex items-center justify-between px-8 py-4 bg-white/80 dark:bg-[#111a22]/90 backdrop-blur-md border-b border-gray-200 dark:border-[#233648] shrink-0 z-20">
+
+      <header className="hidden shrink-0 items-center justify-between border-b border-[rgba(73,133,214,0.18)] bg-[rgba(11,21,33,0.9)] px-8 py-4 backdrop-blur-md md:flex">
         <NavLink to="/home" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-orange-600 text-white shadow-lg shadow-primary/20 overflow-hidden">
+          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#2f8cff] to-[#1e6de5] text-white shadow-lg shadow-[#2f8cff]/20">
             <img src={logoUrl} alt="Fitness App" className="h-full w-full object-contain" />
           </div>
           <span className="text-xl font-bold tracking-tight">Fitness App</span>
         </NavLink>
 
-        <nav className="flex items-center gap-2 bg-gray-100 dark:bg-[#1a2632] p-1 rounded-full">
+        <nav className="flex items-center gap-2 rounded-full border border-[rgba(73,133,214,0.14)] bg-[rgba(16,31,50,0.78)] p-1">
           {navItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               className={(navData) =>
-                `flex items-center gap-2 px-5 py-2 rounded-full text-sm font-bold transition-all ${navData.isActive ? 'bg-white dark:bg-[#233648] text-primary shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`
+                `flex items-center gap-2 rounded-full px-5 py-2 text-sm font-bold transition-all ${
+                  navData.isActive
+                    ? 'bg-[rgba(47,140,255,0.14)] text-[#4ea0ff] shadow-sm'
+                    : 'text-slate-400 hover:text-slate-100'
+                }`
               }
             >
               <span className="material-symbols-outlined text-[18px]">{item.icon}</span>
@@ -150,13 +184,12 @@ const MainLayout: React.FC = () => {
         </nav>
 
         <div className="flex items-center gap-3">
-          {/* Theme Toggle Button */}
           <button
             onClick={toggleTheme}
-            className="size-9 rounded-full bg-gray-100 dark:bg-[#1a2632] flex items-center justify-center hover:bg-gray-200 dark:hover:bg-[#233648] transition-colors"
+            className="flex size-10 items-center justify-center rounded-full border border-[rgba(73,133,214,0.16)] bg-[rgba(17,31,48,0.86)] transition-colors"
             aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
           >
-            <span className="material-symbols-outlined text-[22px]">
+            <span className="material-symbols-outlined text-[22px] text-slate-100">
               {theme === 'dark' ? 'light_mode' : 'dark_mode'}
             </span>
           </button>
@@ -164,39 +197,54 @@ const MainLayout: React.FC = () => {
         </div>
       </header>
 
-      {/* Mobile Header - Improved for smaller screens */}
-      <header className="md:hidden flex items-center justify-between px-4 py-3 bg-white/90 dark:bg-[#0a0c0e]/95 backdrop-blur-md border-b border-gray-200 dark:border-white/5 shrink-0 z-20">
-        <h1 className="text-lg font-bold truncate">{getTitle()}</h1>
-        <div className="flex items-center gap-2">
-          {/* Theme Toggle Button */}
+      <header className="shrink-0 border-b border-[rgba(73,133,214,0.12)] bg-[rgba(6,14,24,0.88)] backdrop-blur-xl md:hidden">
+        <div className="mx-auto flex w-full max-w-md items-center justify-between px-4 pb-3 pt-[max(0.9rem,env(safe-area-inset-top))]">
           <button
-            onClick={toggleTheme}
-            className="size-9 rounded-full bg-gray-100 dark:bg-[#1a2632] flex items-center justify-center hover:bg-gray-200 dark:hover:bg-[#233648] transition-colors"
-            aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            onClick={() => {
+              if (window.history.length > 1 && !pathname.includes('/home')) {
+                navigate(-1);
+                return;
+              }
+              navigate('/home');
+            }}
+            className="flex size-10 items-center justify-center rounded-full border border-[rgba(73,133,214,0.16)] bg-[rgba(17,31,48,0.86)] text-slate-200"
+            aria-label="Volver"
           >
-            <span className="material-symbols-outlined text-[22px]">
-              {theme === 'dark' ? 'light_mode' : 'dark_mode'}
-            </span>
+            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
           </button>
-          <ProfileDropdown />
+
+          <div className="min-w-0 flex-1 px-3 text-center">
+            <p className="truncate text-[0.72rem] font-bold uppercase tracking-[0.22em] text-[#4ea0ff]">
+              {pageMeta.subtitle}
+            </p>
+            <h1 className="truncate text-[1.15rem] font-bold text-white">{pageMeta.title}</h1>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="flex size-10 items-center justify-center rounded-full border border-[rgba(73,133,214,0.16)] bg-[rgba(17,31,48,0.86)] transition-colors"
+              aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            >
+              <span className="material-symbols-outlined text-[20px] text-slate-100">
+                {theme === 'dark' ? 'light_mode' : 'dark_mode'}
+              </span>
+            </button>
+            <ProfileDropdown />
+          </div>
         </div>
       </header>
 
-      {/* Main Content - Add padding for bottom nav on mobile */}
-      <main className={`flex-1 min-h-0 overflow-hidden ${mainPadding}`}>
+      <main className={`mobile-screen flex-1 min-h-0 overflow-hidden ${mainPadding}`}>
         <Outlet />
       </main>
 
-      {/* Active Workout Footer (shows above bottom nav, but not on workout page) */}
       {!pathname.includes('/workout') && !isKeyboardOpen && <ActiveWorkoutFooter />}
-
-      {/* New Mobile Bottom Navigation */}
       {!hideBottomNav && !isKeyboardOpen && <MobileNav />}
     </div>
   );
 };
 
-// Profile Dropdown Component
 const ProfileDropdown: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -206,7 +254,6 @@ const ProfileDropdown: React.FC = () => {
     loadUserData();
   }, []);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -229,29 +276,27 @@ const ProfileDropdown: React.FC = () => {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="size-9 rounded-full bg-gradient-to-br from-primary to-orange-600 flex items-center justify-center text-white font-bold hover:scale-105 active:scale-95 transition-transform overflow-hidden"
+        className="flex size-10 items-center justify-center overflow-hidden rounded-full border border-[rgba(73,133,214,0.2)] bg-[rgba(17,31,48,0.86)] text-white font-bold transition-transform hover:scale-105 active:scale-95"
       >
         <img
           src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${displayName}`}
           alt="Profile"
-          className="w-full h-full object-cover"
+          className="h-full w-full object-cover"
         />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white dark:bg-[#1a1d21] border border-gray-200 dark:border-white/10 shadow-2xl overflow-hidden z-50">
-          <div className="p-3 border-b border-white/5">
+        <div className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-[1.35rem] border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.98)] shadow-2xl">
+          <div className="border-b border-[rgba(73,133,214,0.1)] p-4">
             <div className="flex items-center gap-3">
               <img
                 src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${displayName}`}
                 alt="Profile"
-                className="size-10 rounded-full"
+                className="size-11 rounded-full"
               />
               <div className="overflow-hidden">
-                <p className="font-bold text-sm truncate text-slate-900 dark:text-white">
-                  {displayName}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{displayEmail}</p>
+                <p className="truncate text-sm font-bold text-white">{displayName}</p>
+                <p className="truncate text-xs text-slate-400">{displayEmail}</p>
               </div>
             </div>
           </div>
@@ -260,47 +305,43 @@ const ProfileDropdown: React.FC = () => {
             <NavLink
               to="/profile-data"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 active:bg-white/10 transition-colors"
+              className="flex items-center gap-3 rounded-2xl px-3 py-3 transition-colors hover:bg-[rgba(47,140,255,0.08)]"
             >
-              <span className="material-symbols-outlined text-[20px] text-gray-500 dark:text-gray-400">
+              <span className="material-symbols-outlined text-[20px] text-slate-400">
                 assignment_ind
               </span>
-              <span className="text-sm font-medium text-slate-800 dark:text-white">Mis Datos</span>
+              <span className="text-sm font-medium text-white">Mis Datos</span>
             </NavLink>
 
             <NavLink
               to="/settings"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 active:bg-white/10 transition-colors"
+              className="flex items-center gap-3 rounded-2xl px-3 py-3 transition-colors hover:bg-[rgba(47,140,255,0.08)]"
             >
-              <span className="material-symbols-outlined text-[20px] text-gray-500 dark:text-gray-400">
+              <span className="material-symbols-outlined text-[20px] text-slate-400">
                 settings
               </span>
-              <span className="text-sm font-medium text-slate-800 dark:text-white">
-                Configuración
-              </span>
+              <span className="text-sm font-medium text-white">Configuración</span>
             </NavLink>
 
             <NavLink
               to="/guide"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 active:bg-white/10 transition-colors"
+              className="flex items-center gap-3 rounded-2xl px-3 py-3 transition-colors hover:bg-[rgba(47,140,255,0.08)]"
             >
-              <span className="material-symbols-outlined text-[20px] text-gray-500 dark:text-gray-400">
-                help
-              </span>
-              <span className="text-sm font-medium text-slate-800 dark:text-white">Ayuda</span>
+              <span className="material-symbols-outlined text-[20px] text-slate-400">help</span>
+              <span className="text-sm font-medium text-white">Ayuda</span>
             </NavLink>
           </div>
 
-          <div className="p-2 border-t border-white/5">
+          <div className="border-t border-[rgba(73,133,214,0.1)] p-2">
             <button
               onClick={async () => {
                 setIsOpen(false);
                 await supabase.auth.signOut();
                 window.location.href = '/';
               }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-red-500/10 active:bg-red-500/20 text-red-400 transition-colors"
+              className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-red-400 transition-colors hover:bg-red-500/10"
             >
               <span className="material-symbols-outlined text-[20px]">logout</span>
               <span className="text-sm font-medium">Cerrar Sesión</span>

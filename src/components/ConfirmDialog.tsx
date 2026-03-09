@@ -27,41 +27,41 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(2,8,15,0.62)] p-4 backdrop-blur-sm"
       onClick={onCancel}
     >
       <div
-        className="bg-white dark:bg-[#1a2632] rounded-2xl p-6 w-full max-w-md shadow-xl animate-in fade-in zoom-in duration-300"
+        className="w-full max-w-md rounded-[1.5rem] border border-[rgba(73,133,214,0.16)] bg-[rgba(9,18,31,0.98)] p-6 shadow-xl animate-in duration-300 fade-in zoom-in"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-3 mb-4">
+        <div className="mb-5 flex items-start gap-4">
           <div
-            className={`size-10 rounded-full flex items-center justify-center ${isDanger ? 'bg-red-100 dark:bg-red-900/30' : 'bg-gray-100 dark:bg-gray-800'}`}
+            className={`flex size-11 shrink-0 items-center justify-center rounded-full ${
+              isDanger ? 'bg-red-500/12 text-red-300' : 'bg-[rgba(47,140,255,0.14)] text-[#4ea0ff]'
+            }`}
           >
-            <span
-              className={`material-symbols-outlined ${isDanger ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-300'}`}
-            >
-              {isDanger ? 'warning' : 'help'}
-            </span>
+            <span className="material-symbols-outlined">{isDanger ? 'warning' : 'help'}</span>
           </div>
           <div>
-            <h2 className="text-xl font-bold">{title}</h2>
-            {description && (
-              <p className="text-sm text-gray-500 dark:text-gray-400">{description}</p>
-            )}
+            <h2 className="text-xl font-bold text-white">{title}</h2>
+            {description && <p className="mt-1 text-sm leading-6 text-slate-400">{description}</p>}
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 py-2.5 rounded-lg bg-gray-200 dark:bg-gray-700 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-all"
+            className="flex-1 rounded-[1rem] border border-[rgba(73,133,214,0.16)] bg-[rgba(16,30,47,0.78)] px-4 py-3 font-semibold text-slate-300"
           >
             {cancelLabel}
           </button>
           <button
             onClick={onConfirm}
-            className={`flex-1 py-2.5 rounded-lg font-bold transition-all ${isDanger ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-primary text-white hover:bg-primary/90'}`}
+            className={`flex-1 rounded-[1rem] px-4 py-3 font-bold ${
+              isDanger
+                ? 'bg-red-600 text-white'
+                : 'bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] text-white shadow-lg shadow-[#2f8cff]/20'
+            }`}
           >
             {confirmLabel}
           </button>

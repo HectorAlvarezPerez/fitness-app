@@ -287,36 +287,37 @@ const RoutinesList: React.FC = () => {
   };
 
   return (
-    <div className="h-full w-full overflow-y-auto p-4 md:p-8">
-      <div className="flex flex-col max-w-6xl mx-auto gap-6 pb-24">
-        <header className="flex items-center justify-between gap-4 flex-wrap">
+    <div className="h-full w-full overflow-y-auto">
+      <div className="mobile-page flex max-w-6xl flex-col gap-6 pb-28">
+        <header className="mobile-hero">
           <div>
-            <h1 className="text-3xl md:text-4xl font-black">Mis Rutinas</h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">
+            <p className="mobile-kicker">Workout hub</p>
+            <h1 className="mobile-title">Mis Rutinas</h1>
+            <p className="mobile-subtitle">
               Organiza y ejecuta tus entrenamientos
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <button
               onClick={handleStartEmptyWorkout}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white dark:bg-[#1a2632] border border-primary/40 text-primary font-bold hover:bg-primary/10 transition-all"
+              className="mobile-card flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-[#4ea0ff]"
             >
               <span className="material-symbols-outlined text-[20px]">play_arrow</span>
-              <span className="hidden sm:inline">Empezar entrenamiento</span>
+              <span>Entreno libre</span>
             </button>
             <button
               onClick={() => setIsCreatingFolder(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-gray-100 dark:bg-gray-800 font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
+              className="mobile-card flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white"
             >
               <span className="material-symbols-outlined text-[20px]">create_new_folder</span>
-              <span className="hidden sm:inline">Nueva Carpeta</span>
+              <span>Nueva carpeta</span>
             </button>
             <Link
               to="/routine/new"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-white font-bold hover:bg-primary/90 transition-all shadow-lg"
+              className="flex items-center justify-center gap-2 rounded-[1.1rem] bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-[#2f8cff]/25"
             >
               <span className="material-symbols-outlined text-[20px]">add</span>
-              <span className="hidden sm:inline">Nueva Rutina</span>
+              <span>Nueva rutina</span>
             </Link>
           </div>
         </header>
@@ -324,7 +325,7 @@ const RoutinesList: React.FC = () => {
         {activeWorkout && (
           <Link
             to={getActiveWorkoutPath(activeWorkout.routineId)}
-            className="flex items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3 text-primary font-bold hover:bg-primary/15 transition-colors"
+            className="mobile-card flex items-center justify-between gap-3 px-4 py-4 font-bold text-[#4ea0ff] transition-colors"
           >
             <span className="inline-flex items-center gap-2">
               <span className="material-symbols-outlined">play_circle</span>
@@ -566,19 +567,19 @@ const RoutinesList: React.FC = () => {
         )}
 
         {savedRoutines.length === 0 && routineFolders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="size-20 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
-              <span className="material-symbols-outlined text-4xl text-gray-400">
+          <div className="mobile-card flex flex-col items-center justify-center px-5 py-16 text-center">
+            <div className="mb-6 flex size-24 items-center justify-center rounded-full border border-[rgba(73,133,214,0.16)] bg-[rgba(47,140,255,0.08)]">
+              <span className="material-symbols-outlined text-5xl text-[#4ea0ff]">
                 fitness_center
               </span>
             </div>
-            <h3 className="text-xl font-bold mb-2">No tienes rutinas aún</h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">
+            <h3 className="mb-2 text-2xl font-bold text-white">No tienes rutinas aún</h3>
+            <p className="mb-6 max-w-xs text-slate-400">
               Crea tu primera rutina para empezar a entrenar
             </p>
             <Link
               to="/routine/new"
-              className="px-6 py-3 rounded-full bg-primary text-white font-bold hover:bg-primary/90 transition-all"
+              className="rounded-[1.1rem] bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] px-6 py-4 font-bold text-white shadow-lg shadow-[#2f8cff]/25"
             >
               Crear Primera Rutina
             </Link>
@@ -592,7 +593,7 @@ const RoutinesList: React.FC = () => {
             {routinesWithoutFolder.length > 0 && (
               <div className="space-y-3">
                 {routineFolders.length > 0 && (
-                  <h2 className="text-lg font-bold text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                  <h2 className="flex items-center gap-2 text-lg font-bold text-slate-400">
                     <span className="material-symbols-outlined text-[20px]">folder_off</span>
                     Sin carpeta
                   </h2>
