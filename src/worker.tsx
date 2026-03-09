@@ -15,6 +15,7 @@ type WorkerBindings = {
 
 const app = new Hono<{ Bindings: WorkerBindings }>();
 const stripLeadingSlash = (path: string) => path.replace(/^\/+/, '');
+const STATIC_MANIFEST_VERSION = '2026-03-09T18:00:00Z';
 
 app.use('*', async (c, next) => {
   await next();
@@ -32,6 +33,7 @@ app.get('/health', (c) =>
   c.json({
     ok: true,
     service: 'fitness-app-worker',
+    staticManifestVersion: STATIC_MANIFEST_VERSION,
     timestamp: new Date().toISOString(),
   })
 );
