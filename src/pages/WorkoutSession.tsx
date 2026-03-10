@@ -55,6 +55,7 @@ const WorkoutSession: React.FC = () => {
 
   const [expandedExercise, setExpandedExercise] = useState<string | null>(null);
   const [initializationError, setInitializationError] = useState<string | null>(null);
+  const [activeWorkoutRestored, setActiveWorkoutRestored] = useState(false);
   const [finishConfirmOpen, setFinishConfirmOpen] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
@@ -75,9 +76,16 @@ const WorkoutSession: React.FC = () => {
 
   useEffect(() => {
     loadRoutines();
-    // Don't auto-load active workout here if we are trying to start a specific one
-    // relying on main layout or app init is better, but here we can check:
-    loadActiveWorkout();
+
+    let cancelled = false;
+    (async () => {
+      await loadActiveWorkout();
+      if (!cancelled) setActiveWorkoutRestored(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [loadRoutines, loadActiveWorkout]);
 
   useEffect(() => {
@@ -90,6 +98,9 @@ const WorkoutSession: React.FC = () => {
     let cancelled = false;
 
     const initSession = async () => {
+      // First try to restore any workout already in progress (critical on iPhone resume/reload)
+      if (!activeWorkoutRestored) return;
+
       // Safe guards
       if (activeWorkout) return;
 
@@ -152,6 +163,7 @@ const WorkoutSession: React.FC = () => {
     navigate,
     searchParams,
     location,
+    activeWorkoutRestored,
   ]);
 
   useEffect(() => {
