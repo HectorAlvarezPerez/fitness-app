@@ -8,14 +8,11 @@ const WorkoutCalendar: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  const getDaysInMonth = (date: Date) => {
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  };
+  const getDaysInMonth = (date: Date) =>
+    new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
 
   const getFirstDayOfMonth = (date: Date) => {
-    // 0 = Sunday, 1 = Monday, ...
     const day = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-    // Adjust so 0 = Monday, 6 = Sunday
     return day === 0 ? 6 : day - 1;
   };
 
@@ -27,13 +24,10 @@ const WorkoutCalendar: React.FC = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   };
 
-  const isSameDay = (d1: Date, d2: Date) => {
-    return (
-      d1.getDate() === d2.getDate() &&
-      d1.getMonth() === d2.getMonth() &&
-      d1.getFullYear() === d2.getFullYear()
-    );
-  };
+  const isSameDay = (d1: Date, d2: Date) =>
+    d1.getDate() === d2.getDate() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getFullYear() === d2.getFullYear();
 
   const isWorkoutDay = (day: number) => {
     const checkDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
@@ -49,7 +43,6 @@ const WorkoutCalendar: React.FC = () => {
     today.setHours(0, 0, 0, 0);
     clickedDate.setHours(0, 0, 0, 0);
 
-    // Only allow past or today, skip future and days with workouts
     if (clickedDate > today) return;
     if (isWorkoutDay(day)) return;
 
@@ -72,15 +65,13 @@ const WorkoutCalendar: React.FC = () => {
   };
 
   const daysInMonth = getDaysInMonth(currentDate);
-  const firstDayIndex = getFirstDayOfMonth(currentDate); // 0-6 (Mon-Sun)
+  const firstDayIndex = getFirstDayOfMonth(currentDate);
 
-  // Generate calendar grid
   const days = [];
-  // Empty padded days
   for (let i = 0; i < firstDayIndex; i++) {
-    days.push(<div key={`empty-${i}`} className="h-10 w-10"></div>);
+    days.push(<div key={`empty-${i}`} className="h-10 w-10" />);
   }
-  // Actual days
+
   for (let day = 1; day <= daysInMonth; day++) {
     const hasWorkout = isWorkoutDay(day);
     const isToday = isSameDay(
@@ -95,20 +86,18 @@ const WorkoutCalendar: React.FC = () => {
     const isClickable = !hasWorkout && !isFuture;
 
     days.push(
-      <div key={day} className="h-10 w-10 flex items-center justify-center relative">
+      <div key={day} className="relative flex h-10 w-10 items-center justify-center">
         <div
           onClick={isClickable ? () => handleDayClick(day) : undefined}
-          className={`h-8 w-8 flex items-center justify-center rounded-full text-sm font-medium transition-all
-                        ${
-                          hasWorkout
-                            ? 'bg-primary text-white shadow-md shadow-primary/30'
-                            : isToday
-                              ? 'bg-gray-200 dark:bg-gray-700 text-primary font-bold cursor-pointer hover:ring-2 hover:ring-primary/50'
-                              : isFuture
-                                ? 'text-slate-300 dark:text-slate-600'
-                                : 'text-slate-600 dark:text-slate-400 cursor-pointer hover:bg-primary/10 hover:text-primary dark:hover:bg-primary/20'
-                        }
-                    `}
+          className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-all ${
+            hasWorkout
+              ? 'bg-primary text-white shadow-md shadow-primary/30'
+              : isToday
+                ? 'bg-white/12 text-white font-semibold ring-1 ring-primary/40'
+                : isFuture
+                  ? 'text-slate-600'
+                  : 'cursor-pointer text-slate-300 hover:bg-white/10 hover:text-white'
+          }`}
           title={isClickable ? 'Registrar entrenamiento' : undefined}
         >
           {day}
@@ -133,7 +122,7 @@ const WorkoutCalendar: React.FC = () => {
   ];
 
   const formattedSelectedDate = selectedDate
-    ? new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-ES', {
+    ? new Date(`${selectedDate}T12:00:00`).toLocaleDateString('es-ES', {
         day: '2-digit',
         month: 'long',
         year: 'numeric',
@@ -141,106 +130,109 @@ const WorkoutCalendar: React.FC = () => {
     : '';
 
   return (
-    <div className="bg-white dark:bg-[#1a2632] rounded-2xl border border-slate-200 dark:border-[#233648] p-6">
-      <h3 className="text-lg font-bold mb-6">Calendario</h3>
+    <div className="mobile-card">
+      <div className="mb-6">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Agenda</p>
+        <h3 className="mt-1 text-lg font-semibold text-white">Calendario</h3>
+      </div>
 
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <button
           onClick={handlePrevMonth}
-          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+          className="flex size-10 items-center justify-center rounded-full border border-white/10 bg-white/5 transition-colors hover:bg-white/10"
         >
-          <span className="material-symbols-outlined text-gray-500">chevron_left</span>
+          <span className="material-symbols-outlined text-slate-300">chevron_left</span>
         </button>
-        <div className="font-bold text-lg capitalize">
+        <div className="text-lg font-semibold capitalize text-white">
           {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
         </div>
         <button
           onClick={handleNextMonth}
-          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+          className="flex size-10 items-center justify-center rounded-full border border-white/10 bg-white/5 transition-colors hover:bg-white/10"
         >
-          <span className="material-symbols-outlined text-gray-500">chevron_right</span>
+          <span className="material-symbols-outlined text-slate-300">chevron_right</span>
         </button>
       </div>
 
-      {/* Days Header */}
-      <div className="grid grid-cols-7 gap-1 mb-2 text-center">
+      <div className="mb-2 grid grid-cols-7 gap-1 text-center">
         {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((day) => (
           <div
             key={day}
-            className="h-10 w-10 flex items-center justify-center text-xs font-bold text-gray-400"
+            className="flex h-10 w-10 items-center justify-center text-xs font-semibold text-slate-500"
           >
             {day}
           </div>
         ))}
       </div>
 
-      {/* Days Grid */}
-      <div className="grid grid-cols-7 gap-1 place-items-center">{days}</div>
+      <div className="grid grid-cols-7 place-items-center gap-1">{days}</div>
 
-      {/* Routine Selection Modal */}
       {selectedDate && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
           onClick={() => setSelectedDate(null)}
         >
           <div
-            className="bg-white dark:bg-[#1a2632] rounded-2xl border border-slate-200 dark:border-[#233648] p-6 mx-4 w-full max-w-sm shadow-2xl"
+            className="mx-4 w-full max-w-sm rounded-[28px] border border-white/10 bg-[#0f2231] p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold">Registrar entrenamiento</h3>
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white">Registrar entrenamiento</h3>
               <button
                 onClick={() => setSelectedDate(null)}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+                className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/5"
               >
-                <span className="material-symbols-outlined text-gray-400">close</span>
+                <span className="material-symbols-outlined text-slate-300">close</span>
               </button>
             </div>
 
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              <span className="material-symbols-outlined text-base align-text-bottom mr-1">
+            <p className="mb-4 text-sm text-slate-400">
+              <span className="material-symbols-outlined mr-1 align-text-bottom text-base">
                 calendar_month
               </span>
               {formattedSelectedDate}
             </p>
 
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {/* Free workout option */}
+            <div className="max-h-64 space-y-2 overflow-y-auto">
               <button
                 onClick={handleSelectFreeWorkout}
-                className="w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-[#0f1923] border border-slate-200 dark:border-[#233648] hover:border-primary dark:hover:border-primary transition-colors text-left"
+                className="w-full rounded-2xl border border-white/10 bg-white/5 p-3 text-left transition-colors hover:border-primary"
               >
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <span className="material-symbols-outlined text-primary">add</span>
-                </div>
-                <div>
-                  <div className="font-semibold text-sm">Entrenamiento libre</div>
-                  <div className="text-xs text-gray-400">Añade ejercicios manualmente</div>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
+                    <span className="material-symbols-outlined text-primary">add</span>
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-white">Entrenamiento libre</div>
+                    <div className="text-xs text-slate-400">Añade ejercicios manualmente</div>
+                  </div>
                 </div>
               </button>
 
-              {/* Saved routines */}
               {savedRoutines.map((routine) => (
                 <button
                   key={routine.id}
                   onClick={() => handleSelectRoutine(routine.id)}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-[#0f1923] border border-slate-200 dark:border-[#233648] hover:border-primary dark:hover:border-primary transition-colors text-left"
+                  className="w-full rounded-2xl border border-white/10 bg-white/5 p-3 text-left transition-colors hover:border-primary"
                 >
-                  <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                    <span className="material-symbols-outlined text-blue-500">fitness_center</span>
-                  </div>
-                  <div>
-                    <div className="font-semibold text-sm">{routine.name}</div>
-                    <div className="text-xs text-gray-400">
-                      {routine.exercises?.length || 0} ejercicios
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-cyan-500/10">
+                      <span className="material-symbols-outlined text-cyan-300">
+                        fitness_center
+                      </span>
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-white">{routine.name}</div>
+                      <div className="text-xs text-slate-400">
+                        {routine.exercises?.length || 0} ejercicios
+                      </div>
                     </div>
                   </div>
                 </button>
               ))}
 
               {savedRoutines.length === 0 && (
-                <p className="text-xs text-gray-400 text-center py-2">
+                <p className="py-2 text-center text-xs text-slate-400">
                   No tienes rutinas guardadas
                 </p>
               )}

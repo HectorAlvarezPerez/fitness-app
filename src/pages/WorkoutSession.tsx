@@ -315,15 +315,15 @@ const WorkoutSession: React.FC = () => {
   if (initializationError) {
     return (
       <div className="flex h-full w-full items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-4 text-center">
-          <div className="size-16 rounded-full bg-red-100 flex items-center justify-center">
-            <span className="material-symbols-outlined text-red-500 text-3xl">error</span>
+        <div className="mobile-card flex max-w-md flex-col items-center gap-4 text-center">
+          <div className="flex size-16 items-center justify-center rounded-full bg-red-500/12">
+            <span className="material-symbols-outlined text-3xl text-red-300">error</span>
           </div>
-          <h2 className="text-xl font-bold">Error</h2>
-          <p className="text-gray-500">{initializationError}</p>
+          <h2 className="text-xl font-semibold text-white">Error</h2>
+          <p className="text-slate-400">{initializationError}</p>
           <button
             onClick={() => navigate('/routine')}
-            className="px-6 py-2 bg-primary text-white rounded-lg font-bold"
+            className="rounded-full bg-primary px-6 py-3 font-semibold text-white"
           >
             Volver a Rutinas
           </button>
@@ -336,12 +336,12 @@ const WorkoutSession: React.FC = () => {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center">
+          <div className="flex size-12 items-center justify-center rounded-full bg-primary/10">
             <span className="material-symbols-outlined text-primary animate-spin">
               progress_activity
             </span>
           </div>
-          <p className="text-gray-500">Cargando entrenamiento...</p>
+          <p className="text-slate-400">Cargando entrenamiento...</p>
         </div>
       </div>
     );
@@ -398,7 +398,7 @@ const WorkoutSession: React.FC = () => {
             <div className="flex items-center justify-between mb-3">
               <Link
                 to="/routine"
-                className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-primary"
+                className="inline-flex items-center gap-1 text-sm text-slate-400 transition-colors hover:text-white"
               >
                 <span className="material-symbols-outlined text-[18px]">arrow_back</span>
                 Rutinas
@@ -417,7 +417,7 @@ const WorkoutSession: React.FC = () => {
             <div className="flex items-start justify-between gap-3">
               <h1 className="text-2xl md:text-3xl font-black mb-2">{activeWorkout.routineName}</h1>
               {activeWorkout.overrideDate && (
-                <div className="mb-2 px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-sm font-medium flex items-center gap-2">
+                <div className="mb-2 flex items-center gap-2 rounded-full border border-amber-400/20 bg-amber-400/12 px-3 py-1.5 text-sm font-medium text-amber-200">
                   <span className="material-symbols-outlined text-base">calendar_month</span>
                   Registrando entrenamiento del{' '}
                   {new Date(activeWorkout.overrideDate + 'T12:00:00').toLocaleDateString('es-ES', {
@@ -444,7 +444,7 @@ const WorkoutSession: React.FC = () => {
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <span className="text-sm font-bold text-gray-600 dark:text-gray-400 whitespace-nowrap">
+              <span className="text-sm font-bold text-slate-400 whitespace-nowrap">
                 {completedSets}/{totalSets}
               </span>
             </div>
@@ -474,10 +474,7 @@ const WorkoutSession: React.FC = () => {
             )}
 
             {safeExercises.map((exercise, exIndex) => (
-              <div
-                key={exercise.exerciseId}
-                className="mobile-card overflow-hidden shadow-sm"
-              >
+              <div key={exercise.exerciseId} className="mobile-card overflow-hidden shadow-sm">
                 {/* Exercise Header */}
                 <div
                   className="cursor-pointer p-4 transition-colors hover:bg-[rgba(47,140,255,0.05)]"
@@ -493,9 +490,7 @@ const WorkoutSession: React.FC = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-bold text-slate-500">
-                          #{exIndex + 1}
-                        </span>
+                        <span className="text-xs font-bold text-slate-500">#{exIndex + 1}</span>
                         <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-bold">
                           {exercise.primaryMuscle}
                         </span>
@@ -558,7 +553,7 @@ const WorkoutSession: React.FC = () => {
                       {isFreeWorkout && (
                         <button
                           onClick={() => setExpandedExercise(null)}
-                          className="rounded-xl px-3 py-2 text-sm font-bold border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary transition-colors"
+                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-bold text-slate-300 transition-colors hover:border-primary hover:text-white"
                         >
                           Cerrar ejercicio
                         </button>
@@ -606,7 +601,7 @@ const WorkoutSession: React.FC = () => {
                       {/* Add Set Button */}
                       <button
                         onClick={() => addSet(exercise.exerciseId)}
-                        className="py-2 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-primary dark:hover:border-primary text-gray-500 dark:text-gray-400 hover:text-primary font-bold text-sm transition-colors"
+                        className="rounded-2xl border-2 border-dashed border-white/10 py-2.5 text-sm font-bold text-slate-400 transition-colors hover:border-primary hover:text-white"
                       >
                         + Añadir Serie
                       </button>
@@ -622,7 +617,7 @@ const WorkoutSession: React.FC = () => {
             <div className="w-full space-y-2">
               {/* Timer (if active) - Footer version */}
               {activeWorkout.restTimer && (
-                <div className="mb-3 border-b border-gray-200 dark:border-surface-border pb-3">
+                <div className="mb-3 border-b border-white/10 pb-3">
                   <RestTimer
                     key={activeWorkout.restTimer.instanceId}
                     variant="footer"
@@ -662,7 +657,7 @@ const WorkoutSession: React.FC = () => {
         <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
           {/* Timer Widget */}
           <div className="mobile-card p-6 shadow-sm">
-            <h3 className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase mb-2 text-center">
+            <h3 className="mb-2 text-center text-xs font-bold uppercase text-slate-400">
               Tiempo Transcurrido
             </h3>
             <div className="flex justify-center">
@@ -678,9 +673,7 @@ const WorkoutSession: React.FC = () => {
           {/* Progress Widget */}
           <div className="mobile-card p-6 shadow-sm">
             <div className="flex justify-between items-center mb-2">
-              <h3 className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase">
-                Progreso
-              </h3>
+              <h3 className="text-xs font-bold uppercase text-slate-400">Progreso</h3>
               <span className="text-sm font-bold text-primary dark:text-white">
                 {Math.round(progress)}%
               </span>
@@ -691,7 +684,7 @@ const WorkoutSession: React.FC = () => {
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-center text-sm text-slate-400">
               {completedSets} de {totalSets} series completadas
             </p>
           </div>
@@ -722,7 +715,7 @@ const WorkoutSession: React.FC = () => {
 
             <button
               onClick={() => setCancelConfirmOpen(true)}
-              className="w-full py-3 rounded-xl border-2 border-red-100 dark:border-red-900/30 text-red-500 dark:text-red-400 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 transition-all flex items-center justify-center gap-2"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-400/25 bg-red-500/8 py-3 font-bold text-red-300 transition-all hover:bg-red-500/12"
             >
               <span className="material-symbols-outlined">close</span>
               Cancelar
@@ -824,14 +817,14 @@ const SortableWorkoutSetRow: React.FC<{
       ref={setNodeRef}
       data-set-anchor={`${exerciseId}-${setIndex}`}
       style={style}
-      className={`p-3 rounded-lg border-2 transition-all ${
+      className={`rounded-2xl border p-3 transition-all ${
         set.completed
-          ? 'bg-primary/10 border-primary'
+          ? 'border-primary/60 bg-primary/10'
           : isCurrentSet
-            ? 'bg-amber-50/60 dark:bg-amber-900/10 border-amber-400'
+            ? 'border-amber-400 bg-amber-400/10'
             : set.isWarmup
-              ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-gray-200 dark:border-[#233648] opacity-75'
-              : 'bg-white dark:bg-[#1a2632] border-gray-200 dark:border-[#233648]'
+              ? 'border-emerald-400/20 bg-emerald-400/10 opacity-80'
+              : 'border-white/10 bg-white/5'
       }`}
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
@@ -839,7 +832,7 @@ const SortableWorkoutSetRow: React.FC<{
           <button
             {...attributes}
             {...listeners}
-            className="cursor-grab touch-none active:cursor-grabbing text-gray-400 hover:text-primary flex items-center justify-center"
+            className="flex items-center justify-center text-slate-500 transition-colors hover:text-white cursor-grab touch-none active:cursor-grabbing"
             title="Arrastrar serie"
             aria-label="Arrastrar serie"
           >
@@ -848,8 +841,8 @@ const SortableWorkoutSetRow: React.FC<{
           {/* Checkbox */}
           <button
             onClick={() => toggleSetComplete(exerciseId, setIndex)}
-            className={`size-8 rounded-full border-2 flex items-center justify-center transition-all ${
-              set.completed ? 'bg-primary border-primary' : 'border-gray-300 dark:border-gray-600'
+            className={`flex size-8 items-center justify-center rounded-full border-2 transition-all ${
+              set.completed ? 'border-primary bg-primary' : 'border-white/15'
             }`}
           >
             {set.completed && (
@@ -857,7 +850,7 @@ const SortableWorkoutSetRow: React.FC<{
             )}
           </button>
 
-          <span className="text-sm font-bold text-gray-600 dark:text-gray-400 w-16 shrink-0">
+          <span className="w-16 shrink-0 text-sm font-bold text-slate-400">
             Serie {setIndex + 1}
           </span>
 
@@ -919,9 +912,9 @@ const SortableWorkoutSetRow: React.FC<{
                     updateSetValue(exerciseId, setIndex, 'weight', parsed);
                   }
                 }}
-                className="w-full min-w-[60px] sm:w-16 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
+                className="w-full min-w-[60px] rounded-xl border border-white/10 bg-[#07131d] px-2 py-1.5 text-center text-sm font-bold text-white sm:w-16"
               />
-              <span className="text-xs text-gray-500">kg</span>
+              <span className="text-xs text-slate-500">kg</span>
             </div>
           )}
 
@@ -936,9 +929,9 @@ const SortableWorkoutSetRow: React.FC<{
                 if (!/^[0-9]*$/.test(raw)) return;
                 updateSetValue(exerciseId, setIndex, 'reps', raw === '' ? 0 : parseInt(raw, 10));
               }}
-              className="w-full min-w-[52px] sm:w-14 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-gray-200 dark:border-[#233648] text-sm font-bold"
+              className="w-full min-w-[52px] rounded-xl border border-white/10 bg-[#07131d] px-2 py-1.5 text-center text-sm font-bold text-white sm:w-14"
             />
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-slate-500">
               {trackingType === 'time' ? 'seg' : 'reps'}
             </span>
           </div>
@@ -948,14 +941,14 @@ const SortableWorkoutSetRow: React.FC<{
         {totalSets > 1 && (
           <button
             onClick={() => removeSet(exerciseId, setIndex)}
-            className="self-start sm:self-center sm:ml-auto p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+            className="self-start rounded-lg p-1 transition-colors hover:bg-red-500/10 sm:ml-auto sm:self-center"
           >
             <span className="material-symbols-outlined text-red-500 text-[18px]">close</span>
           </button>
         )}
       </div>
 
-      <p className="mt-1 ml-10 text-xs text-gray-500 dark:text-gray-400">{lastLabel}</p>
+      <p className="mt-1 ml-10 text-xs text-slate-500">{lastLabel}</p>
 
       {/* Dropset sub-series */}
       {set.dropsets && set.dropsets.length > 0 && (
@@ -963,7 +956,7 @@ const SortableWorkoutSetRow: React.FC<{
           {set.dropsets.map((dropset: any, dIndex: number) => (
             <div
               key={`${setIndex}-${dIndex}`}
-              className="flex items-center gap-2 p-2 pl-4 rounded-lg bg-orange-50/50 dark:bg-orange-900/10 border-l-2 border-orange-400"
+              className="flex items-center gap-2 rounded-r-xl border-l-2 border-orange-400 bg-orange-400/10 p-2 pl-4"
             >
               <span className="text-xs font-bold text-orange-600 dark:text-orange-400 w-8">
                 {setIndex + 1}.{dIndex + 1}
@@ -984,9 +977,9 @@ const SortableWorkoutSetRow: React.FC<{
                       parseFloat(e.target.value) || 0
                     )
                   }
-                  className="w-12 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-orange-200 dark:border-orange-700 text-sm font-bold"
+                  className="w-12 rounded-lg border border-orange-400/20 bg-[#07131d] px-2 py-1 text-center text-sm font-bold text-white"
                 />
-                <span className="text-xs text-gray-500">kg</span>
+                <span className="text-xs text-slate-500">kg</span>
               </div>
               <div className="flex items-center gap-1">
                 <input
@@ -1001,9 +994,9 @@ const SortableWorkoutSetRow: React.FC<{
                       parseInt(e.target.value) || 0
                     )
                   }
-                  className="w-12 px-2 py-1 text-center rounded bg-white dark:bg-[#1a2632] border border-orange-200 dark:border-orange-700 text-sm font-bold"
+                  className="w-12 rounded-lg border border-orange-400/20 bg-[#07131d] px-2 py-1 text-center text-sm font-bold text-white"
                 />
-                <span className="text-xs text-gray-500">reps</span>
+                <span className="text-xs text-slate-500">reps</span>
               </div>
             </div>
           ))}

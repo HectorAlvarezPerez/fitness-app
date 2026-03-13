@@ -224,6 +224,7 @@ const getInitialUserScopedState = () => ({
   routineFolders: [] as RoutineFolder[],
   workoutHistory: [] as WorkoutSession[],
   activeWorkout: null as ActiveWorkout | null,
+  persistedUserId: null as string | null,
   bodyMeasurements: [] as BodyMeasurement[],
   personalRecords: {} as Record<string, { weight: number; reps: number; date: string }>,
   notification: null as { title: string; message: string; type: 'pr' } | null,
@@ -260,6 +261,7 @@ interface AppState {
 
   // Active Workout
   activeWorkout: ActiveWorkout | null;
+  persistedUserId: string | null;
 
   // Body Measurements
   bodyMeasurements: BodyMeasurement[];
@@ -794,13 +796,16 @@ export const useStore = create<AppState>()(
         const {
           data: { user },
         } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user) {
+          set({ activeWorkout: null, persistedUserId: null });
+          return;
+        }
 
         const { data, error } = await supabase
           .from('active_workouts')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         if (!error && data) {
           const workoutData = readActiveWorkoutDataPayload(data.workout_data);
@@ -821,8 +826,16 @@ export const useStore = create<AppState>()(
               exercises: normalizedExercises,
               overrideDate: workoutData.overrideDate,
             },
+            persistedUserId: user.id,
           });
+          return;
         }
+
+        if (error) {
+          console.error('loadActiveWorkout error:', error);
+        }
+
+        set({ activeWorkout: null, persistedUserId: user.id });
       },
 
       updateWorkoutExerciseSets: async (
@@ -1125,7 +1138,10 @@ export const useStore = create<AppState>()(
           }
 
           if (data) {
-            set({ activeWorkout: { ...activeWorkout, id: data.id } });
+            set({
+              activeWorkout: { ...activeWorkout, id: data.id },
+              persistedUserId: user.id,
+            });
             return true;
           }
           return false;
@@ -1325,7 +1341,10 @@ export const useStore = create<AppState>()(
           }
 
           if (data) {
-            set({ activeWorkout: { ...activeWorkout, id: data.id } });
+            set({
+              activeWorkout: { ...activeWorkout, id: data.id },
+              persistedUserId: user.id,
+            });
             return true;
           }
           return false;
@@ -1399,7 +1418,7 @@ export const useStore = create<AppState>()(
 
         await supabase.from('active_workouts').delete().eq('user_id', user.id);
 
-        set({ activeWorkout: null });
+        set({ activeWorkout: null, persistedUserId: user.id });
         await get().loadWorkoutHistory();
 
         // Check for PRs
@@ -1461,7 +1480,8 @@ export const useStore = create<AppState>()(
         }
       },
 
-      clearActiveWorkout: () => set({ activeWorkout: null }),
+      clearActiveWorkout: () =>
+        set((state) => ({ activeWorkout: null, persistedUserId: state.persistedUserId })),
 
       pauseWorkout: () => {
         const state = get();
@@ -1510,7 +1530,7 @@ export const useStore = create<AppState>()(
           }
 
           // Clear local state
-          set({ activeWorkout: null });
+          set({ activeWorkout: null, persistedUserId: user?.id || null });
         } catch (error) {
           console.error('Error cancelling workout:', error);
         }
@@ -1662,6 +1682,8 @@ export const useStore = create<AppState>()(
         selectedMuscleFilter: state.selectedMuscleFilter,
         selectedEquipmentFilter: state.selectedEquipmentFilter,
         exerciseSearchQuery: state.exerciseSearchQuery,
+        activeWorkout: state.activeWorkout,
+        persistedUserId: state.persistedUserId,
       }),
       merge: (persistedState, currentState) => {
         if (!persistedState || typeof persistedState !== 'object') {
@@ -1669,6 +1691,16 @@ export const useStore = create<AppState>()(
         }
 
         const typedPersistedState = persistedState as Partial<AppState>;
+        const persistedActiveWorkout = typedPersistedState.activeWorkout
+          ? {
+              ...typedPersistedState.activeWorkout,
+              exercises: normalizeActiveWorkoutExercises(
+                Array.isArray(typedPersistedState.activeWorkout.exercises)
+                  ? typedPersistedState.activeWorkout.exercises
+                  : []
+              ),
+            }
+          : currentState.activeWorkout;
         return {
           ...currentState,
           routineName: typedPersistedState.routineName ?? currentState.routineName,
@@ -1681,6 +1713,8 @@ export const useStore = create<AppState>()(
             typedPersistedState.selectedEquipmentFilter ?? currentState.selectedEquipmentFilter,
           exerciseSearchQuery:
             typedPersistedState.exerciseSearchQuery ?? currentState.exerciseSearchQuery,
+          activeWorkout: persistedActiveWorkout,
+          persistedUserId: typedPersistedState.persistedUserId ?? currentState.persistedUserId,
         };
       },
     }

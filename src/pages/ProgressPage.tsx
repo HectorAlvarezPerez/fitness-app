@@ -292,7 +292,7 @@ export default function ProgressPage() {
             </div>
 
             {/* Legend */}
-            <div className="flex items-center justify-center gap-4 text-sm text-gray-500">
+            <div className="flex items-center justify-center gap-4 text-sm text-slate-400">
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded-full bg-[#334155]"></div>
                 <span>Sin act.</span>
@@ -318,7 +318,7 @@ export default function ProgressPage() {
             {/* Muscle Distribution Pie Chart */}
             {musclePieData.length > 0 && (
               <div className="mobile-card p-6">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-white">
                   <span className="material-symbols-outlined text-primary">pie_chart</span>
                   Distribución por Músculo
                 </h3>
@@ -362,17 +362,15 @@ export default function ProgressPage() {
                             className="w-3 h-3 rounded-full"
                             style={{ backgroundColor: entry.color }}
                           ></div>
-                          <span className="text-sm font-medium text-slate-700 dark:text-gray-300">
-                            {entry.name}
-                          </span>
+                          <span className="text-sm font-medium text-slate-200">{entry.name}</span>
                         </div>
-                        <span className="text-sm font-bold text-slate-900 dark:text-white">
+                        <span className="text-sm font-bold text-white">
                           {entry.value.toFixed(1)} series
                         </span>
                       </div>
                     ))}
                     {musclePieData.length === 0 && (
-                      <p className="text-gray-500 text-sm text-center py-4">
+                      <p className="py-4 text-center text-sm text-slate-400">
                         No hay datos para mostrar
                       </p>
                     )}
@@ -385,10 +383,10 @@ export default function ProgressPage() {
           // --- MEASUREMENTS CONTENT ---
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Sub-tabs for Measurements */}
-            <div className="flex w-fit rounded-xl bg-[rgba(16,30,47,0.78)] p-1 border border-[rgba(73,133,214,0.16)]">
+            <div className="flex w-fit rounded-2xl border border-white/10 bg-white/5 p-1">
               <button
                 onClick={() => setMeasurementTab('chart')}
-                className={`rounded-lg px-4 py-2 text-sm font-bold transition-all ${measurementTab === 'chart' ? 'bg-[rgba(47,140,255,0.14)] text-[#4ea0ff]' : 'text-slate-500'}`}
+                className={`rounded-xl px-4 py-2 text-sm font-bold transition-all ${measurementTab === 'chart' ? 'bg-primary text-white' : 'text-slate-400 hover:text-white'}`}
               >
                 <span className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[18px]">show_chart</span>
@@ -397,7 +395,7 @@ export default function ProgressPage() {
               </button>
               <button
                 onClick={() => setMeasurementTab('history')}
-                className={`rounded-lg px-4 py-2 text-sm font-bold transition-all ${measurementTab === 'history' ? 'bg-[rgba(47,140,255,0.14)] text-[#4ea0ff]' : 'text-slate-500'}`}
+                className={`rounded-xl px-4 py-2 text-sm font-bold transition-all ${measurementTab === 'history' ? 'bg-primary text-white' : 'text-slate-400 hover:text-white'}`}
               >
                 <span className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[18px]">history</span>
@@ -406,7 +404,7 @@ export default function ProgressPage() {
               </button>
               <button
                 onClick={() => setMeasurementTab('add')}
-                className={`rounded-lg px-4 py-2 text-sm font-bold transition-all ${measurementTab === 'add' ? 'bg-[rgba(47,140,255,0.14)] text-[#4ea0ff]' : 'text-slate-500'}`}
+                className={`rounded-xl px-4 py-2 text-sm font-bold transition-all ${measurementTab === 'add' ? 'bg-primary text-white' : 'text-slate-400 hover:text-white'}`}
               >
                 <span className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[18px]">add</span>
@@ -418,12 +416,12 @@ export default function ProgressPage() {
             {measurementTab === 'chart' && (
               <div className="mobile-card p-6">
                 <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-lg font-bold">Histórico</h3>
+                  <h3 className="text-lg font-bold text-white">Histórico</h3>
                   <div className="relative">
                     <select
                       value={selectedMetric}
                       onChange={(e) => setSelectedMetric(e.target.value as any)}
-                      className="appearance-none rounded-lg border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] py-2 pl-4 pr-10 text-sm font-bold text-white outline-none"
+                      className="appearance-none rounded-full border border-white/10 bg-white/5 py-2.5 pl-4 pr-10 text-sm font-bold text-white outline-none"
                     >
                       {metricOptions.map((opt) => (
                         <option key={opt.key} value={opt.key}>
@@ -431,7 +429,7 @@ export default function ProgressPage() {
                         </option>
                       ))}
                     </select>
-                    <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-sm">
+                    <span className="material-symbols-outlined pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-sm text-slate-500">
                       expand_more
                     </span>
                   </div>
@@ -485,13 +483,13 @@ export default function ProgressPage() {
             {measurementTab === 'history' && (
               <div className="mobile-card overflow-hidden">
                 {bodyMeasurements.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500">
+                  <div className="p-8 text-center text-slate-400">
                     No hay registros todavía. Añade tu primer registro de medidas.
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                      <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-[#121c26] dark:text-gray-400">
+                      <thead className="bg-[#07131d] text-xs uppercase text-slate-400">
                         <tr>
                           <th className="px-6 py-3">Fecha</th>
                           <th className="px-6 py-3">Peso</th>
@@ -505,7 +503,7 @@ export default function ProgressPage() {
                         {bodyMeasurements.map((m) => (
                           <tr
                             key={m.id}
-                            className="bg-white border-b dark:bg-[#1a2632] dark:border-gray-800"
+                            className="border-b border-white/10 bg-transparent text-slate-200"
                           >
                             <td className="px-6 py-4 font-medium whitespace-nowrap">
                               {new Date(m.date).toLocaleDateString()}
@@ -519,7 +517,7 @@ export default function ProgressPage() {
                             <td className="px-6 py-4 text-right">
                               <button
                                 onClick={() => deleteBodyMeasurement(m.id)}
-                                className="text-red-500 hover:text-red-700 font-medium"
+                                className="font-medium text-red-300 transition-colors hover:text-red-200"
                               >
                                 Eliminar
                               </button>
@@ -534,208 +532,177 @@ export default function ProgressPage() {
             )}
 
             {measurementTab === 'add' && (
-              <form
-                onSubmit={handleSubmitMeasurement}
-                className="mobile-card space-y-6 p-6"
-              >
+              <form onSubmit={handleSubmitMeasurement} className="mobile-card space-y-6 p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="col-span-full">
-                    <label className="text-sm font-bold text-slate-700 dark:text-gray-300">
-                      Fecha
-                    </label>
+                    <label className="text-sm font-bold text-slate-300">Fecha</label>
                     <input
                       type="date"
                       name="date"
                       value={formData.date}
                       onChange={handleInputChange}
-                      className="w-full mt-1 px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#0f1820] border border-gray-200 dark:border-[#233648] focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                      className="mt-1 w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                       required
                     />
                   </div>
 
                   {/* Basics */}
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 dark:text-gray-300">
-                      Peso (kg)
-                    </label>
+                    <label className="text-sm font-bold text-slate-300">Peso (kg)</label>
                     <input
                       type="number"
                       step="0.1"
                       name="weight"
                       value={formData.weight || ''}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#0f1820] border border-gray-200 dark:border-[#233648] focus:border-primary outline-none"
+                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 dark:text-gray-300">
-                      Cintura (cm)
-                    </label>
+                    <label className="text-sm font-bold text-slate-300">Cintura (cm)</label>
                     <input
                       type="number"
                       step="0.1"
                       name="waist"
                       value={formData.waist || ''}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#0f1820] border border-gray-200 dark:border-[#233648] focus:border-primary outline-none"
+                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 dark:text-gray-300">
-                      Pecho (cm)
-                    </label>
+                    <label className="text-sm font-bold text-slate-300">Pecho (cm)</label>
                     <input
                       type="number"
                       step="0.1"
                       name="chest"
                       value={formData.chest || ''}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#0f1820] border border-gray-200 dark:border-[#233648] focus:border-primary outline-none"
+                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 dark:text-gray-300">
-                      Cadera (cm)
-                    </label>
+                    <label className="text-sm font-bold text-slate-300">Cadera (cm)</label>
                     <input
                       type="number"
                       step="0.1"
                       name="hips"
                       value={formData.hips || ''}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#0f1820] border border-gray-200 dark:border-[#233648] focus:border-primary outline-none"
+                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
 
                   {/* Arms */}
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 dark:text-gray-300">
-                      Bíceps Izq (cm)
-                    </label>
+                    <label className="text-sm font-bold text-slate-300">Bíceps Izq (cm)</label>
                     <input
                       type="number"
                       step="0.1"
                       name="biceps_left"
                       value={formData.biceps_left || ''}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#0f1820] border border-gray-200 dark:border-[#233648] focus:border-primary outline-none"
+                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 dark:text-gray-300">
-                      Bíceps Der (cm)
-                    </label>
+                    <label className="text-sm font-bold text-slate-300">Bíceps Der (cm)</label>
                     <input
                       type="number"
                       step="0.1"
                       name="biceps_right"
                       value={formData.biceps_right || ''}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#0f1820] border border-gray-200 dark:border-[#233648] focus:border-primary outline-none"
+                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 dark:text-gray-300">
-                      Antebrazo Izq (cm)
-                    </label>
+                    <label className="text-sm font-bold text-slate-300">Antebrazo Izq (cm)</label>
                     <input
                       type="number"
                       step="0.1"
                       name="forearm_left"
                       value={formData.forearm_left || ''}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#0f1820] border border-gray-200 dark:border-[#233648] focus:border-primary outline-none"
+                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 dark:text-gray-300">
-                      Antebrazo Der (cm)
-                    </label>
+                    <label className="text-sm font-bold text-slate-300">Antebrazo Der (cm)</label>
                     <input
                       type="number"
                       step="0.1"
                       name="forearm_right"
                       value={formData.forearm_right || ''}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#0f1820] border border-gray-200 dark:border-[#233648] focus:border-primary outline-none"
+                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
 
                   {/* Legs */}
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 dark:text-gray-300">
-                      Muslo Izq (cm)
-                    </label>
+                    <label className="text-sm font-bold text-slate-300">Muslo Izq (cm)</label>
                     <input
                       type="number"
                       step="0.1"
                       name="thigh_left"
                       value={formData.thigh_left || ''}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#0f1820] border border-gray-200 dark:border-[#233648] focus:border-primary outline-none"
+                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 dark:text-gray-300">
-                      Muslo Der (cm)
-                    </label>
+                    <label className="text-sm font-bold text-slate-300">Muslo Der (cm)</label>
                     <input
                       type="number"
                       step="0.1"
                       name="thigh_right"
                       value={formData.thigh_right || ''}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#0f1820] border border-gray-200 dark:border-[#233648] focus:border-primary outline-none"
+                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 dark:text-gray-300">
-                      Gemelo Izq (cm)
-                    </label>
+                    <label className="text-sm font-bold text-slate-300">Gemelo Izq (cm)</label>
                     <input
                       type="number"
                       step="0.1"
                       name="calf_left"
                       value={formData.calf_left || ''}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#0f1820] border border-gray-200 dark:border-[#233648] focus:border-primary outline-none"
+                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 dark:text-gray-300">
-                      Gemelo Der (cm)
-                    </label>
+                    <label className="text-sm font-bold text-slate-300">Gemelo Der (cm)</label>
                     <input
                       type="number"
                       step="0.1"
                       name="calf_right"
                       value={formData.calf_right || ''}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#0f1820] border border-gray-200 dark:border-[#233648] focus:border-primary outline-none"
+                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
 
                   <div className="col-span-full">
-                    <label className="text-sm font-bold text-slate-700 dark:text-gray-300">
-                      Notas Adicionales
-                    </label>
+                    <label className="text-sm font-bold text-slate-300">Notas Adicionales</label>
                     <textarea
                       name="notes"
                       value={formData.notes || ''}
                       onChange={handleInputChange}
-                      className="w-full mt-1 px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#0f1820] border border-gray-200 dark:border-[#233648] focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                      className="mt-1 w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                       rows={3}
                       placeholder="Ej. Medidas tomadas en ayunas..."
                     />

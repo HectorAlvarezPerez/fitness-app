@@ -222,7 +222,7 @@ const ExerciseEditorPage: React.FC = () => {
       <div className="h-full w-full overflow-y-auto">
         <div className="mobile-page">
           <div className="mobile-card max-w-3xl mx-auto p-8 text-center text-slate-400">
-          Cargando...
+            Cargando...
           </div>
         </div>
       </div>
@@ -256,7 +256,7 @@ const ExerciseEditorPage: React.FC = () => {
 
         <section className="mobile-card p-4 md:p-5 space-y-5">
           <label className="space-y-1 block">
-            <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Nombre</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-400">Nombre</span>
             <input
               value={form.name}
               onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
@@ -270,7 +270,7 @@ const ExerciseEditorPage: React.FC = () => {
 
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-1 block">
-              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+              <span className="text-xs font-bold uppercase tracking-wide text-slate-400">
                 Músculo principal
               </span>
               <select
@@ -290,7 +290,7 @@ const ExerciseEditorPage: React.FC = () => {
             </label>
 
             <label className="space-y-1 block">
-              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+              <span className="text-xs font-bold uppercase tracking-wide text-slate-400">
                 Equipo
               </span>
               <select
@@ -310,7 +310,7 @@ const ExerciseEditorPage: React.FC = () => {
             </label>
 
             <label className="space-y-1 block">
-              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+              <span className="text-xs font-bold uppercase tracking-wide text-slate-400">
                 Categoría
               </span>
               <select
@@ -330,7 +330,7 @@ const ExerciseEditorPage: React.FC = () => {
             </label>
 
             <label className="space-y-1 block">
-              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+              <span className="text-xs font-bold uppercase tracking-wide text-slate-400">
                 Tracking
               </span>
               <select
@@ -351,7 +351,7 @@ const ExerciseEditorPage: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
               Músculos secundarios
             </p>
             <div className="flex flex-wrap gap-2">
@@ -377,7 +377,7 @@ const ExerciseEditorPage: React.FC = () => {
           </div>
 
           <label className="space-y-1 block">
-            <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-400">
               Notas / instrucciones
             </span>
             <textarea
@@ -395,7 +395,7 @@ const ExerciseEditorPage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/exercises')}
-              className="rounded-full border border-[rgba(73,133,214,0.16)] bg-[rgba(16,30,47,0.78)] px-4 py-2 text-sm font-bold text-slate-300"
+              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-slate-300"
               disabled={isSaving}
             >
               Cancelar

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import logoUrl from '../assets/logo-fitness.png';
@@ -33,120 +33,117 @@ const OnboardingStep2: React.FC = () => {
   ];
 
   const levels = ['Principiante', 'Intermedio', 'Atleta'];
+  const progress = 50;
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col bg-background-light dark:bg-background-dark font-display text-gray-900 dark:text-white">
-      {/* Navbar */}
-      <header className="flex items-center justify-between whitespace-nowrap border-b border-gray-200 dark:border-[#482c23] px-6 py-4 bg-background-light dark:bg-background-dark sticky top-0 z-50">
-        <div className="flex items-center gap-4">
-          <img src={logoUrl} alt="Fitness App" className="size-8 object-contain" />
-          <h2 className="text-xl font-bold">Fitness App</h2>
-        </div>
-        <div className="hidden md:flex gap-8 items-center">
-          <nav className="flex items-center gap-9 text-sm font-medium">
-            <Link to="/onboarding/step1" className="hover:text-primary">
-              Dashboard
-            </Link>
-            <span className="text-primary">Objetivos</span>
-          </nav>
-          <div
-            className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-primary/20"
-            style={{
-              backgroundImage:
-                'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBrAW1iYPtJJNZftMEjUMDY1aRApmN1yNxinBZJpIyMIDtYMYqXDIMPJqhy_SXDwaJBxICa_DEw5n_7ND_zj-1UUyWIsxmYZqK8wrvx_lfxr2Q1MPMl9qB-xy5QupArDXR1EM2OboseSaRmPjoFQkKdu-Q8-FyZODb8pMIBGFY3cXQFexxJUyLbuoT8AZmLQNY18C7OODgEciyf0wO6hGt70TnQTwYdhm2sX1vsHTaSaRmevbUqgAK_mz_WKjEE72E7If3RjUvyiXc")',
-            }}
-          ></div>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.16),_transparent_24%),linear-gradient(180deg,_#07131d_0%,_#091826_38%,_#0b1724_100%)] text-white">
+      <header className="sticky top-0 z-20 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 md:px-6">
+          <div className="flex items-center gap-3">
+            <img src={logoUrl} alt="Fitness App" className="size-9 object-contain" />
+            <div>
+              <p className="text-sm font-semibold text-white">Fitness App</p>
+              <p className="text-xs text-slate-400">Objetivos</p>
+            </div>
+          </div>
+          <Link
+            to="/onboarding/step1"
+            className="text-sm font-medium text-slate-300 transition-colors hover:text-white"
+          >
+            Volver
+          </Link>
         </div>
       </header>
 
-      <main className="flex h-full grow flex-col items-center pb-24">
-        <div className="w-full px-4 md:px-10 py-6 max-w-[960px] flex flex-col gap-8">
-          {/* Progress */}
-          <div className="flex flex-col gap-3">
-            <div className="flex gap-6 justify-between items-end">
-              <div className="flex flex-col gap-1">
-                <span className="text-primary text-xs font-bold uppercase tracking-wider">
-                  Configuración Inicial
-                </span>
-                <p className="text-base font-medium">Paso 2 de 5: Calibración</p>
-              </div>
-              <p className="text-sm font-bold text-primary">40%</p>
+      <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 pb-28 md:px-6">
+        <section className="mobile-hero">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <div className="mobile-kicker">Paso 2 de 4</div>
+              <h1 className="mobile-title max-w-xl">Define el objetivo y el nivel del usuario</h1>
+              <p className="mobile-subtitle max-w-2xl">
+                Esta selección condiciona recomendaciones, expectativas de progreso y lenguaje de la
+                experiencia.
+              </p>
             </div>
-            <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-[#673f32] overflow-hidden">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
-                style={{ width: '40%' }}
-              ></div>
+            <div className="hidden rounded-3xl border border-white/10 bg-white/5 px-4 py-3 text-right md:block">
+              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Progreso</p>
+              <p className="mt-1 text-2xl font-semibold text-white">{progress}%</p>
             </div>
           </div>
-
-          <div className="flex flex-col gap-3 mt-4">
-            <h1 className="text-4xl md:text-5xl font-black">Define Tu Camino</h1>
-            <p className="text-gray-500 dark:text-[#c9a092] text-lg">
-              Configura tu perfil para comenzar.
-            </p>
+          <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-primary to-cyan-400"
+              style={{ width: `${progress}%` }}
+            />
           </div>
+        </section>
 
-          {/* Goals Cards */}
-          <section className="flex flex-col gap-4">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="material-symbols-outlined text-primary">flag</span>
-              <h3 className="text-xl font-bold">Objetivo Principal</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {goals.map((goal, i) => (
-                <div
-                  key={i}
-                  onClick={() => setSelectedGoal(goal.name)}
-                  className={`group relative flex flex-col gap-3 p-4 rounded-xl cursor-pointer bg-white dark:bg-[#2c1b15] border-2 transition-all shadow-lg ${selectedGoal === goal.name ? 'border-primary shadow-primary/10' : 'border-transparent hover:border-primary/50'}`}
-                >
-                  {selectedGoal === goal.name && (
-                    <div className="absolute top-4 right-4 size-6 rounded-full bg-primary flex items-center justify-center">
-                      <span className="material-symbols-outlined text-white text-sm font-bold">
-                        check
-                      </span>
-                    </div>
-                  )}
-                  <div
-                    className={`w-full h-32 bg-center bg-cover rounded-lg ${selectedGoal !== goal.name ? 'grayscale group-hover:grayscale-0' : ''}`}
-                    style={{ backgroundImage: `url("${goal.img}")` }}
-                  ></div>
-                  <div>
-                    <p className="text-lg font-bold group-hover:text-primary transition-colors">
-                      {goal.name}
-                    </p>
-                    <p className="text-sm text-gray-500">{goal.desc}</p>
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary">flag</span>
+            <h2 className="text-xl font-semibold text-white">Objetivo principal</h2>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {goals.map((goal, i) => (
+              <button
+                type="button"
+                key={i}
+                onClick={() => setSelectedGoal(goal.name)}
+                className={`mobile-card relative overflow-hidden text-left transition-all ${
+                  selectedGoal === goal.name
+                    ? 'border-primary/70 bg-white/[0.09]'
+                    : 'hover:border-white/15'
+                }`}
+              >
+                {selectedGoal === goal.name && (
+                  <div className="absolute right-4 top-4 flex size-7 items-center justify-center rounded-full bg-primary text-white">
+                    <span className="material-symbols-outlined text-[16px]">check</span>
                   </div>
-                </div>
-              ))}
-            </div>
-          </section>
+                )}
+                <div
+                  className={`mb-4 h-36 rounded-2xl bg-cover bg-center ${
+                    selectedGoal !== goal.name ? 'grayscale-[0.15]' : ''
+                  }`}
+                  style={{ backgroundImage: `url("${goal.img}")` }}
+                />
+                <p className="text-lg font-semibold text-white">{goal.name}</p>
+                <p className="mt-1 text-sm text-slate-300">{goal.desc}</p>
+              </button>
+            ))}
+          </div>
+        </section>
 
-          <section className="flex flex-col gap-4 mt-2">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="material-symbols-outlined text-primary">equalizer</span>
-              <h3 className="text-xl font-bold">Nivel</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-1 bg-white dark:bg-[#2c1b15] rounded-xl">
-              {levels.map((level) => (
-                <button
-                  key={level}
-                  onClick={() => setSelectedLevel(level)}
-                  className={`py-6 px-4 rounded-lg font-bold transition-all ${selectedLevel === level ? 'bg-primary text-white shadow-lg' : 'hover:bg-gray-100 dark:hover:bg-[#3a251e]'}`}
-                >
-                  {level}
-                </button>
-              ))}
-            </div>
-          </section>
-        </div>
-        {/* FAB */}
-        <div className="fixed bottom-6 right-6 md:right-10 z-40 flex items-center gap-4">
+        <section className="mobile-card space-y-4">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary">equalizer</span>
+            <h2 className="text-xl font-semibold text-white">Nivel actual</h2>
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            {levels.map((level) => (
+              <button
+                type="button"
+                key={level}
+                onClick={() => setSelectedLevel(level)}
+                className={`rounded-2xl px-4 py-5 text-sm font-semibold transition-all ${
+                  selectedLevel === level
+                    ? 'bg-primary text-white'
+                    : 'border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
+                }`}
+              >
+                {level}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <div className="fixed inset-x-4 bottom-4 z-30 md:static md:inset-auto">
           <Link
             to="/home"
-            className="flex items-center justify-center gap-2 bg-primary hover:bg-[#d63f0e] text-white font-bold text-lg px-8 py-4 rounded-full shadow-lg shadow-primary/30 transition-all hover:scale-105"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-4 text-base font-semibold text-white shadow-[0_16px_40px_rgba(236,73,19,0.28)] transition-transform hover:scale-[1.01] md:w-auto"
           >
-            Siguiente Paso <span className="material-symbols-outlined">arrow_forward</span>
+            Siguiente paso
+            <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
           </Link>
         </div>
       </main>

@@ -11,6 +11,7 @@ const OnboardingStep3: React.FC = () => {
     onboardingData.conditions || ['Ninguna']
   );
   const [loading, setLoading] = useState(false);
+  const progress = 75;
 
   const toggleCondition = (condition: string) => {
     let newConditions = [...selectedConditions];
@@ -48,101 +49,121 @@ const OnboardingStep3: React.FC = () => {
         });
         if (error) throw error;
       }
-      // Add slight delay or just navigate
       navigate('/dashboard');
     } catch (error) {
       console.error('Error saving profile:', error);
-      // Optionally show error message
-      navigate('/dashboard'); // Proceed anyway for now or handle error
+      navigate('/dashboard');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display min-h-screen flex flex-col">
-      <nav className="sticky top-0 z-50 w-full border-b border-gray-200 dark:border-[#482c23] bg-white/80 dark:bg-[#221510]/80 backdrop-blur-md">
-        <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.14),_transparent_26%),linear-gradient(180deg,_#07131d_0%,_#091826_38%,_#0b1724_100%)] text-white">
+      <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 md:px-6">
           <div className="flex items-center gap-3">
-            <img src={logoUrl} alt="Fitness App" className="size-8 object-contain" />
-            <h2 className="text-xl md:text-2xl font-bold tracking-tight">Fitness App</h2>
+            <img src={logoUrl} alt="Fitness App" className="size-9 object-contain" />
+            <div>
+              <p className="text-sm font-semibold text-white">Fitness App</p>
+              <p className="text-xs text-slate-400">Condiciones</p>
+            </div>
           </div>
+          <Link
+            to="/onboarding/step2"
+            className="text-sm font-medium text-slate-300 transition-colors hover:text-white"
+          >
+            Volver
+          </Link>
         </div>
       </nav>
 
-      <main className="flex-grow w-full px-4 md:px-8 py-8 flex justify-center">
-        <div className="max-w-[960px] w-full flex flex-col gap-10">
-          <header className="flex flex-col gap-4">
-            <h1 className="text-4xl md:text-5xl font-black leading-tight tracking-tight">
-              Personaliza tu experiencia
-            </h1>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800/50 w-fit">
-              <span className="material-symbols-outlined text-green-700 dark:text-green-400 text-[18px]">
-                lock
-              </span>
-              <span className="text-xs font-semibold text-green-800 dark:text-green-300 uppercase tracking-wide">
-                Datos Encriptados
-              </span>
-            </div>
-          </header>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div className="lg:col-span-7 flex flex-col gap-8">
-              <section className="bg-white dark:bg-surface-dark rounded-lg p-6 md:p-8 shadow-sm border border-gray-100 dark:border-[#482c23]">
-                <div className="flex items-center gap-3 mb-6">
-                  <span className="material-symbols-outlined text-primary">medical_services</span>
-                  <h2 className="text-xl font-bold">Condiciones Médicas</h2>
-                </div>
-                <div className="flex flex-wrap gap-3 mb-6">
-                  {['Ninguna', 'Asma', 'Diabetes', 'Lesión'].map((c) => (
-                    <label
-                      key={c}
-                      className="group cursor-pointer"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        toggleCondition(c);
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        className="peer sr-only"
-                        checked={selectedConditions.includes(c)}
-                        readOnly
-                      />
-                      <div
-                        className={`flex h-10 items-center justify-center px-5 rounded-full transition-all ${selectedConditions.includes(c) ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-[#482c23] hover:bg-gray-200 dark:hover:bg-[#5a382d]'}`}
-                      >
-                        <span className="text-sm font-medium">{c}</span>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </section>
-            </div>
-
-            <div className="lg:col-span-5 flex flex-col gap-6">
-              <div className="bg-gradient-to-br from-[#2e1e19] to-[#221510] rounded-2xl p-6 text-white border border-[#482c23]">
-                <h3 className="text-lg font-bold mb-3">¿Por qué es importante?</h3>
-                <p className="text-sm text-gray-300">
-                  Fitness App utiliza tus datos para calcular tu Índice de Recuperación.
-                </p>
-              </div>
-              <div className="bg-white dark:bg-surface-dark rounded-lg p-6 md:p-8 shadow-sm border border-gray-100 dark:border-[#482c23] flex flex-col gap-6 h-full justify-between">
-                <div className="flex flex-col gap-3 pt-4 border-t border-gray-100 dark:border-[#482c23]">
-                  <button
-                    onClick={handleConfirm}
-                    disabled={loading}
-                    className="w-full bg-primary hover:bg-[#d63f0e] text-white font-bold h-12 px-8 rounded-full shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
-                  >
-                    <span>{loading ? 'Guardando...' : 'Confirmar y Continuar'}</span>
-                    {!loading && (
-                      <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
+      <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 pb-24 md:px-6">
+        <section className="mobile-hero">
+          <div className="space-y-2">
+            <div className="mobile-kicker">Paso 3 de 4</div>
+            <h1 className="mobile-title max-w-xl">Último ajuste antes de entrar en la app</h1>
+            <p className="mobile-subtitle max-w-2xl">
+              Estas condiciones sirven para ajustar mensajes, recuperación y futuras
+              recomendaciones, sin bloquear al usuario si prefiere no indicar nada.
+            </p>
           </div>
+          <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-400"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <div className="mt-4 inline-flex w-fit items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2">
+            <span className="material-symbols-outlined text-[18px] text-emerald-300">lock</span>
+            <span className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-200">
+              Datos encriptados
+            </span>
+          </div>
+        </section>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+          <section className="mobile-card lg:col-span-7">
+            <div className="mb-6 flex items-center gap-3">
+              <span className="material-symbols-outlined text-primary">medical_services</span>
+              <h2 className="text-xl font-semibold text-white">Condiciones médicas</h2>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {['Ninguna', 'Asma', 'Diabetes', 'Lesión'].map((c) => (
+                <label
+                  key={c}
+                  className="cursor-pointer"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    toggleCondition(c);
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    className="peer sr-only"
+                    checked={selectedConditions.includes(c)}
+                    readOnly
+                  />
+                  <div
+                    className={`flex h-11 items-center justify-center rounded-full px-5 text-sm font-medium transition-all ${
+                      selectedConditions.includes(c)
+                        ? 'bg-primary text-white'
+                        : 'border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
+                    }`}
+                  >
+                    {c}
+                  </div>
+                </label>
+              ))}
+            </div>
+          </section>
+
+          <aside className="flex flex-col gap-4 lg:col-span-5">
+            <div className="mobile-card-soft">
+              <h3 className="text-lg font-semibold text-white">Por qué lo pedimos</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-300">
+                Fitness App usa esta información para matizar el contexto del usuario, no para
+                bloquear funciones ni complicar el arranque.
+              </p>
+            </div>
+
+            <div className="mobile-card flex flex-col gap-4">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Selección</p>
+                <p className="mt-2 text-sm text-white">{selectedConditions.join(', ')}</p>
+              </div>
+              <button
+                onClick={handleConfirm}
+                disabled={loading}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-4 text-base font-semibold text-white transition-transform hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                <span>{loading ? 'Guardando...' : 'Confirmar y continuar'}</span>
+                {!loading && (
+                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                )}
+              </button>
+            </div>
+          </aside>
         </div>
       </main>
     </div>

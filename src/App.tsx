@@ -27,21 +27,36 @@ import { useStore } from './store/useStore';
 
 const App: React.FC = () => {
   const resetUserScopedState = useStore((state) => state.resetUserScopedState);
+  const lastSessionUserIdRef = React.useRef<string | null | undefined>(undefined);
 
   React.useEffect(() => {
     initTheme();
   }, []);
 
   React.useEffect(() => {
-    const syncSessionState = async (userId: string | null) => {
+    const syncSessionState = async (userId: string | null, forceReload = false) => {
       const store = useStore.getState();
+      const previousUserId = lastSessionUserIdRef.current;
+      const sameUser = previousUserId === userId;
+      lastSessionUserIdRef.current = userId;
 
       if (!userId) {
         store.resetUserScopedState();
         return;
       }
 
-      store.resetUserScopedState();
+      if (store.persistedUserId && store.persistedUserId !== userId) {
+        store.resetUserScopedState();
+      }
+
+      if (sameUser && !forceReload) {
+        return;
+      }
+
+      if (previousUserId && previousUserId !== userId) {
+        store.resetUserScopedState();
+      }
+
       await Promise.all([
         store.loadUserData(),
         store.loadRoutines(),
@@ -53,10 +68,19 @@ const App: React.FC = () => {
       ]);
     };
 
+    void supabase.auth
+      .getSession()
+      .then(({ data }) => syncSessionState(data.session?.user?.id ?? null, true));
+
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      void syncSessionState(session?.user?.id ?? null);
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      const userId = session?.user?.id ?? null;
+      if (event === 'TOKEN_REFRESHED' && lastSessionUserIdRef.current === userId) {
+        return;
+      }
+
+      void syncSessionState(userId, event === 'SIGNED_IN');
     });
 
     return () => subscription.unsubscribe();

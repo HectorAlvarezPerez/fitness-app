@@ -112,9 +112,7 @@ const WorkoutHistory: React.FC = () => {
           <div>
             <p className="mobile-kicker">Workout archive</p>
             <h1 className="mobile-title">Historial</h1>
-            <p className="mobile-subtitle">
-              {workoutHistory.length} entrenamientos completados
-            </p>
+            <p className="mobile-subtitle">{workoutHistory.length} entrenamientos completados</p>
           </div>
           <div className="mt-4 flex items-center gap-2">
             {isSelectionMode ? (
@@ -151,9 +149,7 @@ const WorkoutHistory: React.FC = () => {
               <span className="material-symbols-outlined text-5xl text-[#4ea0ff]">history</span>
             </div>
             <h3 className="mb-2 text-2xl font-bold text-white">Sin entrenamientos aún</h3>
-            <p className="mb-6 text-slate-400">
-              Completa tu primer entrenamiento para verlo aquí
-            </p>
+            <p className="mb-6 text-slate-400">Completa tu primer entrenamiento para verlo aquí</p>
             <Link
               to="/routine"
               className="rounded-[1.1rem] bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] px-6 py-4 font-bold text-white shadow-lg shadow-[#2f8cff]/25"
@@ -184,10 +180,8 @@ const WorkoutHistory: React.FC = () => {
                   {isSelectionMode && (
                     <div className="absolute top-5 right-5 z-20 pointer-events-none">
                       <div
-                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
-                          isSelected
-                            ? 'bg-primary border-primary'
-                            : 'border-gray-300 dark:border-gray-500 bg-white/50 dark:bg-black/50'
+                        className={`flex h-6 w-6 items-center justify-center rounded-full border-2 transition-colors ${
+                          isSelected ? 'bg-primary border-primary' : 'border-white/15 bg-[#07131d]'
                         }`}
                       >
                         {isSelected && (
@@ -208,19 +202,19 @@ const WorkoutHistory: React.FC = () => {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <span
-                            className={`text-xs px-2 py-0.5 rounded font-bold ${
+                            className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
                               isPartial
-                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                                : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                ? 'bg-amber-400/12 text-amber-200'
+                                : 'bg-emerald-400/12 text-emerald-200'
                             }`}
                           >
                             {isPartial ? 'PARCIAL' : 'COMPLETADO'}
                           </span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                          <span className="text-xs text-slate-400">
                             {formatDate(workout.completed_at)}
                           </span>
                         </div>
-                        <h3 className="text-lg font-bold">{getRoutineName(workout)}</h3>
+                        <h3 className="text-lg font-bold text-white">{getRoutineName(workout)}</h3>
                       </div>
 
                       {/* Standard Actions (only when NOT in selection mode) */}
@@ -232,16 +226,16 @@ const WorkoutHistory: React.FC = () => {
                               e.stopPropagation(); // Prevent toggle when clicking delete
                               setDeleteTargetId(workout.id);
                             }}
-                            className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors group"
+                            className="group rounded-lg p-2 transition-colors hover:bg-red-500/10"
                           >
-                            <span className="material-symbols-outlined text-gray-400 group-hover:text-red-500 text-[20px]">
+                            <span className="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-red-300">
                               delete
                             </span>
                           </button>
                           {/* Expand Button */}
-                          <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                          <button className="rounded-lg p-2 transition-colors hover:bg-white/10">
                             <span
-                              className={`material-symbols-outlined text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                              className={`material-symbols-outlined text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                             >
                               expand_more
                             </span>
@@ -252,46 +246,48 @@ const WorkoutHistory: React.FC = () => {
 
                     {/* Stats Grid */}
                     <div className="grid grid-cols-3 gap-3">
-                      <div className="p-3 rounded-lg bg-gray-50 dark:bg-[#0f1820]">
+                      <div className="rounded-2xl border border-white/10 bg-[#07131d] p-3">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="material-symbols-outlined text-primary text-[16px]">
                             timer
                           </span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">Duración</span>
+                          <span className="text-xs text-slate-400">Duración</span>
                         </div>
-                        <p className="font-bold">{formatDuration(workout.duration_minutes)}</p>
+                        <p className="font-bold text-white">
+                          {formatDuration(workout.duration_minutes)}
+                        </p>
                       </div>
 
-                      <div className="p-3 rounded-lg bg-gray-50 dark:bg-[#0f1820]">
+                      <div className="rounded-2xl border border-white/10 bg-[#07131d] p-3">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="material-symbols-outlined text-primary text-[16px]">
                             fitness_center
                           </span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            Ejercicios
-                          </span>
+                          <span className="text-xs text-slate-400">Ejercicios</span>
                         </div>
-                        <p className="font-bold">{exerciseCount}</p>
+                        <p className="font-bold text-white">{exerciseCount}</p>
                       </div>
 
-                      <div className="p-3 rounded-lg bg-gray-50 dark:bg-[#0f1820]">
+                      <div className="rounded-2xl border border-white/10 bg-[#07131d] p-3">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="material-symbols-outlined text-primary text-[16px]">
                             scale
                           </span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">Volumen</span>
+                          <span className="text-xs text-slate-400">Volumen</span>
                         </div>
-                        <p className="font-bold">{(workout.total_volume / 1000).toFixed(1)}k kg</p>
+                        <p className="font-bold text-white">
+                          {(workout.total_volume / 1000).toFixed(1)}k kg
+                        </p>
                       </div>
                     </div>
                   </div>
 
                   {/* Expanded Details */}
                   {isExpanded && !isSelectionMode && (
-                    <div className="border-t border-slate-200 dark:border-[#233648] bg-gray-50 dark:bg-[#0f1820] p-5">
+                    <div className="border-t border-white/10 bg-[#07131d] p-5">
                       {/* Date/Time Info */}
-                      <div className="mb-4 pb-4 border-b border-slate-200 dark:border-[#233648]">
-                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                      <div className="mb-4 border-b border-white/10 pb-4">
+                        <div className="flex items-center gap-2 text-sm text-slate-400">
                           <span className="material-symbols-outlined text-[18px]">
                             calendar_today
                           </span>
@@ -303,20 +299,20 @@ const WorkoutHistory: React.FC = () => {
 
                       {/* Exercise List */}
                       <div className="space-y-4">
-                        <h4 className="font-bold text-sm uppercase text-gray-500 dark:text-gray-400 mb-3">
+                        <h4 className="mb-3 text-sm font-bold uppercase text-slate-400">
                           Ejercicios realizados
                         </h4>
                         {Array.isArray(workout.exercises_completed) &&
                           workout.exercises_completed.map((exercise: any, idx: number) => (
                             <div
                               key={idx}
-                              className="bg-white dark:bg-[#1a2632] rounded-xl p-4 border border-slate-200 dark:border-[#233648]"
+                              className="rounded-[1.35rem] border border-white/10 bg-white/5 p-4"
                             >
                               <div className="flex items-center gap-2 mb-3">
                                 <span className="material-symbols-outlined text-primary">
                                   fitness_center
                                 </span>
-                                <h5 className="font-bold">{exercise.name}</h5>
+                                <h5 className="font-bold text-white">{exercise.name}</h5>
                               </div>
 
                               {/* Sets Table */}
@@ -325,9 +321,9 @@ const WorkoutHistory: React.FC = () => {
                                   exercise.sets.map((set: any, setIdx: number) => (
                                     <div
                                       key={setIdx}
-                                      className="flex items-center gap-3 text-sm p-2 rounded-lg bg-gray-50 dark:bg-[#0f1820]"
+                                      className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#07131d] p-2 text-sm"
                                     >
-                                      <span className="font-bold text-gray-500 dark:text-gray-400 w-16">
+                                      <span className="w-16 font-bold text-slate-400">
                                         Serie {setIdx + 1}
                                       </span>
                                       <div className="flex items-center gap-4 flex-1">
@@ -335,16 +331,16 @@ const WorkoutHistory: React.FC = () => {
                                           <span className="font-bold text-primary">
                                             {set.weight}
                                           </span>
-                                          <span className="text-xs text-gray-500">kg</span>
+                                          <span className="text-xs text-slate-500">kg</span>
                                         </div>
-                                        <span className="text-gray-400">×</span>
+                                        <span className="text-slate-500">×</span>
                                         <div className="flex items-center gap-1">
                                           <span className="font-bold text-primary">{set.reps}</span>
-                                          <span className="text-xs text-gray-500">reps</span>
+                                          <span className="text-xs text-slate-500">reps</span>
                                         </div>
                                       </div>
                                       {set.completed && (
-                                        <span className="material-symbols-outlined text-green-500 text-[18px]">
+                                        <span className="material-symbols-outlined text-[18px] text-emerald-300">
                                           check_circle
                                         </span>
                                       )}

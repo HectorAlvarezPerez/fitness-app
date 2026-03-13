@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import React, { useMemo, useState } from 'react';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useStore } from '../../store/useStore';
 
 type Metric = 'duration' | 'reps' | 'volume';
@@ -8,14 +8,12 @@ type TimeRange = 'week' | 'month' | '3months' | 'year';
 const WorkoutStatisticsChart: React.FC = () => {
   const { workoutHistory } = useStore();
   const [metric, setMetric] = useState<Metric>('duration');
-  const [range, setRange] = useState<TimeRange>('3months'); // Default to match image style "Last 12 weeks"
+  const [range, setRange] = useState<TimeRange>('3months');
 
   const processData = useMemo(() => {
     const now = new Date();
     const data: any[] = [];
-    const dateFormat: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
 
-    // Helper to sum reps
     const sumReps = (workout: any) => {
       if (!workout.exercises_completed || !Array.isArray(workout.exercises_completed)) return 0;
       return workout.exercises_completed.reduce((acc: number, ex: any) => {
@@ -31,7 +29,7 @@ const WorkoutStatisticsChart: React.FC = () => {
         case 'duration':
           return workout.duration_minutes || 0;
         case 'volume':
-          return (workout.total_volume || 0) / 1000; // Convert to k
+          return (workout.total_volume || 0) / 1000;
         case 'reps':
           return sumReps(workout);
         default:
@@ -40,18 +38,14 @@ const WorkoutStatisticsChart: React.FC = () => {
     };
 
     if (range === 'week' || range === 'month') {
-      // Daily grouping
       const daysBack = range === 'week' ? 7 : 30;
       const startDate = new Date();
       startDate.setDate(now.getDate() - daysBack);
 
-      // Create placeholder days
       for (let i = 0; i < daysBack; i++) {
         const d = new Date(startDate);
         d.setDate(startDate.getDate() + i + 1);
         const dayStr = d.toISOString().split('T')[0];
-
-        // Find workouts on this day
         const daysWorkouts = workoutHistory.filter((w) => w.completed_at.startsWith(dayStr));
         const totalVal = daysWorkouts.reduce((acc, w) => acc + getMetricValue(w), 0);
 
@@ -62,12 +56,10 @@ const WorkoutStatisticsChart: React.FC = () => {
         });
       }
     } else if (range === '3months') {
-      // Weekly grouping (Last 12 weeks)
       const weeksBack = 12;
       const startDate = new Date();
       startDate.setDate(now.getDate() - weeksBack * 7);
 
-      // Align to start of week (Monday)
       const day = startDate.getDay() || 7;
       if (day !== 1) startDate.setDate(startDate.getDate() - day + 1);
 
@@ -77,7 +69,6 @@ const WorkoutStatisticsChart: React.FC = () => {
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 6);
 
-        // Find workouts in this week
         const weeksWorkouts = workoutHistory.filter((w) => {
           const wDate = new Date(w.completed_at);
           return wDate >= weekStart && wDate <= weekEnd;
@@ -92,7 +83,6 @@ const WorkoutStatisticsChart: React.FC = () => {
         });
       }
     } else if (range === 'year') {
-      // Monthly grouping
       const monthsBack = 12;
       const startDate = new Date();
       startDate.setMonth(now.getMonth() - monthsBack + 1);
@@ -141,20 +131,24 @@ const WorkoutStatisticsChart: React.FC = () => {
   };
 
   return (
-    <div className="bg-white dark:bg-[#1a2632] rounded-2xl border border-slate-200 dark:border-[#233648] p-6 h-full flex flex-col">
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-        <h3 className="text-lg font-bold">Estadísticas</h3>
+    <div className="mobile-card flex h-full flex-col">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+            Rendimiento
+          </p>
+          <h3 className="mt-1 text-lg font-semibold text-white">Estadísticas</h3>
+        </div>
 
-        {/* Metric Selector */}
-        <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg self-start md:self-auto">
+        <div className="flex self-start rounded-full border border-white/10 bg-white/5 p-1 md:self-auto">
           {(['duration', 'reps', 'volume'] as const).map((m) => (
             <button
               key={m}
               onClick={() => setMetric(m)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all capitalize ${
+              className={`rounded-full px-3 py-1.5 text-sm font-medium transition-all capitalize ${
                 metric === m
-                  ? 'bg-white dark:bg-[#233648] text-slate-900 dark:text-white shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                  ? 'bg-white text-slate-950 shadow-sm'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               {m === 'duration' ? 'Duración' : m === 'reps' ? 'Reps' : 'Volumen'}
@@ -163,13 +157,13 @@ const WorkoutStatisticsChart: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex items-end justify-between mb-8">
+      <div className="mb-8 flex items-end justify-between">
         <div>
-          <p className="text-4xl font-bold flex items-baseline gap-2">
+          <p className="flex items-baseline gap-2 text-4xl font-semibold text-white">
             {getTotalForPeriod()}
-            <span className="text-lg font-normal text-gray-500">{getUnitLabel()}</span>
+            <span className="text-lg font-normal text-slate-400">{getUnitLabel()}</span>
           </p>
-          <p className="text-sm text-gray-500 capitalize">
+          <p className="text-sm text-slate-400 capitalize">
             {range === 'week'
               ? 'Esta semana'
               : range === 'month'
@@ -180,29 +174,27 @@ const WorkoutStatisticsChart: React.FC = () => {
           </p>
         </div>
 
-        {/* Range Selector */}
         <div className="relative">
           <select
             value={range}
             onChange={(e) => setRange(e.target.value as TimeRange)}
-            className="appearance-none bg-white dark:bg-[#0f1820] border border-slate-200 dark:border-[#233648] text-slate-700 dark:text-gray-300 py-2 pl-4 pr-10 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
+            className="appearance-none rounded-full border border-white/10 bg-white/5 py-2.5 pl-4 pr-10 text-sm font-medium text-slate-200 outline-none transition-colors focus:border-primary"
           >
             <option value="week">Última semana</option>
             <option value="month">Último mes</option>
             <option value="3months">Últimos 3 meses</option>
             <option value="year">Último año</option>
           </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
             <span className="material-symbols-outlined text-[20px]">expand_more</span>
           </div>
         </div>
       </div>
 
-      {/* Chart */}
-      <div className="flex-1 w-full min-h-0">
+      <div className="min-h-0 w-full flex-1">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={processData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.3} />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#284256" opacity={0.45} />
             <XAxis
               dataKey="name"
               tick={{ fontSize: 11, fill: '#94a3b8' }}
@@ -214,11 +206,11 @@ const WorkoutStatisticsChart: React.FC = () => {
             <Tooltip
               cursor={{ fill: 'rgba(236, 73, 19, 0.1)', radius: 4 }}
               contentStyle={{
-                backgroundColor: '#1A1D21',
-                border: 'none',
-                borderRadius: '12px',
+                backgroundColor: '#0f2231',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '16px',
                 padding: '12px',
-                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                boxShadow: '0 16px 30px rgba(0, 0, 0, 0.28)',
               }}
               labelStyle={{ color: '#94a3b8', marginBottom: '4px', fontSize: '12px' }}
               itemStyle={{ color: '#fff', fontSize: '14px', fontWeight: 'bold' }}

@@ -239,9 +239,7 @@ export const RestTimer: React.FC<RestTimerProps> = ({
 
     return (
       <div className="flex flex-col items-center gap-4">
-        <div className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400 tracking-wider">
-          Descanso
-        </div>
+        <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Descanso</div>
 
         <div className="relative w-40 h-40">
           <svg className="w-full h-full transform -rotate-90">
@@ -252,7 +250,7 @@ export const RestTimer: React.FC<RestTimerProps> = ({
               stroke="currentColor"
               strokeWidth="8"
               fill="none"
-              className="text-gray-200 dark:text-gray-700"
+              className="text-white/10"
             />
             <circle
               cx="80"
@@ -275,13 +273,13 @@ export const RestTimer: React.FC<RestTimerProps> = ({
         <div className="grid grid-cols-3 gap-2 w-full">
           <button
             onClick={() => onAddSeconds?.(-10)}
-            className="py-2.5 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-bold text-sm"
+            className="rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-bold text-slate-200 transition-colors hover:bg-white/10"
           >
             -10s
           </button>
           <button
             onClick={handlePauseToggle}
-            className="py-2.5 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
+            className="flex items-center justify-center rounded-xl border border-white/10 bg-white/5 py-2.5 text-slate-200 transition-colors hover:bg-white/10"
             aria-label={isPaused ? 'Reanudar descanso' : 'Pausar descanso'}
             title={isPaused ? 'Reanudar' : 'Pausar'}
           >
@@ -291,7 +289,7 @@ export const RestTimer: React.FC<RestTimerProps> = ({
           </button>
           <button
             onClick={() => onAddSeconds?.(10)}
-            className="py-2.5 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-bold text-sm"
+            className="rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-bold text-slate-200 transition-colors hover:bg-white/10"
           >
             +10s
           </button>
@@ -300,7 +298,7 @@ export const RestTimer: React.FC<RestTimerProps> = ({
         {onCancel && (
           <button
             onClick={onCancel}
-            className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+            className="text-sm text-slate-400 transition-colors hover:text-white"
           >
             Cancelar temporizador
           </button>
@@ -311,9 +309,9 @@ export const RestTimer: React.FC<RestTimerProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-[#1a2632] rounded-2xl p-8 max-w-sm w-full border border-gray-200 dark:border-surface-border shadow-2xl">
+      <div className="w-full max-w-sm rounded-[32px] border border-white/10 bg-[#0f2231] p-8 shadow-2xl">
         <div className="flex flex-col items-center gap-6">
-          <h3 className="text-xl font-bold">Descanso</h3>
+          <h3 className="text-xl font-semibold text-white">Descanso</h3>
 
           <div className="relative w-48 h-48">
             <svg className="w-full h-full transform -rotate-90">
@@ -324,7 +322,7 @@ export const RestTimer: React.FC<RestTimerProps> = ({
                 stroke="currentColor"
                 strokeWidth="8"
                 fill="none"
-                className="text-gray-200 dark:text-gray-700"
+                className="text-white/10"
               />
               <circle
                 cx="96"
@@ -340,20 +338,22 @@ export const RestTimer: React.FC<RestTimerProps> = ({
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-5xl font-bold font-mono">{formatTime(remaining)}</span>
+              <span className="text-5xl font-bold font-mono text-white">
+                {formatTime(remaining)}
+              </span>
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3 w-full">
             <button
               onClick={() => onAddSeconds?.(-10)}
-              className="py-3 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-bold"
+              className="rounded-xl border border-white/10 bg-white/5 py-3 font-bold text-slate-200 transition-colors hover:bg-white/10"
             >
               -10s
             </button>
             <button
               onClick={handlePauseToggle}
-              className="py-3 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
+              className="flex items-center justify-center rounded-xl border border-white/10 bg-white/5 py-3 text-slate-200 transition-colors hover:bg-white/10"
               aria-label={isPaused ? 'Reanudar descanso' : 'Pausar descanso'}
               title={isPaused ? 'Reanudar' : 'Pausar'}
             >
@@ -363,7 +363,7 @@ export const RestTimer: React.FC<RestTimerProps> = ({
             </button>
             <button
               onClick={() => onAddSeconds?.(10)}
-              className="py-3 rounded-lg bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-bold"
+              className="rounded-xl border border-white/10 bg-white/5 py-3 font-bold text-slate-200 transition-colors hover:bg-white/10"
             >
               +10s
             </button>
@@ -372,7 +372,7 @@ export const RestTimer: React.FC<RestTimerProps> = ({
           {onCancel && (
             <button
               onClick={onCancel}
-              className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              className="text-sm text-slate-400 transition-colors hover:text-white"
             >
               Cancelar temporizador
             </button>

@@ -160,7 +160,7 @@ const RoutinesList: React.FC = () => {
   const renderRoutineCard = (routine: Routine) => (
     <div
       key={routine.id}
-      className="group relative rounded-xl border border-slate-200 dark:border-[#233648] bg-white dark:bg-[#1a2632] p-4 hover:border-primary/50 transition-all"
+      className="group relative rounded-[1.4rem] border border-white/10 bg-white/5 p-4 transition-all hover:border-primary/40 hover:bg-white/[0.08]"
       onContextMenu={(e) => handleContextMenu(e, 'routine', routine.id)}
     >
       <div className="flex items-start justify-between mb-3">
@@ -168,7 +168,7 @@ const RoutinesList: React.FC = () => {
         <div className="flex gap-1">
           <button
             onClick={(e) => handleContextMenu(e, 'routine', routine.id)}
-            className="size-8 rounded-lg flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
             title="Más opciones"
           >
             <span className="material-symbols-outlined text-[18px]">more_vert</span>
@@ -176,7 +176,7 @@ const RoutinesList: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400 mb-4">
+      <div className="mb-4 flex items-center gap-3 text-sm text-slate-400">
         <div className="flex items-center gap-1">
           <span className="material-symbols-outlined text-[16px]">fitness_center</span>
           <span>{routine.exercises?.length || 0} ejercicios</span>
@@ -210,7 +210,7 @@ const RoutinesList: React.FC = () => {
     return (
       <div key={folder.id} className="space-y-3">
         <div
-          className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-[#1a2632] border border-slate-200 dark:border-[#233648] cursor-pointer hover:border-primary/30 transition-all"
+          className="flex cursor-pointer items-center gap-3 rounded-[1.35rem] border border-white/10 bg-white/5 p-3 transition-all hover:border-primary/30 hover:bg-white/[0.08]"
           onClick={() => toggleFolder(folder.id)}
           onContextMenu={(e) => handleContextMenu(e, 'folder', folder.id)}
         >
@@ -235,12 +235,12 @@ const RoutinesList: React.FC = () => {
               onBlur={() => handleUpdateFolderName(folder.id)}
               onClick={(e) => e.stopPropagation()}
               autoFocus
-              className="flex-1 px-2 py-1 rounded-lg bg-gray-100 dark:bg-[#0f1820] border border-primary focus:outline-none"
+              className="flex-1 rounded-xl border border-primary bg-[#07131d] px-3 py-2 text-white outline-none"
             />
           ) : (
             <div className="flex-1">
-              <h3 className="font-bold">{folder.name}</h3>
-              <p className="text-sm text-gray-500">{folderRoutines.length} rutinas</p>
+              <h3 className="font-bold text-white">{folder.name}</h3>
+              <p className="text-sm text-slate-400">{folderRoutines.length} rutinas</p>
             </div>
           )}
 
@@ -250,14 +250,14 @@ const RoutinesList: React.FC = () => {
                 e.stopPropagation();
                 handleContextMenu(e, 'folder', folder.id);
               }}
-              className="size-8 rounded-lg flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
               title="Opciones de carpeta"
               aria-label="Opciones de carpeta"
             >
-              <span className="material-symbols-outlined text-[18px] text-gray-400">more_vert</span>
+              <span className="material-symbols-outlined text-[18px]">more_vert</span>
             </button>
             <span
-              className="material-symbols-outlined text-gray-400 transition-transform"
+              className="material-symbols-outlined text-slate-400 transition-transform"
               style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
             >
               expand_more
@@ -269,7 +269,7 @@ const RoutinesList: React.FC = () => {
         {isExpanded && (
           <div className="pl-4 space-y-3">
             {folderRoutines.length === 0 ? (
-              <div className="text-center py-6 text-gray-500 dark:text-gray-400 text-sm">
+              <div className="py-6 text-center text-sm text-slate-400">
                 <span className="material-symbols-outlined text-2xl mb-2 block opacity-50">
                   inbox
                 </span>
@@ -293,9 +293,7 @@ const RoutinesList: React.FC = () => {
           <div>
             <p className="mobile-kicker">Workout hub</p>
             <h1 className="mobile-title">Mis Rutinas</h1>
-            <p className="mobile-subtitle">
-              Organiza y ejecuta tus entrenamientos
-            </p>
+            <p className="mobile-subtitle">Organiza y ejecuta tus entrenamientos</p>
           </div>
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <button
@@ -337,7 +335,7 @@ const RoutinesList: React.FC = () => {
 
         {/* New Folder Input */}
         {isCreatingFolder && (
-          <div className="flex flex-col gap-3 p-4 rounded-xl bg-white dark:bg-[#1a2632] border border-primary shadow-lg animate-in fade-in slide-in-from-top-4 duration-300 sm:flex-row sm:items-center">
+          <div className="animate-in slide-in-from-top-4 flex flex-col gap-3 rounded-[1.35rem] border border-primary/40 bg-[#102235] p-4 shadow-lg duration-300 fade-in sm:flex-row sm:items-center">
             <div className="size-10 rounded-lg bg-blue-500 flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-white text-[20px]">folder</span>
             </div>
@@ -351,18 +349,18 @@ const RoutinesList: React.FC = () => {
               }}
               placeholder="Nombre de la carpeta..."
               autoFocus
-              className="w-full min-w-0 px-3 py-2 rounded-lg bg-gray-100 dark:bg-[#0f1820] focus:outline-none focus:ring-2 focus:ring-primary sm:flex-1"
+              className="w-full min-w-0 rounded-xl border border-white/10 bg-[#07131d] px-3 py-2 text-white placeholder:text-slate-500 outline-none focus:border-primary sm:flex-1"
             />
             <div className="flex w-full gap-2 sm:w-auto">
               <button
                 onClick={handleCreateFolder}
-                className="flex-1 px-4 py-2 rounded-lg bg-primary text-white font-bold hover:bg-primary/90 transition-all sm:flex-none"
+                className="flex-1 rounded-xl bg-primary px-4 py-2 font-bold text-white transition-all hover:bg-primary/90 sm:flex-none"
               >
                 Crear
               </button>
               <button
                 onClick={() => setIsCreatingFolder(false)}
-                className="flex-1 px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-all sm:flex-none"
+                className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2 font-semibold text-slate-300 transition-all hover:bg-white/10 sm:flex-none"
               >
                 Cancelar
               </button>
@@ -377,23 +375,23 @@ const RoutinesList: React.FC = () => {
             onClick={() => setMovingRoutine(null)}
           >
             <div
-              className="bg-white dark:bg-[#1a2632] rounded-2xl p-6 w-full max-w-md shadow-xl animate-in fade-in zoom-in duration-300"
+              className="animate-in zoom-in w-full max-w-md rounded-[1.7rem] border border-white/10 bg-[#0f2231] p-6 shadow-xl duration-300 fade-in"
               onClick={(e) => e.stopPropagation()}
             >
-              <h2 className="text-xl font-bold mb-4">Mover rutina a...</h2>
+              <h2 className="mb-4 text-xl font-bold text-white">Mover rutina a...</h2>
               <div className="space-y-2 max-h-[300px] overflow-y-auto">
                 <button
                   onClick={() => handleMoveToFolder(null)}
-                  className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
+                  className="flex w-full items-center gap-3 rounded-xl p-3 text-left text-slate-200 transition-colors hover:bg-white/10"
                 >
-                  <span className="material-symbols-outlined text-gray-400">home</span>
+                  <span className="material-symbols-outlined text-slate-400">home</span>
                   <span>Sin carpeta</span>
                 </button>
                 {routineFolders.map((folder) => (
                   <button
                     key={folder.id}
                     onClick={() => handleMoveToFolder(folder.id)}
-                    className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
+                    className="flex w-full items-center gap-3 rounded-xl p-3 text-left text-slate-200 transition-colors hover:bg-white/10"
                   >
                     <div
                       className="size-8 rounded-lg flex items-center justify-center"
@@ -409,7 +407,7 @@ const RoutinesList: React.FC = () => {
               </div>
               <button
                 onClick={() => setMovingRoutine(null)}
-                className="w-full mt-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-all"
+                className="mt-4 w-full rounded-xl border border-white/10 bg-white/5 py-2.5 font-semibold text-slate-300 transition-all hover:bg-white/10"
               >
                 Cancelar
               </button>
@@ -421,7 +419,7 @@ const RoutinesList: React.FC = () => {
         {contextMenu && (
           <div
             ref={contextMenuRef}
-            className="fixed z-50 bg-white dark:bg-[#1a2632] rounded-xl shadow-xl border border-gray-200 dark:border-[#233648] py-2 min-w-[180px] animate-in fade-in zoom-in duration-150 origin-top-left"
+            className="animate-in fade-in zoom-in fixed z-50 min-w-[180px] rounded-2xl border border-white/10 bg-[#0f2231] py-2 shadow-xl duration-150 origin-top-left"
             style={{
               top: contextMenu.y,
               left: contextMenu.x > window.innerWidth / 2 ? 'auto' : contextMenu.x,
@@ -434,7 +432,7 @@ const RoutinesList: React.FC = () => {
               <>
                 <Link
                   to={`/routine/edit/${contextMenu.id}`}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-slate-200 transition-colors hover:bg-white/10"
                   onClick={() => setContextMenu(null)}
                 >
                   <span className="material-symbols-outlined text-[18px]">edit</span>
@@ -442,26 +440,26 @@ const RoutinesList: React.FC = () => {
                 </Link>
                 <button
                   onClick={() => handleDuplicateRoutine(contextMenu.id)}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-slate-200 transition-colors hover:bg-white/10"
                 >
                   <span className="material-symbols-outlined text-[18px]">content_copy</span>
                   Duplicar
                 </button>
                 <button
                   onClick={() => handleMoveRoutine(contextMenu.id)}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-slate-200 transition-colors hover:bg-white/10"
                 >
                   <span className="material-symbols-outlined text-[18px]">drive_file_move</span>
                   Mover a carpeta
                 </button>
-                <hr className="my-2 border-gray-200 dark:border-gray-700" />
+                <hr className="my-2 border-white/10" />
                 <button
                   onClick={() => {
                     const routine = savedRoutines.find((r) => r.id === contextMenu.id);
                     if (routine) handleDeleteRoutine(routine);
                     setContextMenu(null);
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors text-left"
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-red-300 transition-colors hover:bg-red-500/10"
                 >
                   <span className="material-symbols-outlined text-[18px]">delete</span>
                   Eliminar
@@ -479,18 +477,18 @@ const RoutinesList: React.FC = () => {
                     }
                     setContextMenu(null);
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-slate-200 transition-colors hover:bg-white/10"
                 >
                   <span className="material-symbols-outlined text-[18px]">edit</span>
                   Renombrar
                 </button>
-                <hr className="my-2 border-gray-200 dark:border-gray-700" />
+                <hr className="my-2 border-white/10" />
                 <button
                   onClick={() => {
                     handleDeleteFolder(contextMenu.id);
                     setContextMenu(null);
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors text-left"
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-red-300 transition-colors hover:bg-red-500/10"
                 >
                   <span className="material-symbols-outlined text-[18px]">delete</span>
                   Eliminar carpeta
@@ -523,24 +521,20 @@ const RoutinesList: React.FC = () => {
             onClick={() => setDeleteFolderTarget(null)}
           >
             <div
-              className="bg-white dark:bg-[#1a2632] rounded-2xl p-6 w-full max-w-md shadow-xl animate-in fade-in zoom-in duration-300"
+              className="animate-in zoom-in w-full max-w-md rounded-[1.7rem] border border-white/10 bg-[#0f2231] p-6 shadow-xl duration-300 fade-in"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="size-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-red-600 dark:text-red-400">
-                    delete
-                  </span>
+                <div className="flex size-10 items-center justify-center rounded-full bg-red-500/12">
+                  <span className="material-symbols-outlined text-red-300">delete</span>
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold">Eliminar carpeta</h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Esta acción no se puede deshacer.
-                  </p>
+                  <h2 className="text-xl font-bold text-white">Eliminar carpeta</h2>
+                  <p className="text-sm text-slate-400">Esta acción no se puede deshacer.</p>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-red-100 dark:border-red-900/30 bg-red-50/70 dark:bg-red-900/10 p-4 text-sm text-gray-600 dark:text-gray-300 mb-5">
+              <div className="mb-5 rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-slate-300">
                 Se eliminará <span className="font-bold">{deleteFolderTarget.name}</span>. Las
                 rutinas dentro se moverán a <span className="font-bold">Sin carpeta</span>.
               </div>
@@ -548,7 +542,7 @@ const RoutinesList: React.FC = () => {
               <div className="flex gap-2">
                 <button
                   onClick={() => setDeleteFolderTarget(null)}
-                  className="flex-1 py-2.5 rounded-lg bg-gray-200 dark:bg-gray-700 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-all"
+                  className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 font-semibold text-slate-300 transition-all hover:bg-white/10"
                 >
                   Cancelar
                 </button>

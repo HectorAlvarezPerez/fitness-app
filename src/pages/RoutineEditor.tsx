@@ -176,14 +176,14 @@ const RoutineEditor: React.FC = () => {
 
   return (
     <>
-      <div className="h-full w-full flex overflow-hidden bg-slate-100 dark:bg-[#0a1218]">
+      <div className="flex h-full w-full overflow-hidden bg-[linear-gradient(180deg,_#07131d_0%,_#091826_38%,_#0b1724_100%)] text-white">
         <div className="flex-1 overflow-y-auto mobile-scroll">
           <div className="max-w-4xl mx-auto px-4 md:px-8 py-6 pb-[calc(8rem+env(safe-area-inset-bottom)+var(--keyboard-inset,0px))] flex flex-col gap-6">
             {/* Header with back and save buttons */}
             <div className="flex items-center justify-between gap-3">
               <button
                 onClick={() => navigate('/routine')}
-                className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-primary transition-colors py-2"
+                className="flex items-center gap-1.5 py-2 text-slate-400 transition-colors hover:text-white"
               >
                 <span className="material-symbols-outlined text-[20px]">arrow_back</span>
                 <span className="font-medium hidden sm:inline">Volver</span>
@@ -204,28 +204,24 @@ const RoutineEditor: React.FC = () => {
                 value={routineName}
                 onChange={(e) => setRoutineName(e.target.value)}
                 placeholder="Nombre de la rutina"
-                className="w-full text-2xl md:text-3xl font-black bg-transparent border-b-2 border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-primary dark:focus:border-primary outline-none transition-colors px-1 py-1 text-gray-900 dark:text-white"
+                className="w-full border-b-2 border-transparent bg-transparent px-1 py-1 text-2xl font-black text-white outline-none transition-colors hover:border-white/20 focus:border-primary md:text-3xl"
               />
             </div>
 
             {/* Stats cards */}
-            <div className="grid grid-cols-3 gap-3 p-1 bg-white dark:bg-surface-dark/50 border border-gray-100 dark:border-surface-border rounded-2xl">
-              <div className="bg-gray-50 dark:bg-surface-dark rounded-xl border border-gray-100 dark:border-surface-border/50 p-3 px-4 flex items-center justify-between">
+            <div className="grid grid-cols-3 gap-3 rounded-[28px] border border-white/10 bg-white/5 p-1">
+              <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-3 px-4">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-bold uppercase text-gray-500 dark:text-text-muted">
-                    Ejercicios
-                  </span>
-                  <span className="text-xl font-bold text-slate-900 dark:text-white">
-                    {exercises.length}
-                  </span>
+                  <span className="text-[10px] font-bold uppercase text-slate-400">Ejercicios</span>
+                  <span className="text-xl font-bold text-white">{exercises.length}</span>
                 </div>
               </div>
-              <div className="bg-gray-50 dark:bg-surface-dark rounded-xl border border-gray-100 dark:border-surface-border/50 p-3 px-4 flex items-center justify-between">
+              <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-3 px-4">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-bold uppercase text-gray-500 dark:text-text-muted">
+                  <span className="text-[10px] font-bold uppercase text-slate-400">
                     Volumen Est.
                   </span>
-                  <span className="text-xl font-bold text-primary dark:text-progress-teal">
+                  <span className="text-xl font-bold text-primary">
                     {(
                       exercises.reduce((acc, curr) => {
                         // Handle both array and legacy number format for sets
@@ -241,21 +237,19 @@ const RoutineEditor: React.FC = () => {
                   </span>
                 </div>
               </div>
-              <div className="bg-gray-50 dark:bg-surface-dark rounded-xl border border-gray-100 dark:border-surface-border/50 p-3 px-4 flex items-center justify-between">
+              <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-3 px-4">
                 <div className="flex flex-col w-full">
-                  <span className="text-[10px] font-bold uppercase text-gray-500 dark:text-text-muted">
-                    Descanso
-                  </span>
+                  <span className="text-[10px] font-bold uppercase text-slate-400">Descanso</span>
                   <div className="flex items-center gap-1">
                     <input
                       type="number"
                       value={defaultRestSeconds}
                       onChange={(e) => setDefaultRestSeconds(parseInt(e.target.value) || 60)}
-                      className="w-14 text-xl font-bold text-slate-900 dark:text-white bg-transparent border-none outline-none p-0"
+                      className="w-14 border-none bg-transparent p-0 text-xl font-bold text-white outline-none"
                       min={0}
                       max={600}
                     />
-                    <span className="text-xs text-gray-500">seg</span>
+                    <span className="text-xs text-slate-400">seg</span>
                   </div>
                 </div>
               </div>
@@ -286,7 +280,7 @@ const RoutineEditor: React.FC = () => {
               {exercises.length === 0 && (
                 <div
                   onClick={() => setIsLibraryOpen(true)}
-                  className="h-40 rounded-2xl border-2 border-dashed border-gray-200 dark:border-surface-border flex flex-col gap-3 items-center justify-center bg-gray-50 dark:bg-surface-dark/10 text-gray-400 dark:text-text-muted cursor-pointer hover:border-primary/50 hover:text-primary/70 transition-all active:scale-[0.99]"
+                  className="flex h-40 cursor-pointer flex-col items-center justify-center gap-3 rounded-[28px] border-2 border-dashed border-white/10 bg-white/5 text-slate-400 transition-all hover:border-primary/50 hover:text-primary/70 active:scale-[0.99]"
                 >
                   <span className="material-symbols-outlined text-3xl">add_circle</span>
                   <p className="font-medium text-sm">Toca aquí para añadir ejercicios</p>
@@ -294,7 +288,7 @@ const RoutineEditor: React.FC = () => {
               )}
 
               {exercises.length > 0 && (
-                <div className="h-20 rounded-2xl border-2 border-dashed border-gray-200 dark:border-surface-border flex flex-col gap-2 items-center justify-center bg-gray-50 dark:bg-surface-dark/10 text-gray-400 dark:text-text-muted">
+                <div className="flex h-20 flex-col items-center justify-center gap-2 rounded-[28px] border-2 border-dashed border-white/10 bg-white/5 text-slate-400">
                   <span className="material-symbols-outlined text-xl">swap_vert</span>
                   <p className="font-medium text-xs">Arrastra para reordenar</p>
                 </div>
@@ -304,22 +298,22 @@ const RoutineEditor: React.FC = () => {
         </div>
 
         {/* Exercise Library Sidebar - Desktop only */}
-        <aside className="w-[360px] hidden lg:flex flex-col border-l border-gray-200 dark:border-surface-border bg-white dark:bg-background-dark h-full shrink-0 shadow-2xl z-10">
+        <aside className="z-10 hidden h-full w-[360px] shrink-0 flex-col border-l border-white/10 bg-[#0b1724] shadow-2xl lg:flex">
           <div className="px-6 pt-8 pb-4">
-            <h3 className="text-slate-900 dark:text-white text-xl font-bold mb-6 flex items-center gap-2">
+            <h3 className="mb-6 flex items-center gap-2 text-xl font-bold text-white">
               <span className="material-symbols-outlined text-primary">library_books</span>
               Biblioteca
             </h3>
 
             {/* Search */}
             <div className="relative group mb-3">
-              <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-text-muted group-focus-within:text-primary transition-colors">
+              <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors">
                 search
               </span>
               <input
                 value={exerciseSearchQuery}
                 onChange={(e) => setExerciseSearchQuery(e.target.value)}
-                className="w-full bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border rounded-xl py-3 pl-11 pr-4 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-gray-400 dark:placeholder:text-text-muted/70 transition-all"
+                className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-11 pr-4 text-sm text-white placeholder:text-slate-500 transition-all focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 placeholder="Buscar ejercicio..."
                 type="text"
               />
@@ -327,7 +321,7 @@ const RoutineEditor: React.FC = () => {
 
             {/* Muscle Filter */}
             <select
-              className="w-full px-3 py-2.5 rounded-lg bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border text-sm mb-2 focus:outline-none focus:border-primary"
+              className="mb-2 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-slate-200 focus:border-primary focus:outline-none"
               value={selectedMuscleFilter || ''}
               onChange={(e) => setMuscleFilter(e.target.value || null)}
             >
@@ -341,7 +335,7 @@ const RoutineEditor: React.FC = () => {
 
             {/* Equipment Filter */}
             <select
-              className="w-full px-3 py-2.5 rounded-lg bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border text-sm focus:outline-none focus:border-primary"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-slate-200 focus:border-primary focus:outline-none"
               value={selectedEquipmentFilter || ''}
               onChange={(e) => setEquipmentFilter(e.target.value || null)}
             >
@@ -356,29 +350,29 @@ const RoutineEditor: React.FC = () => {
 
           <div className="flex-1 overflow-y-auto p-4 px-6 flex flex-col gap-3">
             {filteredLibrary.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
+              <p className="py-8 text-center text-sm text-slate-400">
                 No se encontraron ejercicios
               </p>
             ) : (
               filteredLibrary.map((ex) => (
                 <div
                   key={ex.id}
-                  className="group flex items-center gap-3 p-2 pr-3 rounded-xl bg-gray-50 dark:bg-surface-dark/40 hover:bg-white dark:hover:bg-surface-dark border border-transparent hover:border-gray-200 dark:hover:border-surface-border cursor-pointer transition-all shadow-sm hover:shadow"
+                  className="group flex cursor-pointer items-center gap-3 rounded-xl border border-transparent bg-white/5 p-2 pr-3 transition-all hover:border-white/10 hover:bg-white/10"
                 >
-                  <div className="size-12 rounded-lg bg-gray-200 dark:bg-gray-700 shrink-0 border border-gray-200 dark:border-surface-border flex items-center justify-center">
-                    <span className="text-xs text-slate-500 dark:text-white/40">{ex.name[0]}</span>
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5">
+                    <span className="text-xs text-slate-400">{ex.name[0]}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-slate-900 dark:text-white text-sm font-bold truncate group-hover:text-primary transition-colors">
+                    <h4 className="truncate text-sm font-bold text-white transition-colors group-hover:text-primary">
                       {ex.name}
                     </h4>
-                    <p className="text-[10px] text-gray-500 dark:text-text-muted truncate mt-0.5">
+                    <p className="mt-0.5 truncate text-[10px] text-slate-400">
                       {ex.primary_muscle} • {ex.equipment}
                     </p>
                   </div>
                   <button
                     onClick={() => handleAddFromLibrary(ex)}
-                    className="size-8 rounded-full bg-white dark:bg-background-dark border border-gray-200 dark:border-surface-border flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
+                    className="flex size-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-primary transition-all hover:bg-primary hover:text-white"
                   >
                     <span className="material-symbols-outlined text-[18px]">add</span>
                   </button>
@@ -555,16 +549,12 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="mobile-card p-4 md:p-5"
-    >
+    <div ref={setNodeRef} style={style} className="mobile-card p-4 md:p-5">
       <div className="flex items-center gap-3 mb-4">
         <button
           {...attributes}
           {...listeners}
-          className="cursor-grab touch-none active:cursor-grabbing p-1 text-gray-400 hover:text-primary"
+          className="cursor-grab touch-none p-1 text-slate-400 hover:text-primary active:cursor-grabbing"
         >
           <span className="material-symbols-outlined">drag_indicator</span>
         </button>
@@ -575,19 +565,19 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
               onClick={toggleBodyweight}
               className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
                 exercise.includesBodyweight
-                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                  : 'bg-gray-100 text-gray-400 dark:bg-surface-dark dark:text-text-muted'
+                  ? 'bg-cyan-500/15 text-cyan-200'
+                  : 'border border-white/10 bg-white/5 text-slate-400'
               }`}
               title="+Peso corporal (para ejercicios como fondos, dominadas...)"
             >
               +PC
             </button>
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{exercise.muscleGroup}</p>
+          <p className="text-sm text-slate-400">{exercise.muscleGroup}</p>
         </div>
         <button
           onClick={() => removeExercise(exercise.id)}
-          className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-red-500 transition-colors"
+          className="rounded-lg p-2 text-red-400 transition-colors hover:bg-red-500/10"
         >
           <span className="material-symbols-outlined text-[20px]">delete</span>
         </button>
@@ -596,7 +586,7 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
       {/* Exercise Notes */}
       <div className="mb-4 flex gap-2">
         <div className="relative flex-1">
-          <span className="material-symbols-outlined absolute left-3 top-3 text-gray-400 text-[18px]">
+          <span className="material-symbols-outlined absolute left-3 top-3 text-slate-500 text-[18px]">
             edit_note
           </span>
           <input
@@ -608,7 +598,7 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
           />
         </div>
         <div className="relative w-24">
-          <span className="material-symbols-outlined absolute left-2 top-3 text-gray-400 text-[16px]">
+          <span className="material-symbols-outlined absolute left-2 top-3 text-slate-500 text-[16px]">
             timer
           </span>
           <input
@@ -628,13 +618,13 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
         <div
           className={`grid ${exercise.trackingType === 'time' ? 'grid-cols-[28px_40px_32px_1fr_40px]' : 'grid-cols-[28px_40px_32px_1fr_1fr_40px]'} gap-2 items-center px-2 mb-1`}
         >
-          <span className="text-xs font-bold text-gray-400 text-center"></span>
-          <span className="text-xs font-bold text-gray-400 text-center">#</span>
-          <span className="text-xs font-bold text-gray-400 text-center">Tipo</span>
+          <span className="text-center text-xs font-bold text-slate-500"></span>
+          <span className="text-center text-xs font-bold text-slate-500">#</span>
+          <span className="text-center text-xs font-bold text-slate-500">Tipo</span>
           {exercise.trackingType !== 'time' && (
-            <span className="text-xs font-bold text-gray-400">Peso (kg)</span>
+            <span className="text-xs font-bold text-slate-500">Peso (kg)</span>
           )}
-          <span className="text-xs font-bold text-gray-400">
+          <span className="text-xs font-bold text-slate-500">
             {exercise.trackingType === 'time' ? 'Duración (seg)' : 'Reps'}
           </span>
           <span></span>
@@ -721,7 +711,7 @@ function SortableSetRow({
         <button
           {...attributes}
           {...listeners}
-          className="cursor-grab touch-none active:cursor-grabbing text-gray-400 hover:text-primary flex items-center justify-center"
+          className="flex items-center justify-center text-slate-400 hover:text-primary cursor-grab touch-none active:cursor-grabbing"
           title="Arrastrar serie"
           aria-label="Arrastrar serie"
         >
@@ -731,10 +721,10 @@ function SortableSetRow({
           <span
             className={`text-sm font-bold w-6 h-6 rounded flex items-center justify-center ${
               set.dropsets?.length > 0
-                ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400'
+                ? 'bg-orange-500/15 text-orange-200'
                 : set.isWarmup
-                  ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
-                  : 'text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-surface-dark/50'
+                  ? 'bg-emerald-500/15 text-emerald-200'
+                  : 'bg-white/5 text-slate-400'
             }`}
           >
             {index + 1}
@@ -746,7 +736,7 @@ function SortableSetRow({
             className={`w-6 h-6 rounded text-[10px] font-bold transition-all ${
               set.isWarmup
                 ? 'bg-emerald-500 text-white'
-                : 'bg-gray-100 dark:bg-surface-dark text-gray-400 hover:bg-gray-200'
+                : 'border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10'
             }`}
             title="Calentamiento"
           >
@@ -806,7 +796,7 @@ function SortableSetRow({
                 updateSet(index, 'weight', parsed);
               }
             }}
-            className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border text-center font-bold text-sm"
+            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-center text-sm font-bold text-white"
             placeholder="kg"
           />
         )}
@@ -820,20 +810,20 @@ function SortableSetRow({
             if (!/^[0-9]*$/.test(raw)) return;
             updateSet(index, 'reps', raw === '' ? 0 : parseInt(raw, 10));
           }}
-          className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border text-center font-bold text-sm"
+          className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-center text-sm font-bold text-white"
           placeholder={trackingType === 'time' ? 'Seg' : 'Reps'}
         />
         <div className="flex gap-0.5">
           <button
             onClick={() => addDropsetSubSerie(index)}
-            className="p-1 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded text-orange-500 transition-colors flex items-center justify-center"
+            className="flex items-center justify-center rounded p-1 text-orange-400 transition-colors hover:bg-orange-500/10"
             title="Añadir sub-serie (dropset)"
           >
             <span className="text-[10px] font-bold">+D</span>
           </button>
           <button
             onClick={() => removeSet(index)}
-            className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-500 transition-colors flex items-center justify-center"
+            className="flex items-center justify-center rounded p-1 text-red-400 transition-colors hover:bg-red-500/10"
             disabled={totalSets <= 1}
             title="Eliminar serie"
           >
@@ -846,22 +836,22 @@ function SortableSetRow({
       {set.dropsets?.map((dropset: any, dIndex: number) => (
         <div
           key={`${index}-${dIndex}`}
-          className="grid grid-cols-[28px_40px_32px_1fr_1fr_40px] gap-2 items-center pl-4 border-l-2 border-orange-300 dark:border-orange-600 ml-3 bg-orange-50/50 dark:bg-orange-900/10 rounded-r-lg py-1"
+          className="ml-3 grid grid-cols-[28px_40px_32px_1fr_1fr_40px] items-center gap-2 rounded-r-lg border-l-2 border-orange-500/60 bg-orange-500/10 py-1 pl-4"
         >
           <div />
           <div className="flex items-center justify-center">
-            <span className="text-xs font-bold text-orange-600 dark:text-orange-400">
+            <span className="text-xs font-bold text-orange-200">
               {index + 1}.{dIndex + 1}
             </span>
           </div>
-          <div className="text-[10px] text-orange-500 font-bold text-center">D</div>
+          <div className="text-center text-[10px] font-bold text-orange-300">D</div>
           <input
             type="number"
             value={dropset.weight}
             onChange={(e) =>
               updateDropset(index, dIndex, 'weight', parseFloat(e.target.value) || 0)
             }
-            className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-surface-dark border border-orange-200 dark:border-orange-700 text-center font-bold text-sm"
+            className="w-full rounded-lg border border-orange-400/30 bg-[#12273a] px-2 py-1.5 text-center text-sm font-bold text-white"
             placeholder="kg"
           />
           <input
@@ -873,12 +863,12 @@ function SortableSetRow({
               if (!/^[0-9]*$/.test(raw)) return;
               updateDropset(index, dIndex, 'reps', raw === '' ? 0 : parseInt(raw, 10));
             }}
-            className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-surface-dark border border-orange-200 dark:border-orange-700 text-center font-bold text-sm"
+            className="w-full rounded-lg border border-orange-400/30 bg-[#12273a] px-2 py-1.5 text-center text-sm font-bold text-white"
             placeholder="Reps"
           />
           <button
             onClick={() => removeDropsetSubSerie(index, dIndex)}
-            className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-400 transition-colors flex items-center justify-center"
+            className="flex items-center justify-center rounded p-1 text-red-400 transition-colors hover:bg-red-500/10"
             title="Eliminar sub-serie"
           >
             <span className="material-symbols-outlined text-[14px]">close</span>

@@ -194,19 +194,19 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
                 onClick={onClose}
                 className="p-2 rounded-full hover:bg-white/5 transition-colors"
               >
-                <span className="material-symbols-outlined text-gray-400">close</span>
+                <span className="material-symbols-outlined text-slate-400">close</span>
               </button>
             </div>
 
             {/* Search */}
             <div className="relative mb-3">
-              <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-[20px]">
+              <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-[20px]">
                 search
               </span>
               <input
                 value={exerciseSearchQuery}
                 onChange={(e) => setExerciseSearchQuery(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-base sm:text-sm text-white focus:outline-none focus:border-primary/50 focus:bg-white/10 placeholder:text-gray-500 transition-all"
+                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-base sm:text-sm text-white focus:outline-none focus:border-primary/50 focus:bg-white/10 placeholder:text-slate-500 transition-all"
                 placeholder="Buscar ejercicio..."
                 type="text"
               />
@@ -269,10 +269,10 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
         <div className="flex-1 min-h-0 overflow-y-auto mobile-scroll px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           {filteredLibrary.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <span className="material-symbols-outlined text-4xl text-gray-600 mb-3">
+              <span className="material-symbols-outlined mb-3 text-4xl text-slate-600">
                 search_off
               </span>
-              <p className="text-gray-400 text-sm">No se encontraron ejercicios</p>
+              <p className="text-sm text-slate-400">No se encontraron ejercicios</p>
             </div>
           ) : (
             <div className="grid gap-2">
@@ -293,9 +293,9 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
                       {ex.name}
                     </h4>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-gray-500">{ex.primary_muscle}</span>
-                      <span className="text-gray-600">•</span>
-                      <span className="text-xs text-gray-500">{ex.equipment}</span>
+                      <span className="text-xs text-slate-500">{ex.primary_muscle}</span>
+                      <span className="text-slate-600">•</span>
+                      <span className="text-xs text-slate-500">{ex.equipment}</span>
                     </div>
                   </div>
 
