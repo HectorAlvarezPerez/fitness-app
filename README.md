@@ -1,89 +1,84 @@
-<div align="center">
-<img width="1200" height="475" alt="Fitness App Banner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+# Fitness App
 
-# Fitness Tracker
+Mobile-first workout tracker built with React, TypeScript, Zustand, and Supabase. The app focuses on fast session logging, compact progress analytics, and a cleaner phone-oriented training flow.
 
-A comprehensive, modern React application for tracking workouts, monitoring progress, and achieving fitness goals. Built with performance and user experience in mind.
+## Screenshots
 
-[Live Demo](https://hectoralvarez.github.io/fitness-app/) <!-- Update with actual username/repo if different -->
+### Landing
 
-</div>
+![Fitness App landing screen](./docs/screenshots/landing.png)
 
-## 🚀 Features
+### Home
 
-### 💪 Workout Management
+![Fitness App home screen](./docs/screenshots/home.png)
 
-- **Routine Builder**: Create and customize workout routines with a drag-and-drop interface.
-- **Live Session Tracking**: Track your sets, reps, and weights in real-time.
-- **Rest Timer**: Integrated timer to keep your workouts on track.
+## What It Does
 
-### 📈 Progress & Analytics
+- Email auth with Supabase plus a guest flow for quick previews.
+- Guided onboarding for profile basics, training goal, and context.
+- Routine list and routine editor for saved training plans.
+- Live workout sessions with active-workout resume support.
+- Rest timer, workout timer, and plate calculator helpers.
+- Exercise library and custom exercise editing.
+- Dashboard with summary stats, workout calendar, volume chart, and muscle distribution.
+- Workout history, PR tracking, and progress pages.
 
-- **Detailed History**: View past workouts and performance trends.
-- **Muscle Heatmap**: Visual representation of trained muscle groups.
-- **Charts & Graphs**: Powered by Recharts to visualize volume, intensity, and body measurements.
-- **Personal Records**: Automatic tracking of your best lifts.
+## Stack
 
-### 🏆 Gamification
+- React 19
+- Vite 6
+- TypeScript
+- Zustand
+- Supabase
+- Recharts
+- React Router
+- Cloudflare deployment via Wrangler
 
-- **Achievements System**: Unlock badges and milestones as you progress.
-- **Streaks**: Track your consistency over time.
-
-### 👤 User Profile
-
-- **Body Measurements**: Log and track tracking weight and body metrics.
-- **Onboarding Flow**: Personalized setup to tailor the experience to your goals.
-
-## 🛠️ Tech Stack
-
-- **Frontend**: React 19, Vite, TypeScript
-- **State Management**: Zustand
-- **Backend & Auth**: Supabase
-- **Styling**: Tailwind CSS (presumed)
-- **Visualization**: Recharts
-- **Interactions**: @dnd-kit (Drag and Drop)
-- **Deployment**: GitHub Pages
-
-## 🏃‍♂️ Getting Started
+## Local Setup
 
 ### Prerequisites
 
-- Node.js (v20 or higher recommended)
+- Node.js 20+
 - npm
+- Supabase project credentials
 
-### Installation
+### Install
 
-1. **Clone the repository**
+```bash
+git clone git@github.com:HectorAlvarezPerez/fitness-app.git
+cd fitness-app
+npm install
+```
 
-   ```bash
-   git clone https://github.com/hectoralvarez/fitness-app.git
-   cd fitness-app
-   ```
+### Environment
 
-2. **Install dependencies**
+Create `.env` or `.env.local` in the project root:
 
-   ```bash
-   npm install
-   ```
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-3. **Environment Setup**
-   Create a `.env.local` file in the root directory with your Supabase credentials:
+### Run
 
-   ```env
-   VITE_SUPABASE_URL=your_supabase_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
+```bash
+npm run dev
+```
 
-4. **Run Locally**
-   ```bash
-   npm run dev
-   ```
+### Quality Checks
 
-## 📦 Deployment
+```bash
+npm run test
+npm run lint
+npm run build
+```
 
-This project is configured to deploy to **GitHub Pages** using GitHub Actions.
-Any push to the `main` branch will trigger the deployment workflow.
+## Deployment
 
-## 📄 License
+Production deploys are configured around Wrangler:
 
-This project is available for personal use and modification.
+```bash
+npm run deploy
+```
+
+That builds the Vite app and publishes it through the Cloudflare deployment flow configured in the repo.
