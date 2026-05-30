@@ -26,6 +26,7 @@ const RoutineEditor: React.FC = () => {
   const navigate = useNavigate();
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [defaultRestSeconds, setDefaultRestSeconds] = useState<number>(90);
+  const [supersetPickerFor, setSupersetPickerFor] = useState<string | null>(null);
   const {
     routineName,
     setRoutineName,
@@ -170,6 +171,40 @@ const RoutineEditor: React.FC = () => {
     }
   };
 
+  // --- Supersets -----------------------------------------------------------
+  const assignSuperset = (partnerId: string) => {
+    const aId = supersetPickerFor;
+    if (!aId || aId === partnerId) {
+      setSupersetPickerFor(null);
+      return;
+    }
+    const a = exercises.find((e) => e.id === aId);
+    const b = exercises.find((e) => e.id === partnerId);
+    const gid = a?.supersetId || b?.supersetId || createId('ss');
+    updateExercise(aId, { supersetId: gid });
+    updateExercise(partnerId, { supersetId: gid });
+    setSupersetPickerFor(null);
+  };
+
+  const clearSuperset = (exId: string) => {
+    const ex = exercises.find((e) => e.id === exId);
+    const gid = ex?.supersetId;
+    updateExercise(exId, { supersetId: undefined });
+    if (gid) {
+      const remaining = exercises.filter((e) => e.supersetId === gid && e.id !== exId);
+      if (remaining.length === 1) updateExercise(remaining[0].id, { supersetId: undefined });
+    }
+  };
+
+  const supersetBadges: Record<string, string> = {};
+  let supersetLetterIdx = 0;
+  exercises.forEach((e) => {
+    if (e.supersetId && !supersetBadges[e.supersetId]) {
+      supersetBadges[e.supersetId] = String.fromCharCode(65 + supersetLetterIdx);
+      supersetLetterIdx += 1;
+    }
+  });
+
   return (
     <>
       <div className="flex h-full w-full overflow-hidden bg-[linear-gradient(180deg,_#07131d_0%,_#091826_38%,_#0b1724_100%)] text-white">
@@ -269,6 +304,11 @@ const RoutineEditor: React.FC = () => {
                       exercise={exercise}
                       updateExercise={updateExercise}
                       removeExercise={removeExercise}
+                      supersetBadge={
+                        exercise.supersetId ? supersetBadges[exercise.supersetId] : undefined
+                      }
+                      onAddToSuperset={() => setSupersetPickerFor(exercise.id)}
+                      onRemoveFromSuperset={() => clearSuperset(exercise.id)}
                     />
                   ))}
                 </SortableContext>
@@ -395,12 +435,62 @@ const RoutineEditor: React.FC = () => {
         onClose={() => setIsLibraryOpen(false)}
         onAddExercise={handleAddFromLibrary}
       />
+
+      {/* Superset partner picker */}
+      {supersetPickerFor && (
+        <div
+          className="fixed inset-0 z-[70] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center"
+          onClick={() => setSupersetPickerFor(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-t-3xl border border-white/10 bg-[#0b1724] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:rounded-3xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-1 text-lg font-bold text-white">Añadir a superserie</h3>
+            <p className="mb-4 text-sm text-slate-400">Elige el ejercicio con el que emparejarlo</p>
+            <div className="flex max-h-[50vh] flex-col gap-2 overflow-y-auto">
+              {exercises
+                .filter((e) => e.id !== supersetPickerFor)
+                .map((e) => (
+                  <button
+                    key={e.id}
+                    onClick={() => assignSuperset(e.id)}
+                    className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-white transition-colors hover:bg-white/10"
+                  >
+                    <span className="font-semibold">{e.name}</span>
+                    {e.supersetId && supersetBadges[e.supersetId] && (
+                      <span className="rounded bg-primary/20 px-1.5 py-0.5 text-xs font-bold text-primary">
+                        SS {supersetBadges[e.supersetId]}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              {exercises.filter((e) => e.id !== supersetPickerFor).length === 0 && (
+                <p className="text-sm text-slate-500">Añade otro ejercicio primero.</p>
+              )}
+            </div>
+            <button
+              onClick={() => setSupersetPickerFor(null)}
+              className="mt-4 w-full rounded-xl border border-white/10 py-2.5 text-sm font-semibold text-slate-300"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 };
 
 // Sortable Exercise Item Component
-function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any) {
+function SortableExerciseItem({
+  exercise,
+  updateExercise,
+  removeExercise,
+  onAddToSuperset,
+  onRemoveFromSuperset,
+  supersetBadge,
+}: any) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: exercise.id,
   });
@@ -546,7 +636,11 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="mobile-card p-4 md:p-5">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`mobile-card p-4 md:p-5 ${exercise.supersetId ? 'border-l-4 border-l-primary' : ''}`}
+    >
       <div className="flex items-center gap-3 mb-4">
         <button
           {...attributes}
@@ -558,6 +652,14 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <h4 className="font-bold text-lg">{exercise.name}</h4>
+            {supersetBadge && (
+              <span
+                className="rounded bg-primary/20 px-1.5 py-0.5 text-xs font-bold text-primary"
+                title="Superserie"
+              >
+                SS {supersetBadge}
+              </span>
+            )}
             <button
               onClick={toggleBodyweight}
               className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
@@ -572,6 +674,20 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
           </div>
           <p className="text-sm text-slate-400">{exercise.muscleGroup}</p>
         </div>
+        <button
+          onClick={() => (exercise.supersetId ? onRemoveFromSuperset() : onAddToSuperset())}
+          className={`rounded-lg p-2 transition-colors ${
+            exercise.supersetId
+              ? 'text-primary hover:bg-primary/10'
+              : 'text-slate-400 hover:bg-white/10'
+          }`}
+          title={exercise.supersetId ? 'Quitar de superserie' : 'Añadir a superserie'}
+          aria-label={exercise.supersetId ? 'Quitar de superserie' : 'Añadir a superserie'}
+        >
+          <span className="material-symbols-outlined text-[20px]">
+            {exercise.supersetId ? 'link_off' : 'link'}
+          </span>
+        </button>
         <button
           onClick={() => removeExercise(exercise.id)}
           className="rounded-lg p-2 text-red-400 transition-colors hover:bg-red-500/10"

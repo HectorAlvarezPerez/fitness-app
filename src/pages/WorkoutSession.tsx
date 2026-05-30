@@ -227,14 +227,37 @@ const WorkoutSession: React.FC = () => {
     );
 
     void updateWorkoutExerciseSets(exerciseId, updatedSets);
+
+    const currentSet = exercise.sets[setIndex];
+    const isCompleting = !currentSet.completed; // about to flip to completed
+
+    if (!isCompleting) {
+      // Un-completing: just keep focus here, no rest, no advance.
+      void setActiveWorkoutPosition(exerciseId, setIndex);
+      return;
+    }
+
+    // Superset/circuit: when completing a set of a non-last member, jump to the
+    // next exercise of the group (same round) instead of resting. Rest only runs
+    // after the last member of the group.
+    if (exercise.supersetId) {
+      const group = activeWorkout.exercises.filter(
+        (ex) => ex && ex.supersetId === exercise.supersetId
+      );
+      const posInGroup = group.findIndex((ex) => ex.exerciseId === exerciseId);
+      const nextMember = group[posInGroup + 1];
+      if (nextMember) {
+        void setActiveWorkoutPosition(nextMember.exerciseId, setIndex);
+        return;
+      }
+    }
+
     void setActiveWorkoutPosition(exerciseId, setIndex);
 
-    // Start rest timer if completing a set (not uncompleting)
-    // Skip rest timer if this set has dropsets (no rest between dropset sub-series)
-    const currentSet = exercise.sets[setIndex];
+    // Start rest timer (skip if the set has dropsets — no rest between sub-series).
     const hasDropsets = currentSet.dropsets && currentSet.dropsets.length > 0;
     const restSeconds = exercise.restSeconds || 0;
-    if (!currentSet.completed && restSeconds > 0 && !hasDropsets) {
+    if (restSeconds > 0 && !hasDropsets) {
       void startRestTimer(exerciseId, setIndex, restSeconds);
     }
   };
@@ -384,6 +407,15 @@ const WorkoutSession: React.FC = () => {
       )
     : [];
 
+  const supersetBadges: Record<string, string> = {};
+  let supersetLetterIdx = 0;
+  safeExercises.forEach((ex) => {
+    if (ex.supersetId && !supersetBadges[ex.supersetId]) {
+      supersetBadges[ex.supersetId] = String.fromCharCode(65 + supersetLetterIdx);
+      supersetLetterIdx += 1;
+    }
+  });
+
   const totalSets = safeExercises.reduce((acc, ex) => acc + ex.sets.length, 0);
   const completedSets = safeExercises.reduce(
     (acc, ex) => acc + ex.sets.filter((s) => s.completed).length,
@@ -505,7 +537,12 @@ const WorkoutSession: React.FC = () => {
             )}
 
             {safeExercises.map((exercise, exIndex) => (
-              <div key={exercise.exerciseId} className="mobile-card overflow-hidden shadow-sm">
+              <div
+                key={exercise.exerciseId}
+                className={`mobile-card overflow-hidden shadow-sm ${
+                  exercise.supersetId ? 'border-l-4 border-l-primary' : ''
+                }`}
+              >
                 {/* Exercise Header */}
                 <div
                   className="cursor-pointer p-4 transition-colors hover:bg-[rgba(47,140,255,0.05)]"
@@ -525,6 +562,14 @@ const WorkoutSession: React.FC = () => {
                         <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-bold">
                           {exercise.primaryMuscle}
                         </span>
+                        {exercise.supersetId && supersetBadges[exercise.supersetId] && (
+                          <span
+                            className="rounded bg-primary/20 px-1.5 py-0.5 text-xs font-bold text-primary"
+                            title="Superserie"
+                          >
+                            SS {supersetBadges[exercise.supersetId]}
+                          </span>
+                        )}
                       </div>
                       <h3 className="text-lg font-bold">{exercise.name}</h3>
                       <p className="mt-1 text-sm text-slate-400">

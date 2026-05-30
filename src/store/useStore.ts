@@ -36,6 +36,7 @@ export interface Exercise {
   secondaryMuscleFactor?: number;
   includesBodyweight?: boolean; // For exercises like dips, pull-ups where volume = bodyweight + added weight
   trackingType?: 'reps' | 'time'; // 'reps' for repetitions, 'time' for time-based (seconds)
+  supersetId?: string; // exercises sharing a supersetId form a superset/circuit
   // Legacy fields for backward compatibility - optional or deprecated
   reps?: number;
   weight?: number;
@@ -88,6 +89,7 @@ export interface ActiveWorkoutExercise {
   notes?: string;
   includesBodyweight?: boolean; // For exercises like dips where volume = bodyweight + added weight
   trackingType?: 'reps' | 'time'; // 'reps' for repetitions, 'time' for time-based (seconds)
+  supersetId?: string; // exercises sharing a supersetId form a superset/circuit
   sets: Array<{
     id?: string;
     reps: number;
@@ -330,6 +332,7 @@ interface AppState {
   addActiveWorkoutExercise: (exercise: ExerciseLibraryItem) => Promise<void>;
   updateActiveWorkoutExerciseNotes: (exerciseId: string, notes: string) => Promise<void>;
   updateActiveWorkoutExerciseRest: (exerciseId: string, restSeconds: number) => Promise<void>;
+  setActiveExerciseSuperset: (exerciseId: string, supersetId: string | null) => Promise<void>;
   updateWorkoutExerciseSets: (
     exerciseId: string,
     sets: ActiveWorkoutExercise['sets']
@@ -429,10 +432,11 @@ export const useStore = create<AppState>()(
         set((state) => ({ exercises: state.exercises.filter((e) => e.id !== id) })),
       updateExercise: (id, updates) =>
         set((state) => {
-          const normalizedUpdates = {
-            ...updates,
-            sets: Array.isArray(updates.sets) ? ensureSetIds(updates.sets) : updates.sets,
-          };
+          // Only touch `sets` when explicitly provided, otherwise a partial update
+          // (e.g. { restSeconds } or { supersetId }) would wipe the existing sets.
+          const normalizedUpdates = Array.isArray(updates.sets)
+            ? { ...updates, sets: ensureSetIds(updates.sets) }
+            : updates;
           return {
             exercises: state.exercises.map((e) =>
               e.id === id ? { ...e, ...normalizedUpdates } : e
@@ -920,6 +924,20 @@ export const useStore = create<AppState>()(
           },
         });
 
+        await get().saveActiveWorkoutProgress();
+      },
+
+      setActiveExerciseSuperset: async (exerciseId: string, supersetId: string | null) => {
+        const state = get();
+        if (!state.activeWorkout) return;
+
+        const exercises = (
+          Array.isArray(state.activeWorkout.exercises) ? state.activeWorkout.exercises : []
+        ).map((ex) =>
+          ex && ex.exerciseId === exerciseId ? { ...ex, supersetId: supersetId ?? undefined } : ex
+        );
+
+        set({ activeWorkout: { ...state.activeWorkout, exercises } });
         await get().saveActiveWorkoutProgress();
       },
 
@@ -1455,6 +1473,7 @@ export const useStore = create<AppState>()(
               notes: ex.notes, // Copy notes from routine
               includesBodyweight: ex.includesBodyweight, // Pass bodyweight flag
               trackingType: ex.trackingType || 'reps', // Pass tracking type (reps or time)
+              supersetId: ex.supersetId, // Carry superset grouping into the live workout
               sets: parsedSets.map((s) => ({
                 id: s.id || createId('set'),
                 reps: s.reps,
