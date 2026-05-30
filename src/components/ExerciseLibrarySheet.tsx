@@ -190,7 +190,7 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
         <div className="shrink-0 bg-[#0f1214]">
           {/* Drag handle */}
           <div className="flex justify-center pt-3 pb-2 touch-none">
-            <div className="w-10 h-1 bg-white/20 rounded-full" />
+            <div className="w-12 h-1.5 bg-white/25 rounded-full" />
           </div>
 
           {/* Header */}

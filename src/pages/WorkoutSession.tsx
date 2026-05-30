@@ -464,9 +464,9 @@ const WorkoutSession: React.FC = () => {
                   </div>
                   <button
                     onClick={() => setIsLibraryOpen(true)}
-                    className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] px-4 py-2 font-bold text-white transition-all"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] px-4 py-3.5 font-bold text-white transition-all active:scale-[0.99]"
                   >
-                    <span className="material-symbols-outlined text-[18px]">add</span>
+                    <span className="material-symbols-outlined text-[20px]">add</span>
                     Añadir ejercicio
                   </button>
                 </div>
@@ -912,7 +912,7 @@ const SortableWorkoutSetRow: React.FC<{
                     updateSetValue(exerciseId, setIndex, 'weight', parsed);
                   }
                 }}
-                className="w-full min-w-[60px] rounded-xl border border-white/10 bg-[#07131d] px-2 py-1.5 text-center text-sm font-bold text-white sm:w-16"
+                className="w-full min-w-[64px] rounded-xl border border-white/10 bg-[#07131d] px-2 py-1.5 text-center text-sm font-bold text-white sm:w-20"
               />
               <span className="text-xs text-slate-500">kg</span>
             </div>

@@ -616,13 +616,13 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
         <div
           className={`grid ${exercise.trackingType === 'time' ? 'grid-cols-[28px_40px_32px_1fr_40px]' : 'grid-cols-[28px_40px_32px_1fr_1fr_40px]'} gap-2 items-center px-2 mb-1`}
         >
-          <span className="text-center text-xs font-bold text-slate-500"></span>
-          <span className="text-center text-xs font-bold text-slate-500">#</span>
-          <span className="text-center text-xs font-bold text-slate-500">Tipo</span>
+          <span className="text-center text-xs font-bold text-slate-300"></span>
+          <span className="text-center text-xs font-bold text-slate-300">#</span>
+          <span className="text-center text-xs font-bold text-slate-300">Tipo</span>
           {exercise.trackingType !== 'time' && (
-            <span className="text-xs font-bold text-slate-500">Peso (kg)</span>
+            <span className="text-xs font-bold text-slate-300">Peso (kg)</span>
           )}
-          <span className="text-xs font-bold text-slate-500">
+          <span className="text-xs font-bold text-slate-300">
             {exercise.trackingType === 'time' ? 'Duración (seg)' : 'Reps'}
           </span>
           <span></span>
