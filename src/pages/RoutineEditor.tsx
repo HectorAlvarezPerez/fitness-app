@@ -107,7 +107,7 @@ const RoutineEditor: React.FC = () => {
     }));
 
     addExercise({
-      id: Date.now().toString(),
+      id: createId('ex'),
       name: exerciseLibItem.name,
       muscleGroup: exerciseLibItem.primary_muscle,
       secondaryMuscles: exerciseLibItem.secondary_muscles || [],
@@ -145,8 +145,6 @@ const RoutineEditor: React.FC = () => {
   ];
 
   const handleSave = async () => {
-    console.log('handleSave called', { routineName, exercises, id, defaultRestSeconds });
-
     if (!routineName.trim()) {
       alert('Por favor, ingresa un nombre para la rutina');
       return;
@@ -157,7 +155,6 @@ const RoutineEditor: React.FC = () => {
       return;
     }
 
-    console.log('Calling saveRoutine...');
     const { data, error } = await saveRoutine(
       routineName,
       exercises,
@@ -165,7 +162,6 @@ const RoutineEditor: React.FC = () => {
       undefined,
       defaultRestSeconds
     );
-    console.log('saveRoutine result:', { data, error });
 
     if (error) {
       alert(error);
@@ -243,6 +239,7 @@ const RoutineEditor: React.FC = () => {
                   <div className="flex items-center gap-1">
                     <input
                       type="number"
+                      inputMode="numeric"
                       value={defaultRestSeconds}
                       onChange={(e) => setDefaultRestSeconds(parseInt(e.target.value) || 60)}
                       className="w-14 border-none bg-transparent p-0 text-xl font-bold text-white outline-none"
@@ -603,6 +600,7 @@ function SortableExerciseItem({ exercise, updateExercise, removeExercise }: any)
           </span>
           <input
             type="number"
+            inputMode="numeric"
             value={exercise.restSeconds || ''}
             onChange={(e) =>
               updateExercise(exercise.id, { restSeconds: parseInt(e.target.value) || undefined })
@@ -847,6 +845,7 @@ function SortableSetRow({
           <div className="text-center text-[10px] font-bold text-orange-300">D</div>
           <input
             type="number"
+            inputMode="decimal"
             value={dropset.weight}
             onChange={(e) =>
               updateDropset(index, dIndex, 'weight', parseFloat(e.target.value) || 0)

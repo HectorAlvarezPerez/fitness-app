@@ -46,6 +46,8 @@ const localWorkout = (updatedAt: string) => ({
     {
       exerciseId: 'e1',
       name: 'Press',
+      primaryMuscle: 'Pecho',
+      restSeconds: 90,
       sets: [{ id: 's1', reps: 8, weight: 80, completed: true }],
     },
   ],

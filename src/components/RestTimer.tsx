@@ -191,15 +191,27 @@ export const RestTimer: React.FC<RestTimerProps> = ({
     onComplete?.();
   };
 
+  const isUrgent = remaining <= 10 && remaining > 0 && !isPaused;
+
   if (variant === 'footer') {
     return (
-      <div className="bg-slate-900 text-white p-3 sm:p-4 shadow-lg border-t border-white/10">
+      <div
+        className={`rounded-2xl p-3 sm:p-4 shadow-lg border transition-colors ${
+          isUrgent
+            ? 'border-amber-400/40 bg-amber-400/15 animate-pulse'
+            : 'border-white/10 bg-primary/10'
+        }`}
+      >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col">
-            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+            <span className="text-xs text-slate-300 font-bold uppercase tracking-wider">
               Descanso
             </span>
-            <span className="text-3xl font-black font-mono leading-none text-primary">
+            <span
+              className={`text-4xl font-black font-mono leading-none ${
+                isUrgent ? 'text-amber-300' : 'text-primary'
+              }`}
+            >
               {formatTime(remaining)}
             </span>
           </div>

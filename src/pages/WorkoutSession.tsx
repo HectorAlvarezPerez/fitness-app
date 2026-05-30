@@ -537,6 +537,7 @@ const WorkoutSession: React.FC = () => {
                         </span>
                         <input
                           type="number"
+                          inputMode="numeric"
                           value={exercise.restSeconds}
                           min={0}
                           max={600}
@@ -601,7 +602,7 @@ const WorkoutSession: React.FC = () => {
                       {/* Add Set Button */}
                       <button
                         onClick={() => addSet(exercise.exerciseId)}
-                        className="rounded-2xl border-2 border-dashed border-white/10 py-2.5 text-sm font-bold text-slate-400 transition-colors hover:border-primary hover:text-white"
+                        className="rounded-2xl border-2 border-dashed border-white/10 py-3 text-sm font-bold text-slate-400 transition-colors hover:border-primary hover:text-white active:scale-[0.99]"
                       >
                         + Añadir Serie
                       </button>
@@ -613,7 +614,7 @@ const WorkoutSession: React.FC = () => {
           </div>
 
           {/* Static Footer Container (Mobile Only) */}
-          <div className="lg:hidden fixed bottom-[var(--keyboard-inset,0px)] left-0 right-0 z-30 border-t border-[rgba(73,133,214,0.12)] bg-[rgba(6,14,24,0.94)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl">
+          <div className="lg:hidden fixed bottom-[var(--keyboard-inset,0px)] left-0 right-0 z-30 border-t border-[rgba(73,133,214,0.12)] bg-[rgba(6,14,24,0.94)] p-3 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xl">
             <div className="w-full space-y-2">
               {/* Timer (if active) - Footer version */}
               {activeWorkout.restTimer && (
@@ -630,23 +631,21 @@ const WorkoutSession: React.FC = () => {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-2">
-                {/* Finish Button */}
-                <button
-                  onClick={handleFinish}
-                  className="rounded-xl bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
-                >
-                  {progress === 100 ? 'Finalizar' : 'Guardar progreso'}
-                </button>
+              {/* Finish Button (primary, full-width, large touch target) */}
+              <button
+                onClick={handleFinish}
+                className="w-full rounded-xl bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] py-4 text-base font-bold text-white shadow-md transition-all hover:shadow-lg active:scale-[0.99]"
+              >
+                {progress === 100 ? 'Finalizar' : 'Guardar progreso'}
+              </button>
 
-                {/* Cancel Button */}
-                <button
-                  onClick={() => setCancelConfirmOpen(true)}
-                  className="py-3 rounded-xl border-2 border-red-500 text-red-500 dark:text-red-400 font-bold text-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
-                >
-                  Cancelar
-                </button>
-              </div>
+              {/* Cancel (de-emphasised to avoid accidental taps mid-workout) */}
+              <button
+                onClick={() => setCancelConfirmOpen(true)}
+                className="w-full py-2 text-sm font-semibold text-red-400/80 transition-colors hover:text-red-400"
+              >
+                Cancelar entrenamiento
+              </button>
             </div>
           </div>
         </div>
@@ -841,12 +840,13 @@ const SortableWorkoutSetRow: React.FC<{
           {/* Checkbox */}
           <button
             onClick={() => toggleSetComplete(exerciseId, setIndex)}
-            className={`flex size-8 items-center justify-center rounded-full border-2 transition-all ${
+            aria-label={set.completed ? 'Marcar serie como no completada' : 'Completar serie'}
+            className={`flex size-11 shrink-0 items-center justify-center rounded-full border-2 transition-all active:scale-95 ${
               set.completed ? 'border-primary bg-primary' : 'border-white/15'
             }`}
           >
             {set.completed && (
-              <span className="material-symbols-outlined text-white text-[18px]">check</span>
+              <span className="material-symbols-outlined text-white text-[24px]">check</span>
             )}
           </button>
 
@@ -941,9 +941,10 @@ const SortableWorkoutSetRow: React.FC<{
         {totalSets > 1 && (
           <button
             onClick={() => removeSet(exerciseId, setIndex)}
-            className="self-start rounded-lg p-1 transition-colors hover:bg-red-500/10 sm:ml-auto sm:self-center"
+            aria-label="Eliminar serie"
+            className="flex size-10 shrink-0 items-center justify-center self-start rounded-lg transition-colors hover:bg-red-500/10 active:scale-95 sm:ml-auto sm:self-center"
           >
-            <span className="material-symbols-outlined text-red-500 text-[18px]">close</span>
+            <span className="material-symbols-outlined text-red-500 text-[20px]">close</span>
           </button>
         )}
       </div>
@@ -966,7 +967,8 @@ const SortableWorkoutSetRow: React.FC<{
               </span>
               <div className="flex items-center gap-1">
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   value={dropset.weight}
                   onChange={(e) =>
                     updateDropsetValue(
@@ -983,7 +985,8 @@ const SortableWorkoutSetRow: React.FC<{
               </div>
               <div className="flex items-center gap-1">
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={dropset.reps}
                   onChange={(e) =>
                     updateDropsetValue(

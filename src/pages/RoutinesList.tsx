@@ -459,7 +459,7 @@ const RoutinesList: React.FC = () => {
                     if (routine) handleDeleteRoutine(routine);
                     setContextMenu(null);
                   }}
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-red-300 transition-colors hover:bg-red-500/10"
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-red-300 transition-colors hover:bg-red-500/10"
                 >
                   <span className="material-symbols-outlined text-[18px]">delete</span>
                   Eliminar

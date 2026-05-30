@@ -30,10 +30,18 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
   const [currentY, setCurrentY] = useState(0);
   const [keyboardInset, setKeyboardInset] = useState(0);
   const [sheetHeight, setSheetHeight] = useState(0);
+  // Track how many times each exercise was added while the sheet is open, so the
+  // user gets clear visual confirmation (no reliable haptics on iOS).
+  const [addedCounts, setAddedCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     loadExerciseLibrary();
   }, [loadExerciseLibrary]);
+
+  // Reset the "added" badges each time the sheet opens.
+  useEffect(() => {
+    if (isOpen) setAddedCounts({});
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -143,7 +151,11 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
 
   const handleAddAndFeedback = (exercise: any) => {
     onAddExercise(exercise);
-    // Haptic feedback if available
+    setAddedCounts((counts) => ({
+      ...counts,
+      [exercise.id]: (counts[exercise.id] || 0) + 1,
+    }));
+    // Haptic feedback if available (no-op on iOS Safari).
     if (navigator.vibrate) {
       navigator.vibrate(10);
     }
@@ -268,12 +280,19 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
         {/* Exercise list */}
         <div className="flex-1 min-h-0 overflow-y-auto mobile-scroll px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           {filteredLibrary.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <span className="material-symbols-outlined mb-3 text-4xl text-slate-600">
-                search_off
-              </span>
-              <p className="text-sm text-slate-400">No se encontraron ejercicios</p>
-            </div>
+            exerciseLibrary.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <span className="mb-3 size-8 animate-spin rounded-full border-2 border-white/15 border-t-primary" />
+                <p className="text-sm text-slate-400">Cargando ejercicios…</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <span className="material-symbols-outlined mb-3 text-4xl text-slate-600">
+                  search_off
+                </span>
+                <p className="text-sm text-slate-400">No se encontraron ejercicios</p>
+              </div>
+            )
           ) : (
             <div className="grid gap-2">
               {filteredLibrary.map((ex) => (
@@ -299,12 +318,23 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
                     </div>
                   </div>
 
-                  {/* Add button */}
-                  <div className="size-9 rounded-full bg-primary/10 flex items-center justify-center group-active:bg-primary group-active:scale-95 transition-all">
-                    <span className="material-symbols-outlined text-[20px] text-primary group-active:text-white transition-colors">
-                      add
-                    </span>
-                  </div>
+                  {/* Add button — shows a confirmation count once added */}
+                  {addedCounts[ex.id] ? (
+                    <div className="flex h-9 min-w-9 items-center justify-center gap-1 rounded-full bg-primary px-2 transition-all">
+                      <span className="material-symbols-outlined text-[18px] text-white">
+                        check
+                      </span>
+                      {addedCounts[ex.id] > 1 && (
+                        <span className="text-xs font-bold text-white">{addedCounts[ex.id]}</span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="size-9 rounded-full bg-primary/10 flex items-center justify-center group-active:bg-primary group-active:scale-95 transition-all">
+                      <span className="material-symbols-outlined text-[20px] text-primary group-active:text-white transition-colors">
+                        add
+                      </span>
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
