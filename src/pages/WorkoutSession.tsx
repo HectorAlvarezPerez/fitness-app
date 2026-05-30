@@ -88,6 +88,37 @@ const WorkoutSession: React.FC = () => {
     };
   }, [loadRoutines, loadActiveWorkout]);
 
+  // Keep the screen awake during the workout (gym QoL — no more screen sleeping
+  // between sets). The lock auto-releases when the page is hidden, so re-acquire
+  // when it becomes visible again.
+  useEffect(() => {
+    let wakeLock: { release: () => Promise<void> } | null = null;
+    const request = async () => {
+      try {
+        const nav = navigator as Navigator & {
+          wakeLock?: { request: (type: 'screen') => Promise<typeof wakeLock> };
+        };
+        if (nav.wakeLock) wakeLock = await nav.wakeLock.request('screen');
+      } catch {
+        // ignore (unsupported / not allowed)
+      }
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') void request();
+    };
+    void request();
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      try {
+        void wakeLock?.release();
+      } catch {
+        // ignore
+      }
+      wakeLock = null;
+    };
+  }, []);
+
   useEffect(() => {
     if (workoutHistory.length === 0) {
       loadWorkoutHistory();
@@ -593,6 +624,7 @@ const WorkoutSession: React.FC = () => {
                                 updateDropsetValue={updateDropsetValue}
                                 removeSet={removeSet}
                                 lastLabel={lastLabel}
+                                lastSet={lastSet}
                               />
                             );
                           })}
@@ -779,6 +811,7 @@ const SortableWorkoutSetRow: React.FC<{
   ) => void;
   removeSet: (exerciseId: string, setIndex: number) => void;
   lastLabel: string;
+  lastSet?: { reps?: number; weight?: number };
 }> = ({
   set,
   setIndex,
@@ -791,6 +824,7 @@ const SortableWorkoutSetRow: React.FC<{
   updateDropsetValue,
   removeSet,
   lastLabel,
+  lastSet,
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: set.id,
@@ -883,6 +917,7 @@ const SortableWorkoutSetRow: React.FC<{
                 type="text"
                 inputMode="decimal"
                 value={weightDraft}
+                placeholder={lastSet?.weight != null ? String(lastSet.weight) : undefined}
                 onFocus={() => setIsWeightFocused(true)}
                 onBlur={() => {
                   setIsWeightFocused(false);
@@ -924,6 +959,7 @@ const SortableWorkoutSetRow: React.FC<{
               type="text"
               inputMode="numeric"
               value={set.reps ? String(set.reps) : ''}
+              placeholder={lastSet?.reps != null ? String(lastSet.reps) : undefined}
               onChange={(e) => {
                 const raw = e.target.value;
                 if (!/^[0-9]*$/.test(raw)) return;
@@ -949,7 +985,21 @@ const SortableWorkoutSetRow: React.FC<{
         )}
       </div>
 
-      <p className="mt-1 ml-10 text-xs text-slate-500">{lastLabel}</p>
+      {lastSet && (lastSet.weight != null || lastSet.reps != null) ? (
+        <button
+          type="button"
+          onClick={() => {
+            if (lastSet.weight != null)
+              updateSetValue(exerciseId, setIndex, 'weight', lastSet.weight);
+            if (lastSet.reps != null) updateSetValue(exerciseId, setIndex, 'reps', lastSet.reps);
+          }}
+          className="mt-1 ml-10 text-left text-xs text-slate-400 transition-colors hover:text-primary active:text-primary"
+        >
+          {lastLabel} · usar
+        </button>
+      ) : (
+        <p className="mt-1 ml-10 text-xs text-slate-500">{lastLabel}</p>
+      )}
 
       {/* Dropset sub-series */}
       {set.dropsets && set.dropsets.length > 0 && (
