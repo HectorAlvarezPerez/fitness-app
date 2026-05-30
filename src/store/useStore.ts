@@ -14,6 +14,7 @@ import {
   readActiveWorkoutDataPayload,
 } from '../lib/activeWorkout';
 import { getRestTimerElapsedSeconds } from '../lib/restTimer';
+import { scheduleRestPush, cancelRestPush } from '../lib/push';
 
 export interface RoutineSet {
   id?: string;
@@ -1017,6 +1018,10 @@ export const useStore = create<AppState>()(
           },
         });
 
+        // Schedule a server-side push so the alert fires even if the PWA is
+        // backgrounded/locked (the only reliable rest alert on iOS).
+        scheduleRestPush(Date.now() + safeDuration * 1000);
+
         await get().saveActiveWorkoutProgress();
       },
 
@@ -1030,6 +1035,8 @@ export const useStore = create<AppState>()(
             restTimer: null,
           },
         });
+
+        cancelRestPush();
 
         await get().saveActiveWorkoutProgress();
       },
@@ -1051,6 +1058,8 @@ export const useStore = create<AppState>()(
           },
         });
 
+        cancelRestPush();
+
         await get().saveActiveWorkoutProgress();
       },
 
@@ -1060,6 +1069,10 @@ export const useStore = create<AppState>()(
 
         const pausedElapsedSeconds = state.activeWorkout.restTimer.pausedElapsedSeconds ?? 0;
         const resumedStartedAt = new Date(Date.now() - pausedElapsedSeconds * 1000).toISOString();
+        const remainingSeconds = Math.max(
+          0,
+          state.activeWorkout.restTimer.durationSeconds - pausedElapsedSeconds
+        );
 
         set({
           activeWorkout: {
@@ -1071,6 +1084,8 @@ export const useStore = create<AppState>()(
             },
           },
         });
+
+        scheduleRestPush(Date.now() + remainingSeconds * 1000);
 
         await get().saveActiveWorkoutProgress();
       },
@@ -1093,6 +1108,12 @@ export const useStore = create<AppState>()(
             },
           },
         });
+
+        const updatedTimer = get().activeWorkout?.restTimer;
+        if (updatedTimer && !updatedTimer.pausedAt) {
+          const remaining = Math.max(0, durationSeconds - getRestTimerElapsedSeconds(updatedTimer));
+          scheduleRestPush(Date.now() + remaining * 1000);
+        }
 
         await get().saveActiveWorkoutProgress();
       },

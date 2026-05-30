@@ -40,6 +40,8 @@ export default defineConfig(({ mode }) => {
           ],
         },
         workbox: {
+          // Custom push + notificationclick handlers for rest-timer notifications.
+          importScripts: ['push-sw.js'],
           // SPA shell offline; API routes must never be served the cached shell.
           navigateFallback: '/index.html',
           navigateFallbackDenylist: [

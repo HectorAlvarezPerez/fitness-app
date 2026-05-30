@@ -5,7 +5,7 @@ import eslintConfigPrettier from 'eslint-config-prettier';
 
 export default [
   {
-    ignores: ['dist/**', 'node_modules/**', '.wrangler/**'],
+    ignores: ['dist/**', 'node_modules/**', '.wrangler/**', 'deploy/**', 'public/push-sw.js'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

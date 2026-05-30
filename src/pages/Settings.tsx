@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useStore } from '../store/useStore';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { enableRestPush, disableRestPush, isPushSupported } from '../lib/push';
 
 const Settings: React.FC = () => {
   const navigate = useNavigate();
@@ -72,16 +73,21 @@ const Settings: React.FC = () => {
           <div className="mt-4 space-y-4">
             <div className="mobile-card-soft flex items-center justify-between p-4">
               <div>
-                <p className="font-semibold text-white">Notificaciones</p>
+                <p className="font-semibold text-white">Notificaciones de descanso</p>
                 <p className="mt-1 text-sm text-slate-400">
-                  Temporizador de descanso y avisos clave
+                  Aviso al terminar el descanso, incluso con la pantalla bloqueada
                 </p>
               </div>
               <button
-                onClick={() => {
+                onClick={async () => {
                   const next = !notificationsEnabled;
                   localStorage.setItem('fitness-rest-timer-notifications', next ? 'on' : 'off');
                   setNotificationsEnabled(next);
+                  if (next) {
+                    if (isPushSupported()) await enableRestPush();
+                  } else {
+                    await disableRestPush();
+                  }
                 }}
                 className={`relative h-7 w-12 rounded-full transition-colors ${
                   notificationsEnabled ? 'bg-[#2f8cff]' : 'bg-slate-700'

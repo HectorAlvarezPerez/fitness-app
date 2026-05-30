@@ -1,0 +1,15 @@
+[Unit]
+Description=Fitness app Web Push scheduler
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/fitness-app/deploy/push
+EnvironmentFile=/root/fitness-push.env
+ExecStart=/usr/bin/node /root/fitness-app/deploy/push/server.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
