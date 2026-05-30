@@ -5,6 +5,7 @@ import WorkoutTimer from '../components/WorkoutTimer';
 import RestTimer from '../components/RestTimer';
 import { buildLastPerformanceMap } from '../lib/workoutUtils';
 import { parseLocaleDecimal } from '../lib/numberUtils';
+import { createId } from '../lib/id';
 import ConfirmDialog from '../components/ConfirmDialog';
 import ExerciseLibrarySheet from '../components/ExerciseLibrarySheet';
 import {
@@ -42,6 +43,7 @@ const WorkoutSession: React.FC = () => {
     addActiveWorkoutExercise,
     updateActiveWorkoutExerciseNotes,
     updateActiveWorkoutExerciseRest,
+    setActiveExerciseSuperset,
     updateWorkoutExerciseSets,
     setActiveWorkoutPosition,
     startRestTimer,
@@ -59,6 +61,7 @@ const WorkoutSession: React.FC = () => {
   const [finishConfirmOpen, setFinishConfirmOpen] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [supersetPickerFor, setSupersetPickerFor] = useState<string | null>(null);
   // For past-day workouts, use the real page-open time for the live timer
   const realStartedAtRef = React.useRef<string>(new Date().toISOString());
 
@@ -422,6 +425,31 @@ const WorkoutSession: React.FC = () => {
     0
   );
   const progress = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
+
+  const assignSupersetLive = (partnerId: string) => {
+    const aId = supersetPickerFor;
+    if (!aId || aId === partnerId) {
+      setSupersetPickerFor(null);
+      return;
+    }
+    const exs = activeWorkout?.exercises || [];
+    const a = exs.find((e) => e.exerciseId === aId);
+    const b = exs.find((e) => e.exerciseId === partnerId);
+    const gid = a?.supersetId || b?.supersetId || createId('ss');
+    void setActiveExerciseSuperset(aId, gid);
+    void setActiveExerciseSuperset(partnerId, gid);
+    setSupersetPickerFor(null);
+  };
+
+  const clearSupersetLive = (exId: string) => {
+    const exs = activeWorkout?.exercises || [];
+    const gid = exs.find((e) => e.exerciseId === exId)?.supersetId;
+    void setActiveExerciseSuperset(exId, null);
+    if (gid) {
+      const remaining = exs.filter((e) => e.supersetId === gid && e.exerciseId !== exId);
+      if (remaining.length === 1) void setActiveExerciseSuperset(remaining[0].exerciseId, null);
+    }
+  };
   const isPartial = totalSets > 0 && completedSets < totalSets;
   const isFreeWorkout = !activeWorkout.routineId;
 
@@ -577,11 +605,34 @@ const WorkoutSession: React.FC = () => {
                         series completadas
                       </p>
                     </div>
-                    <button className="p-2">
-                      <span className="material-symbols-outlined text-slate-500">
-                        {expandedExercise === exercise.exerciseId ? 'expand_less' : 'expand_more'}
-                      </span>
-                    </button>
+                    <div className="flex items-center">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (exercise.supersetId) {
+                            clearSupersetLive(exercise.exerciseId);
+                          } else {
+                            setSupersetPickerFor(exercise.exerciseId);
+                          }
+                        }}
+                        className={`p-2 transition-colors ${
+                          exercise.supersetId ? 'text-primary' : 'text-slate-500 hover:text-white'
+                        }`}
+                        title={exercise.supersetId ? 'Quitar de superserie' : 'Añadir a superserie'}
+                        aria-label={
+                          exercise.supersetId ? 'Quitar de superserie' : 'Añadir a superserie'
+                        }
+                      >
+                        <span className="material-symbols-outlined text-[20px]">
+                          {exercise.supersetId ? 'link_off' : 'link'}
+                        </span>
+                      </button>
+                      <button className="p-2">
+                        <span className="material-symbols-outlined text-slate-500">
+                          {expandedExercise === exercise.exerciseId ? 'expand_less' : 'expand_more'}
+                        </span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -829,6 +880,49 @@ const WorkoutSession: React.FC = () => {
         onClose={() => setIsLibraryOpen(false)}
         onAddExercise={handleAddExercise}
       />
+
+      {/* Superset partner picker (live workout) */}
+      {supersetPickerFor && (
+        <div
+          className="fixed inset-0 z-[70] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center"
+          onClick={() => setSupersetPickerFor(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-t-3xl border border-white/10 bg-[#0b1724] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:rounded-3xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-1 text-lg font-bold text-white">Añadir a superserie</h3>
+            <p className="mb-4 text-sm text-slate-400">Elige el ejercicio con el que emparejarlo</p>
+            <div className="flex max-h-[50vh] flex-col gap-2 overflow-y-auto">
+              {safeExercises
+                .filter((e) => e.exerciseId !== supersetPickerFor)
+                .map((e) => (
+                  <button
+                    key={e.exerciseId}
+                    onClick={() => assignSupersetLive(e.exerciseId)}
+                    className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-white transition-colors hover:bg-white/10"
+                  >
+                    <span className="font-semibold">{e.name}</span>
+                    {e.supersetId && supersetBadges[e.supersetId] && (
+                      <span className="rounded bg-primary/20 px-1.5 py-0.5 text-xs font-bold text-primary">
+                        SS {supersetBadges[e.supersetId]}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              {safeExercises.filter((e) => e.exerciseId !== supersetPickerFor).length === 0 && (
+                <p className="text-sm text-slate-500">Añade otro ejercicio primero.</p>
+              )}
+            </div>
+            <button
+              onClick={() => setSupersetPickerFor(null)}
+              className="mt-4 w-full rounded-xl border border-white/10 py-2.5 text-sm font-semibold text-slate-300"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
