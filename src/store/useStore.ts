@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { supabase } from '../lib/supabaseClient';
+import {
+  supabase,
+  getCachedAuth,
+  SUPABASE_REST_URL,
+  SUPABASE_ANON_KEY,
+} from '../lib/supabaseClient';
 import { createId } from '../lib/id';
 
 import {
@@ -109,6 +114,7 @@ export interface ActiveWorkout {
   restTimer?: ActiveWorkoutRestTimer | null;
   exercises: ActiveWorkoutExercise[];
   overrideDate?: string; // YYYY-MM-DD for past-day workouts
+  updatedAt?: string; // client ISO timestamp of last local mutation, for sync reconciliation
 }
 
 const ensureSetIds = <T extends { id?: string }>(sets: T[]) => {
@@ -334,12 +340,21 @@ interface AppState {
   resumeRestTimer: () => Promise<void>;
   extendRestTimer: (secondsToAdd: number) => Promise<void>;
   saveActiveWorkoutProgress: () => Promise<void>;
+  flushActiveWorkoutProgress: () => Promise<void>;
+  flushActiveWorkoutNow: () => Promise<void>;
+  beaconFlushActiveWorkout: () => void;
   finishWorkout: () => Promise<void>;
   clearActiveWorkout: () => void;
   pauseWorkout: () => void;
   resumeWorkout: () => void;
   cancelWorkout: () => Promise<void>;
 }
+
+// Debounce window for persisting active-workout progress to Supabase. Local state
+// (and localStorage via persist) updates instantly; the network write is coalesced
+// so a single "complete set" tap produces one write instead of several.
+const ACTIVE_WORKOUT_SAVE_DEBOUNCE_MS = 600;
+let activeWorkoutFlushTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const useStore = create<AppState>()(
   persist(
@@ -794,8 +809,9 @@ export const useStore = create<AppState>()(
       // Active Workout Functions
       loadActiveWorkout: async () => {
         const {
-          data: { user },
-        } = await supabase.auth.getUser();
+          data: { session },
+        } = await supabase.auth.getSession();
+        const user = session?.user;
         if (!user) {
           set({ activeWorkout: null, persistedUserId: null });
           return;
@@ -807,7 +823,24 @@ export const useStore = create<AppState>()(
           .eq('user_id', user.id)
           .maybeSingle();
 
+        // Reconciliation: never blindly overwrite a locally-newer in-progress workout
+        // with a stale server copy (e.g. when the last write was lost to a backgrounded
+        // PWA). Compare client_updated_at and keep whichever side is newer.
+        const local = get().activeWorkout;
+        const sameUser = get().persistedUserId === user.id;
+        const localUpdatedAt = local?.updatedAt ? new Date(local.updatedAt).getTime() : 0;
+
         if (!error && data) {
+          const serverUpdatedAtRaw = data.workout_data?.client_updated_at ?? data.updated_at;
+          const serverUpdatedAt = serverUpdatedAtRaw ? new Date(serverUpdatedAtRaw).getTime() : 0;
+
+          if (local && sameUser && localUpdatedAt > serverUpdatedAt) {
+            // Local is ahead of the server — keep it and push it back up.
+            set({ persistedUserId: user.id });
+            void get().flushActiveWorkoutNow();
+            return;
+          }
+
           const workoutData = readActiveWorkoutDataPayload(data.workout_data);
           const rawExercises = workoutData.exercises;
           const normalizedExercises = normalizeActiveWorkoutExercises(rawExercises);
@@ -825,6 +858,10 @@ export const useStore = create<AppState>()(
               restTimer: workoutData.restTimer,
               exercises: normalizedExercises,
               overrideDate: workoutData.overrideDate,
+              updatedAt:
+                typeof data.workout_data?.client_updated_at === 'string'
+                  ? data.workout_data.client_updated_at
+                  : undefined,
             },
             persistedUserId: user.id,
           });
@@ -833,6 +870,17 @@ export const useStore = create<AppState>()(
 
         if (error) {
           console.error('loadActiveWorkout error:', error);
+          // On a transient fetch error, keep whatever we have locally rather than wiping it.
+          set({ persistedUserId: user.id });
+          return;
+        }
+
+        // No server row. If we still hold a local in-progress workout for this user,
+        // it just hasn't synced yet — keep it and recreate the row instead of wiping it.
+        if (local && sameUser) {
+          set({ persistedUserId: user.id });
+          void get().flushActiveWorkoutNow();
+          return;
         }
 
         set({ activeWorkout: null, persistedUserId: user.id });
@@ -1049,13 +1097,37 @@ export const useStore = create<AppState>()(
         await get().saveActiveWorkoutProgress();
       },
 
+      // Stamp the local mutation time (used for sync reconciliation on reload) and
+      // schedule a single debounced network write. Callers stay synchronous/instant.
       saveActiveWorkoutProgress: async () => {
         const state = get();
         if (!state.activeWorkout) return;
 
+        set({
+          activeWorkout: {
+            ...state.activeWorkout,
+            updatedAt: new Date().toISOString(),
+          },
+        });
+
+        if (activeWorkoutFlushTimer) clearTimeout(activeWorkoutFlushTimer);
+        activeWorkoutFlushTimer = setTimeout(() => {
+          activeWorkoutFlushTimer = null;
+          void get().flushActiveWorkoutProgress();
+        }, ACTIVE_WORKOUT_SAVE_DEBOUNCE_MS);
+      },
+
+      // The actual network write. Uses getSession() (local, no auth-server round-trip)
+      // and upsert (self-heals if the row is missing). Persists client_updated_at so
+      // reconciliation on the next load can tell which copy is newer.
+      flushActiveWorkoutProgress: async () => {
+        const state = get();
+        if (!state.activeWorkout) return;
+
         const {
-          data: { user },
-        } = await supabase.auth.getUser();
+          data: { session },
+        } = await supabase.auth.getSession();
+        const user = session?.user;
         if (!user) return;
 
         const safeExercises = Array.isArray(state.activeWorkout.exercises)
@@ -1072,18 +1144,92 @@ export const useStore = create<AppState>()(
           overrideDate: state.activeWorkout.overrideDate,
         });
 
-        await supabase
-          .from('active_workouts')
-          .update({
+        const { error } = await supabase.from('active_workouts').upsert(
+          {
+            user_id: user.id,
+            routine_id: state.activeWorkout.routineId ?? null,
+            routine_name: state.activeWorkout.routineName,
+            started_at: state.activeWorkout.startedAt,
             workout_data: {
               ...workoutData,
               is_paused: state.activeWorkout.isPaused ?? false,
               paused_at: state.activeWorkout.pausedAt || null,
               total_paused_ms: state.activeWorkout.totalPausedMs || 0,
+              client_updated_at: state.activeWorkout.updatedAt ?? new Date().toISOString(),
             },
             updated_at: new Date().toISOString(),
-          })
-          .eq('user_id', user.id);
+          },
+          { onConflict: 'user_id' }
+        );
+
+        if (error) {
+          console.error('flushActiveWorkoutProgress error:', error);
+        }
+      },
+
+      // Cancel any pending debounce and write immediately (used on reconnect / finish).
+      flushActiveWorkoutNow: async () => {
+        if (activeWorkoutFlushTimer) {
+          clearTimeout(activeWorkoutFlushTimer);
+          activeWorkoutFlushTimer = null;
+        }
+        await get().flushActiveWorkoutProgress();
+      },
+
+      // Best-effort flush that survives the page being suspended/closed. Uses a
+      // keepalive fetch with a synchronously-cached token, since the page may be
+      // frozen before supabase.auth.getSession() could resolve. iOS Safari does not
+      // support Background Sync, so this lifecycle flush is the reliable path.
+      beaconFlushActiveWorkout: () => {
+        const state = get();
+        if (!state.activeWorkout) return;
+
+        const { accessToken, userId } = getCachedAuth();
+        if (!accessToken || !userId) return;
+
+        const safeExercises = Array.isArray(state.activeWorkout.exercises)
+          ? state.activeWorkout.exercises.filter(
+              (ex): ex is ActiveWorkoutExercise => !!ex && typeof ex.exerciseId === 'string'
+            )
+          : [];
+
+        const workoutData = buildActiveWorkoutDataPayload({
+          exercises: safeExercises,
+          currentExerciseId: state.activeWorkout.currentExerciseId,
+          currentSetIndex: state.activeWorkout.currentSetIndex,
+          restTimer: state.activeWorkout.restTimer || null,
+          overrideDate: state.activeWorkout.overrideDate,
+        });
+
+        const body = JSON.stringify({
+          workout_data: {
+            ...workoutData,
+            is_paused: state.activeWorkout.isPaused ?? false,
+            paused_at: state.activeWorkout.pausedAt || null,
+            total_paused_ms: state.activeWorkout.totalPausedMs || 0,
+            client_updated_at: state.activeWorkout.updatedAt ?? new Date().toISOString(),
+          },
+          updated_at: new Date().toISOString(),
+        });
+
+        try {
+          void fetch(
+            `${SUPABASE_REST_URL}/rest/v1/active_workouts?user_id=eq.${encodeURIComponent(userId)}`,
+            {
+              method: 'PATCH',
+              keepalive: true,
+              headers: {
+                'Content-Type': 'application/json',
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${accessToken}`,
+                Prefer: 'return=minimal',
+              },
+              body,
+            }
+          );
+        } catch (err) {
+          console.error('beaconFlushActiveWorkout error:', err);
+        }
       },
 
       startEmptyWorkout: async (overrideDate?: string) => {

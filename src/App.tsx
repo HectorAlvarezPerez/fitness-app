@@ -33,6 +33,34 @@ const App: React.FC = () => {
     initTheme();
   }, []);
 
+  // Persist active-workout progress across app suspension and reconnects.
+  // - visibilitychange/pagehide: best-effort keepalive flush before the OS freezes
+  //   the PWA (the moment when completed sets were getting lost on mobile).
+  // - online: push any locally-newer state once connectivity returns.
+  React.useEffect(() => {
+    const flushOnHide = () => {
+      if (document.visibilityState === 'hidden') {
+        useStore.getState().beaconFlushActiveWorkout();
+      }
+    };
+    const flushOnPageHide = () => {
+      useStore.getState().beaconFlushActiveWorkout();
+    };
+    const syncOnOnline = () => {
+      void useStore.getState().flushActiveWorkoutNow();
+    };
+
+    document.addEventListener('visibilitychange', flushOnHide);
+    window.addEventListener('pagehide', flushOnPageHide);
+    window.addEventListener('online', syncOnOnline);
+
+    return () => {
+      document.removeEventListener('visibilitychange', flushOnHide);
+      window.removeEventListener('pagehide', flushOnPageHide);
+      window.removeEventListener('online', syncOnOnline);
+    };
+  }, []);
+
   React.useEffect(() => {
     const syncSessionState = async (userId: string | null, forceReload = false) => {
       const store = useStore.getState();
