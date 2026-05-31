@@ -853,7 +853,7 @@ function SortableSetRow({
             onClick={() => toggleWarmup(index)}
             className={`w-6 h-6 rounded text-[10px] font-bold transition-all ${
               set.isWarmup
-                ? 'bg-emerald-500 text-white'
+                ? 'bg-teal-500 text-white'
                 : set.isFailure
                   ? 'bg-red-500 text-white'
                   : 'border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10'

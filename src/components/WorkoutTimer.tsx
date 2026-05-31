@@ -27,9 +27,9 @@ export const WorkoutTimer: React.FC<WorkoutTimerProps> = ({ startedAt }) => {
   const seconds = elapsed % 60;
 
   return (
-    <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/20">
-      <span className="material-symbols-outlined text-primary text-[20px]">timer</span>
-      <span className="font-mono font-bold text-primary">
+    <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-400/10 border border-amber-400/20">
+      <span className="material-symbols-outlined text-amber-400 text-[20px]">timer</span>
+      <span className="font-mono font-bold text-amber-300">
         {hours > 0 && `${hours.toString().padStart(2, '0')}:`}
         {minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
       </span>

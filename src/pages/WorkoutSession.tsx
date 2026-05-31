@@ -993,11 +993,11 @@ const SortableWorkoutSetRow: React.FC<{
       style={style}
       className={`rounded-2xl border p-3 transition-all ${
         set.completed
-          ? 'border-primary/60 bg-primary/10'
+          ? 'border-green-500/60 bg-green-500/10'
           : isCurrentSet
             ? 'border-amber-400 bg-amber-400/10'
             : set.isWarmup
-              ? 'border-emerald-400/20 bg-emerald-400/10 opacity-80'
+              ? 'border-teal-400/20 bg-teal-400/10 opacity-80'
               : 'border-white/10 bg-white/5'
       }`}
     >
@@ -1017,7 +1017,7 @@ const SortableWorkoutSetRow: React.FC<{
             onClick={() => toggleSetComplete(exerciseId, setIndex)}
             aria-label={set.completed ? 'Marcar serie como no completada' : 'Completar serie'}
             className={`flex size-11 shrink-0 items-center justify-center rounded-full border-2 transition-all active:scale-95 ${
-              set.completed ? 'border-primary bg-primary' : 'border-white/15'
+              set.completed ? 'border-green-500 bg-green-500' : 'border-white/15'
             }`}
           >
             {set.completed && (
@@ -1040,7 +1040,7 @@ const SortableWorkoutSetRow: React.FC<{
           )}
           {set.isWarmup && (
             <span
-              className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500 text-white"
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-500 text-white"
               title="Calentamiento"
             >
               W
