@@ -43,25 +43,17 @@ export default defineConfig(({ mode }) => {
           // Custom push + notificationclick handlers for rest-timer notifications.
           importScripts: ['push-sw.js'],
           // Precache only hashed static assets (their names change every build, so
-          // cache-first never goes stale). The HTML is intentionally NOT precached.
+          // cache-first never goes stale).
           globPatterns: ['**/*.{js,css,ico,png,svg,woff2}'],
           cleanupOutdatedCaches: true,
           clientsClaim: true,
           skipWaiting: true,
-          // Serve navigations network-first: online users always get the fresh
-          // index (so a deploy never strands them on a stale shell pointing at
-          // deleted chunks); offline falls back to the last cached HTML.
-          runtimeCaching: [
-            {
-              urlPattern: ({ request }: any) => request.mode === 'navigate',
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'html-shell',
-                networkTimeoutSeconds: 3,
-                expiration: { maxEntries: 4 },
-              },
-            },
-          ],
+          // Do NOT let the SW intercept document navigations: no fallback shell and
+          // no directory-index mapping. The HTML always comes straight from the
+          // network, so a deploy can never strand users on a stale cached shell that
+          // points at deleted asset chunks (the blank-screen bug).
+          navigateFallback: null as unknown as string,
+          directoryIndex: null as unknown as string,
         },
       }),
     ],
