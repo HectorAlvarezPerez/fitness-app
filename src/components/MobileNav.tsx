@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 
 const primaryItems = [
-  { path: '/home', label: 'Home', icon: 'home' },
+  { path: '/home', label: 'Inicio', icon: 'home' },
   { path: '/routine', label: 'Rutinas', icon: 'format_list_bulleted' },
-  { path: '/history', label: 'History', icon: 'history' },
+  { path: '/history', label: 'Historial', icon: 'history' },
   { path: '/profile-data', label: 'Perfil', icon: 'account_circle' },
 ];
 
 const moreItems = [
-  { path: '/dashboard', label: 'Stats', icon: 'bar_chart' },
+  { path: '/dashboard', label: 'Estadísticas', icon: 'bar_chart' },
   { path: '/progress', label: 'Progreso', icon: 'monitoring' },
   { path: '/pr', label: 'PRs', icon: 'military_tech' },
   { path: '/exercises', label: 'Ejercicios', icon: 'list_alt' },
@@ -17,7 +17,9 @@ const moreItems = [
 ];
 
 const matchesPath = (pathname: string, path: string) =>
-  pathname === path || pathname.startsWith(path + '/') || (path === '/routine' && pathname.includes('/routine'));
+  pathname === path ||
+  pathname.startsWith(path + '/') ||
+  (path === '/routine' && pathname.includes('/routine'));
 
 const MobileNav: React.FC = () => {
   const { pathname } = useLocation();
@@ -80,7 +82,9 @@ const MobileNav: React.FC = () => {
                           active ? 'text-[#2f8cff]' : 'text-slate-500'
                         }`}
                         style={{
-                          fontVariationSettings: active ? "'FILL' 1, 'wght' 500" : "'FILL' 0, 'wght' 400",
+                          fontVariationSettings: active
+                            ? "'FILL' 1, 'wght' 500"
+                            : "'FILL' 0, 'wght' 400",
                         }}
                       >
                         {item.icon}

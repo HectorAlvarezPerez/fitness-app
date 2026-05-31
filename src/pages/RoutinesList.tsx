@@ -194,7 +194,7 @@ const RoutinesList: React.FC = () => {
 
       <button
         onClick={() => handleStartWorkout(routine)}
-        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-primary/10 text-primary font-bold hover:bg-primary hover:text-white transition-all"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] py-3 font-bold text-white shadow-md transition-all hover:shadow-lg active:scale-[0.99]"
       >
         <span className="material-symbols-outlined text-[20px]">play_arrow</span>
         Iniciar
@@ -295,28 +295,30 @@ const RoutinesList: React.FC = () => {
             <h1 className="mobile-title">Mis Rutinas</h1>
             <p className="mobile-subtitle">Organiza y ejecuta tus entrenamientos</p>
           </div>
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <button
-              onClick={handleStartEmptyWorkout}
-              className="mobile-card flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-[#4ea0ff]"
-            >
-              <span className="material-symbols-outlined text-[20px]">play_arrow</span>
-              <span>Entreno libre</span>
-            </button>
-            <button
-              onClick={() => setIsCreatingFolder(true)}
-              className="mobile-card flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white"
-            >
-              <span className="material-symbols-outlined text-[20px]">create_new_folder</span>
-              <span>Nueva carpeta</span>
-            </button>
+          <div className="mt-4 flex flex-col gap-2">
             <Link
               to="/routine/new"
-              className="flex items-center justify-center gap-2 rounded-[1.1rem] bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-[#2f8cff]/25"
+              className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] px-4 py-3 text-sm font-bold text-white shadow-md"
             >
               <span className="material-symbols-outlined text-[20px]">add</span>
               <span>Nueva rutina</span>
             </Link>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={handleStartEmptyWorkout}
+                className="mobile-card flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-bold text-[#4ea0ff]"
+              >
+                <span className="material-symbols-outlined text-[20px]">play_arrow</span>
+                <span>Entreno libre</span>
+              </button>
+              <button
+                onClick={() => setIsCreatingFolder(true)}
+                className="mobile-card flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-semibold text-white"
+              >
+                <span className="material-symbols-outlined text-[20px]">create_new_folder</span>
+                <span>Carpeta</span>
+              </button>
+            </div>
           </div>
         </header>
 

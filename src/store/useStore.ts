@@ -21,6 +21,7 @@ export interface RoutineSet {
   reps: number;
   weight: number;
   isWarmup?: boolean;
+  isFailure?: boolean; // set taken to muscular failure
   // Sub-series para dropsets (3.1, 3.2, etc.) - cada una con peso/reps diferentes
   dropsets?: Array<{ reps: number; weight: number }>;
 }
@@ -97,6 +98,7 @@ export interface ActiveWorkoutExercise {
     restSeconds?: number; // Legacy, rest now lives at exercise level
     completed: boolean;
     isWarmup?: boolean;
+    isFailure?: boolean; // set taken to muscular failure
     // Sub-series para dropsets (3.1, 3.2, etc.)
     dropsets?: Array<{ reps: number; weight: number; completed?: boolean }>;
   }>;
@@ -1398,19 +1400,22 @@ export const useStore = create<AppState>()(
           const exercises: ActiveWorkoutExercise[] = routine.exercises.map((ex) => {
             // Handle new format (sets array) vs old format (sets number)
             let parsedSets: {
+              id?: string;
               reps: number;
               weight: number;
               isWarmup?: boolean;
+              isFailure?: boolean;
               dropsets?: Array<{ reps: number; weight: number }>;
             }[] = [];
 
             if (Array.isArray(ex.sets)) {
-              // New format - preserve dropsets and isWarmup
+              // New format - preserve dropsets, isWarmup and isFailure
               parsedSets = ex.sets.map((s) => ({
                 id: s.id || createId('set'),
                 reps: s.reps,
                 weight: s.weight,
                 isWarmup: s.isWarmup,
+                isFailure: s.isFailure,
                 dropsets: s.dropsets,
               }));
             } else if (typeof ex.sets === 'number') {
@@ -1480,6 +1485,7 @@ export const useStore = create<AppState>()(
                 weight: s.weight,
                 completed: false,
                 isWarmup: s.isWarmup,
+                isFailure: s.isFailure,
                 dropsets: s.dropsets?.map((d) => ({ ...d, completed: false })),
               })),
             };

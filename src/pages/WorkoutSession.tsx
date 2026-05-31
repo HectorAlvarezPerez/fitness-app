@@ -568,12 +568,12 @@ const WorkoutSession: React.FC = () => {
               <div
                 key={exercise.exerciseId}
                 className={`mobile-card overflow-hidden shadow-sm ${
-                  exercise.supersetId ? 'border-l-4 border-l-primary' : ''
+                  exercise.supersetId ? 'border-l-4 border-l-violet-500' : ''
                 }`}
               >
                 {/* Exercise Header */}
                 <div
-                  className="cursor-pointer p-4 transition-colors hover:bg-[rgba(47,140,255,0.05)]"
+                  className="cursor-pointer px-4 py-3 transition-colors hover:bg-[rgba(47,140,255,0.05)]"
                   onClick={() => {
                     const nextExpanded =
                       expandedExercise === exercise.exerciseId ? null : exercise.exerciseId;
@@ -592,7 +592,7 @@ const WorkoutSession: React.FC = () => {
                         </span>
                         {exercise.supersetId && supersetBadges[exercise.supersetId] && (
                           <span
-                            className="rounded bg-primary/20 px-1.5 py-0.5 text-xs font-bold text-primary"
+                            className="rounded bg-violet-500/20 px-1.5 py-0.5 text-xs font-bold text-violet-300"
                             title="Superserie"
                           >
                             SS {supersetBadges[exercise.supersetId]}
@@ -616,7 +616,9 @@ const WorkoutSession: React.FC = () => {
                           }
                         }}
                         className={`p-2 transition-colors ${
-                          exercise.supersetId ? 'text-primary' : 'text-slate-500 hover:text-white'
+                          exercise.supersetId
+                            ? 'text-violet-400'
+                            : 'text-slate-500 hover:text-white'
                         }`}
                         title={exercise.supersetId ? 'Quitar de superserie' : 'Añadir a superserie'}
                         aria-label={
@@ -638,7 +640,7 @@ const WorkoutSession: React.FC = () => {
 
                 {/* Sets (collapsible) */}
                 {expandedExercise === exercise.exerciseId && (
-                  <div className="border-t border-[rgba(73,133,214,0.12)] bg-[rgba(10,20,34,0.72)] p-4">
+                  <div className="border-t border-[rgba(73,133,214,0.12)] bg-[rgba(10,20,34,0.72)] p-3">
                     {/* Notes Field */}
                     <div className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
                       <div className="relative">
@@ -904,7 +906,7 @@ const WorkoutSession: React.FC = () => {
                   >
                     <span className="font-semibold">{e.name}</span>
                     {e.supersetId && supersetBadges[e.supersetId] && (
-                      <span className="rounded bg-primary/20 px-1.5 py-0.5 text-xs font-bold text-primary">
+                      <span className="rounded bg-violet-500/20 px-1.5 py-0.5 text-xs font-bold text-violet-300">
                         SS {supersetBadges[e.supersetId]}
                       </span>
                     )}
@@ -1042,6 +1044,14 @@ const SortableWorkoutSetRow: React.FC<{
               title="Calentamiento"
             >
               W
+            </span>
+          )}
+          {set.isFailure && (
+            <span
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500 text-white"
+              title="Al fallo"
+            >
+              F
             </span>
           )}
         </div>

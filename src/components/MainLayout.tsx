@@ -199,24 +199,33 @@ const MainLayout: React.FC = () => {
 
       <header className="shrink-0 border-b border-[rgba(73,133,214,0.12)] bg-[rgba(6,14,24,0.88)] backdrop-blur-xl md:hidden">
         <div className="mx-auto flex w-full max-w-md items-center justify-between px-4 pb-3 pt-[max(0.9rem,env(safe-area-inset-top))]">
-          <button
-            onClick={() => {
-              if (window.history.length > 1 && !pathname.includes('/home')) {
-                navigate(-1);
-                return;
-              }
-              navigate('/home');
-            }}
-            className="flex size-10 items-center justify-center rounded-full border border-[rgba(73,133,214,0.16)] bg-[rgba(17,31,48,0.86)] text-slate-200"
-            aria-label="Volver"
-          >
-            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-          </button>
+          {[
+            '/home',
+            '/routine',
+            '/dashboard',
+            '/history',
+            '/pr',
+            '/exercises',
+            '/progress',
+          ].includes(pathname) ? (
+            <div className="size-10 shrink-0" aria-hidden="true" />
+          ) : (
+            <button
+              onClick={() => {
+                if (window.history.length > 1) {
+                  navigate(-1);
+                  return;
+                }
+                navigate('/home');
+              }}
+              className="flex size-10 items-center justify-center rounded-full border border-[rgba(73,133,214,0.16)] bg-[rgba(17,31,48,0.86)] text-slate-200"
+              aria-label="Volver"
+            >
+              <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+            </button>
+          )}
 
           <div className="min-w-0 flex-1 px-3 text-center">
-            <p className="truncate text-[0.72rem] font-bold uppercase tracking-[0.22em] text-[#4ea0ff]">
-              {pageMeta.subtitle}
-            </p>
             <h1 className="truncate text-[1.15rem] font-bold text-white">{pageMeta.title}</h1>
           </div>
 
@@ -318,9 +327,7 @@ const ProfileDropdown: React.FC = () => {
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-3 rounded-2xl px-3 py-3 transition-colors hover:bg-[rgba(47,140,255,0.08)]"
             >
-              <span className="material-symbols-outlined text-[20px] text-slate-400">
-                settings
-              </span>
+              <span className="material-symbols-outlined text-[20px] text-slate-400">settings</span>
               <span className="text-sm font-medium text-white">Configuración</span>
             </NavLink>
 

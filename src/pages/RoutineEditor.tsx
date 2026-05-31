@@ -48,6 +48,7 @@ const RoutineEditor: React.FC = () => {
     setExerciseSearchQuery,
     getFilteredExercises,
     userData,
+    activeWorkout,
   } = useStore();
 
   // Load routine if editing
@@ -210,18 +211,11 @@ const RoutineEditor: React.FC = () => {
       <div className="flex h-full w-full overflow-hidden bg-[linear-gradient(180deg,_#07131d_0%,_#091826_38%,_#0b1724_100%)] text-white">
         <div className="flex-1 overflow-y-auto mobile-scroll">
           <div className="max-w-4xl mx-auto px-4 md:px-8 py-6 pb-[calc(8rem+env(safe-area-inset-bottom)+var(--keyboard-inset,0px))] flex flex-col gap-6">
-            {/* Header with back and save buttons */}
-            <div className="flex items-center justify-between gap-3">
-              <button
-                onClick={() => navigate('/routine')}
-                className="flex items-center gap-1.5 py-2 text-slate-400 transition-colors hover:text-white"
-              >
-                <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-                <span className="font-medium hidden sm:inline">Volver</span>
-              </button>
+            {/* Save action (back is provided by the app header) */}
+            <div className="flex items-center justify-end gap-3">
               <button
                 onClick={handleSave}
-                className="px-5 py-2.5 bg-primary text-white rounded-full font-bold hover:bg-primary/90 transition-all flex items-center gap-2 shadow-lg shadow-primary/20"
+                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] px-5 py-2.5 font-bold text-white shadow-md transition-all hover:shadow-lg active:scale-[0.99]"
               >
                 <span className="material-symbols-outlined text-[18px]">save</span>
                 <span>Guardar</span>
@@ -423,8 +417,10 @@ const RoutineEditor: React.FC = () => {
       {/* Mobile FAB - Add Exercise */}
       <button
         onClick={() => setIsLibraryOpen(true)}
-        className="lg:hidden fixed right-4 z-40 size-14 rounded-full bg-gradient-to-br from-primary to-orange-600 text-white shadow-xl shadow-primary/30 flex items-center justify-center active:scale-95 transition-transform"
-        style={{ bottom: 'calc(6rem + var(--keyboard-inset, 0px))' }}
+        className="lg:hidden fixed right-4 z-40 size-14 rounded-full bg-gradient-to-br from-[#2f8cff] to-[#1e6de5] text-white shadow-xl shadow-[#2f8cff]/30 flex items-center justify-center active:scale-95 transition-transform"
+        style={{
+          bottom: `calc(${activeWorkout ? '10.5rem' : '6rem'} + var(--keyboard-inset, 0px))`,
+        }}
       >
         <span className="material-symbols-outlined text-[28px]">add</span>
       </button>
@@ -459,7 +455,7 @@ const RoutineEditor: React.FC = () => {
                   >
                     <span className="font-semibold">{e.name}</span>
                     {e.supersetId && supersetBadges[e.supersetId] && (
-                      <span className="rounded bg-primary/20 px-1.5 py-0.5 text-xs font-bold text-primary">
+                      <span className="rounded bg-violet-500/20 px-1.5 py-0.5 text-xs font-bold text-violet-300">
                         SS {supersetBadges[e.supersetId]}
                       </span>
                     )}
@@ -570,9 +566,17 @@ function SortableExerciseItem({
     updateExercise(exercise.id, { sets: newSets });
   };
 
-  const toggleWarmup = (index: number) => {
+  // Cycle the set type: Normal → Calentamiento (W) → Fallo (F) → Normal.
+  const cycleSetType = (index: number) => {
     const newSets = [...sets];
-    newSets[index] = { ...newSets[index], isWarmup: !newSets[index].isWarmup };
+    const s = newSets[index];
+    if (!s.isWarmup && !s.isFailure) {
+      newSets[index] = { ...s, isWarmup: true, isFailure: false };
+    } else if (s.isWarmup) {
+      newSets[index] = { ...s, isWarmup: false, isFailure: true };
+    } else {
+      newSets[index] = { ...s, isWarmup: false, isFailure: false };
+    }
     updateExercise(exercise.id, { sets: newSets });
   };
 
@@ -639,7 +643,7 @@ function SortableExerciseItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`mobile-card p-4 md:p-5 ${exercise.supersetId ? 'border-l-4 border-l-primary' : ''}`}
+      className={`mobile-card p-4 md:p-5 ${exercise.supersetId ? 'border-l-4 border-l-violet-500' : ''}`}
     >
       <div className="flex items-center gap-3 mb-4">
         <button
@@ -654,7 +658,7 @@ function SortableExerciseItem({
             <h4 className="font-bold text-lg">{exercise.name}</h4>
             {supersetBadge && (
               <span
-                className="rounded bg-primary/20 px-1.5 py-0.5 text-xs font-bold text-primary"
+                className="rounded bg-violet-500/20 px-1.5 py-0.5 text-xs font-bold text-violet-300"
                 title="Superserie"
               >
                 SS {supersetBadge}
@@ -678,7 +682,7 @@ function SortableExerciseItem({
           onClick={() => (exercise.supersetId ? onRemoveFromSuperset() : onAddToSuperset())}
           className={`rounded-lg p-2 transition-colors ${
             exercise.supersetId
-              ? 'text-primary hover:bg-primary/10'
+              ? 'text-violet-400 hover:bg-violet-500/10'
               : 'text-slate-400 hover:bg-white/10'
           }`}
           title={exercise.supersetId ? 'Quitar de superserie' : 'Añadir a superserie'}
@@ -765,7 +769,7 @@ function SortableExerciseItem({
                 activeWeightId={activeWeightId}
                 setActiveWeightId={setActiveWeightId}
                 updateSet={updateSet}
-                toggleWarmup={toggleWarmup}
+                toggleWarmup={cycleSetType}
                 addDropsetSubSerie={addDropsetSubSerie}
                 removeSet={removeSet}
                 updateDropset={updateDropset}
@@ -850,11 +854,19 @@ function SortableSetRow({
             className={`w-6 h-6 rounded text-[10px] font-bold transition-all ${
               set.isWarmup
                 ? 'bg-emerald-500 text-white'
-                : 'border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10'
+                : set.isFailure
+                  ? 'bg-red-500 text-white'
+                  : 'border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10'
             }`}
-            title="Calentamiento"
+            title={
+              set.isWarmup
+                ? 'Calentamiento (toca para Fallo)'
+                : set.isFailure
+                  ? 'Al fallo (toca para Normal)'
+                  : 'Normal (toca para Calentamiento)'
+            }
           >
-            W
+            {set.isWarmup ? 'W' : set.isFailure ? 'F' : '•'}
           </button>
         </div>
         {/* Weight input - hide for time-based exercises */}
