@@ -42,20 +42,26 @@ export default defineConfig(({ mode }) => {
         workbox: {
           // Custom push + notificationclick handlers for rest-timer notifications.
           importScripts: ['push-sw.js'],
-          // SPA shell offline; API routes must never be served the cached shell.
-          navigateFallback: '/index.html',
-          navigateFallbackDenylist: [
-            /^\/auth\//,
-            /^\/rest\//,
-            /^\/storage\//,
-            /^\/functions\//,
-            /^\/realtime\//,
-            /^\/health$/,
-          ],
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+          // Precache only hashed static assets (their names change every build, so
+          // cache-first never goes stale). The HTML is intentionally NOT precached.
+          globPatterns: ['**/*.{js,css,ico,png,svg,woff2}'],
           cleanupOutdatedCaches: true,
           clientsClaim: true,
           skipWaiting: true,
+          // Serve navigations network-first: online users always get the fresh
+          // index (so a deploy never strands them on a stale shell pointing at
+          // deleted chunks); offline falls back to the last cached HTML.
+          runtimeCaching: [
+            {
+              urlPattern: ({ request }: any) => request.mode === 'navigate',
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'html-shell',
+                networkTimeoutSeconds: 3,
+                expiration: { maxEntries: 4 },
+              },
+            },
+          ],
         },
       }),
     ],
