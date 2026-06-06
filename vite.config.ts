@@ -16,6 +16,7 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: 'autoUpdate',
         injectRegister: 'auto',
+        selfDestroying: true,
         includeAssets: ['pwa-192.png', 'pwa-512.png'],
         manifest: {
           name: 'Fitness App',
