@@ -74,48 +74,7 @@ const LandingPage: React.FC = () => {
         </div>
       </header>
 
-      <main className="mx-auto grid min-h-screen max-w-6xl grid-cols-1 gap-6 px-4 pb-8 pt-24 md:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-        <section className="relative overflow-hidden rounded-[36px] border border-white/10 bg-slate-950/50 p-6 shadow-[0_30px_80px_rgba(0,0,0,0.32)] backdrop-blur-xl md:p-8 lg:p-10">
-          <div className="absolute inset-0">
-            <img
-              alt="Man sprinting in dark gym"
-              className="h-full w-full object-cover opacity-35"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuAxkpKuBcCSOZO7Sbhx86Jo_DkY9YnfJdF9XV1vdX6pzrqao8Snrsn2xZIF_uhQBcD7iQ3LM6f1eLDkjQtDcGlebAW0LFTOVJ_O6oNHdPIwU7Vg0HjbxvSEO5SwbdkY-_4r9lEIj1th9Bj-8ZGBsf6iYyplD22jt6Mg0qd9hF-GM9vgmI5z1iDNT-XaLV-N53E7kH1_mEgc1VAzFpp9ZHUsPp0_mvJ6pEyudYJ3AmeUI0r5DbEQBYxbuaUOtM8cDqaVhT1hm_0r8w"
-            />
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,8,13,0.2),rgba(3,8,13,0.72))]" />
-          </div>
-
-          <div className="relative z-10 flex h-full flex-col justify-between gap-8">
-            <div className="space-y-4">
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-                Mobile first
-              </div>
-              <h1 className="max-w-xl text-4xl font-semibold leading-tight text-white md:text-6xl">
-                Revoluciona tu <span className="text-primary">rendimiento</span> con datos.
-              </h1>
-              <p className="max-w-lg text-base leading-7 text-slate-300 md:text-lg">
-                Controla rutinas, sesiones, progreso y recuperación con una interfaz mucho más clara
-                para el usuario móvil.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Rutinas</p>
-                <p className="mt-2 text-2xl font-semibold text-white">Flexibles</p>
-              </div>
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Sesiones</p>
-                <p className="mt-2 text-2xl font-semibold text-white">Guiadas</p>
-              </div>
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Métricas</p>
-                <p className="mt-2 text-2xl font-semibold text-white">Accionables</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
+      <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 pb-8 pt-24 md:px-6">
         <section className="rounded-[36px] border border-white/10 bg-[#0c1d2b]/88 p-5 shadow-[0_30px_80px_rgba(0,0,0,0.32)] backdrop-blur-xl md:p-7">
           <div className="mb-6 flex rounded-full border border-white/10 bg-white/5 p-1">
             <button
