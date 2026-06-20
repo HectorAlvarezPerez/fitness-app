@@ -18,8 +18,12 @@ const PRNotification: React.FC = () => {
     <div className="fixed left-1/2 top-4 z-[100] w-[92%] max-w-sm -translate-x-1/2 animate-in duration-300 fade-in slide-in-from-top-4">
       <div className="rounded-[1.4rem] border border-[rgba(73,133,214,0.18)] bg-[rgba(8,18,31,0.96)] p-4 shadow-2xl backdrop-blur-xl">
         <div className="flex items-center gap-4">
-          <div className="flex size-11 items-center justify-center rounded-full bg-[rgba(47,140,255,0.14)] text-[#4ea0ff]">
-            <span className="material-symbols-outlined text-[24px]">military_tech</span>
+          <div
+            className={`flex size-11 items-center justify-center rounded-full ${notification.type === 'error' ? 'bg-[rgba(239,68,68,0.16)] text-[#f87171]' : 'bg-[rgba(47,140,255,0.14)] text-[#4ea0ff]'}`}
+          >
+            <span className="material-symbols-outlined text-[24px]">
+              {notification.type === 'error' ? 'error' : 'military_tech'}
+            </span>
           </div>
           <div className="flex-1">
             <h4 className="text-base font-bold leading-tight text-white">{notification.title}</h4>

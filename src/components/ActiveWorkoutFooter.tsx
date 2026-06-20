@@ -124,12 +124,12 @@ export const ActiveWorkoutFooter: React.FC = () => {
         confirmLabel={isPartial ? 'Guardar' : 'Finalizar'}
         variant="danger"
         onCancel={() => setFinishConfirmOpen(false)}
-        onConfirm={() => {
+        onConfirm={async () => {
           setFinishConfirmOpen(false);
-          navigate('/dashboard');
-          setTimeout(() => {
-            finishWorkout();
-          }, 100);
+          await finishWorkout();
+          if (!useStore.getState().activeWorkout) {
+            navigate('/dashboard');
+          }
         }}
       />
     </div>

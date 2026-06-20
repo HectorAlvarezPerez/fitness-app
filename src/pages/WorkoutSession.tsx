@@ -457,12 +457,14 @@ const WorkoutSession: React.FC = () => {
     setFinishConfirmOpen(true);
   };
 
-  const confirmFinish = () => {
+  const confirmFinish = async () => {
     setFinishConfirmOpen(false);
-    navigate('/dashboard');
-    setTimeout(() => {
-      finishWorkout();
-    }, 100);
+    await finishWorkout();
+    // finishWorkout keeps the active workout and shows an error notification if
+    // the save failed; only leave the screen once it was actually saved.
+    if (!useStore.getState().activeWorkout) {
+      navigate('/dashboard');
+    }
   };
 
   const confirmCancel = () => {

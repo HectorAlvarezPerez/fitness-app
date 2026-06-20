@@ -238,7 +238,7 @@ const getInitialUserScopedState = () => ({
   persistedUserId: null as string | null,
   bodyMeasurements: [] as BodyMeasurement[],
   personalRecords: {} as Record<string, { weight: number; reps: number; date: string }>,
-  notification: null as { title: string; message: string; type: 'pr' } | null,
+  notification: null as { title: string; message: string; type: 'pr' | 'error' } | null,
   userData: null as UserData | null,
 });
 
@@ -284,7 +284,7 @@ interface AppState {
 
   // Personal Records
   personalRecords: Record<string, { weight: number; reps: number; date: string }>;
-  notification: { title: string; message: string; type: 'pr' } | null;
+  notification: { title: string; message: string; type: 'pr' | 'error' } | null;
   loadPersonalRecords: () => Promise<void>;
   dismissNotification: () => void;
   syncPersonalRecords: () => Promise<void>;
@@ -395,8 +395,9 @@ export const useStore = create<AppState>()(
 
       loadUserData: async () => {
         const {
-          data: { user },
-        } = await supabase.auth.getUser();
+          data: { session },
+        } = await supabase.auth.getSession();
+        const user = session?.user ?? null;
         if (user) {
           // Fetch additional profile data
           const { data: profile } = await supabase
@@ -1551,9 +1552,20 @@ export const useStore = create<AppState>()(
         if (!state.activeWorkout) return;
 
         const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) return;
+          data: { session },
+        } = await supabase.auth.getSession();
+        const user = session?.user ?? null;
+        if (!user) {
+          set({
+            notification: {
+              title: 'No se pudo guardar',
+              message:
+                'Tu sesion no esta activa. Vuelve a iniciar sesion; tu entrenamiento NO se ha borrado, puedes reintentar.',
+              type: 'error',
+            },
+          });
+          return;
+        }
 
         const startTime = new Date(state.activeWorkout.startedAt);
         const endTime = new Date();
@@ -1597,7 +1609,7 @@ export const useStore = create<AppState>()(
           ? new Date(`${overrideDate}T09:00:00`).toISOString()
           : state.activeWorkout.startedAt;
 
-        await supabase.from('workout_sessions').insert({
+        const { error: saveError } = await supabase.from('workout_sessions').insert({
           user_id: user.id,
           routine_id: state.activeWorkout.routineId,
           routine_name: state.activeWorkout.routineName,
@@ -1607,6 +1619,18 @@ export const useStore = create<AppState>()(
           total_volume: totalVolume,
           duration_minutes: overrideDate ? 60 : durationMinutes,
         });
+
+        if (saveError) {
+          set({
+            notification: {
+              title: 'No se pudo guardar',
+              message:
+                'Hubo un error al guardar el entrenamiento. NO se ha borrado; revisa tu conexion y reintenta.',
+              type: 'error',
+            },
+          });
+          return;
+        }
 
         await supabase.from('active_workouts').delete().eq('user_id', user.id);
 
