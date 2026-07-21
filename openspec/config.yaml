@@ -1,0 +1,65 @@
+schema: spec-driven
+
+context: |
+  Project: fitness-app, a React 19 and TypeScript workout-tracking PWA.
+  Runtime: Vite 6 frontend with React Router, Zustand, Supabase, and Hono.
+  Architecture: page/component UI under src with shared libraries and state stores.
+  Testing: Vitest 4 with jsdom, React Testing Library, and global test APIs.
+  Quality: ESLint 9, TypeScript 5.8 no-emit checking, and Prettier 3.
+  Delivery: Vite build and Cloudflare Wrangler; CI currently scans secrets only.
+
+strict_tdd: true
+
+testing:
+  detected: "2026-07-21"
+  runner:
+    framework: Vitest 4
+    command: npm test -- --run
+  layers:
+    unit:
+      available: true
+      tool: Vitest
+    integration:
+      available: true
+      tool: React Testing Library with jsdom
+    e2e:
+      available: false
+      tool: null
+  coverage:
+    available: false
+    command: null
+  quality:
+    linter:
+      available: true
+      command: npm run lint
+    type_checker:
+      available: true
+      command: npx tsc --noEmit
+    formatter:
+      available: true
+      command: npm run format:check
+
+rules:
+  proposal:
+    - Include a rollback plan for risky changes.
+  specs:
+    - Use Given/When/Then for scenarios.
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY).
+  design:
+    - Include sequence diagrams for complex flows.
+    - Document architecture decisions with rationale.
+  tasks:
+    - Group work by phase with hierarchical numbering.
+    - Keep tasks completable in one session.
+  apply:
+    guidelines:
+      - Follow existing React, TypeScript, ESLint, and Prettier patterns.
+      - Run only tests related to changed files during development.
+    tdd: true
+    test_command: npm test -- --run
+  verify:
+    test_command: npm test -- --run
+    build_command: npm run build
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas.

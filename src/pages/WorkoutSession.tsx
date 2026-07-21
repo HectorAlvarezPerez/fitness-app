@@ -26,6 +26,13 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+export const getWorkoutContentReservation = (hasRestTimer: boolean) => ({
+  mobileBaseRem: hasRestTimer ? (19 as const) : (9 as const),
+  desktopBaseRem: 9 as const,
+  includesSafeAreaInset: true as const,
+  includesKeyboardInset: true as const,
+});
+
 const WorkoutSession: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -481,11 +488,17 @@ const WorkoutSession: React.FC = () => {
     setIsLibraryOpen(false);
   };
 
+  const contentReservation = getWorkoutContentReservation(Boolean(activeWorkout.restTimer));
+  const contentBottomPaddingClass =
+    contentReservation.mobileBaseRem === 19
+      ? 'pb-[calc(19rem+env(safe-area-inset-bottom)+var(--keyboard-inset,0px))] lg:pb-[calc(9rem+env(safe-area-inset-bottom)+var(--keyboard-inset,0px))]'
+      : 'pb-[calc(9rem+env(safe-area-inset-bottom)+var(--keyboard-inset,0px))]';
+
   return (
     <div className="h-full w-full flex overflow-hidden bg-[linear-gradient(180deg,#08111d_0%,#06101a_40%,#040b13_100%)]">
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto mobile-scroll">
-        <div className="flex flex-col max-w-3xl mx-auto pb-[calc(9rem+env(safe-area-inset-bottom)+var(--keyboard-inset,0px))]">
+        <div className={`flex flex-col max-w-3xl mx-auto ${contentBottomPaddingClass}`}>
           {/* Header (Mobile Only for Sidebar items) */}
           <div className="sticky top-0 z-10 border-b border-[rgba(73,133,214,0.12)] bg-[rgba(6,14,24,0.92)] p-4 backdrop-blur-xl lg:p-6">
             <div className="flex items-center justify-between mb-3">
