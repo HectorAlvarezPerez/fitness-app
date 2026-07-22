@@ -4,8 +4,18 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // Mocks referenced by the vi.mock factory must be created via vi.hoisted so they
 // exist before the (hoisted) factory runs.
 const h = vi.hoisted(() => {
-  const state: { serverRow: any; serverError: any } = { serverRow: null, serverError: null };
-  const upsertMock = vi.fn(() => Promise.resolve({ error: null }));
+  const state: { serverRow: any; serverError: any; authUserId: string | null } = {
+    serverRow: null,
+    serverError: null,
+    authUserId: 'u1',
+  };
+  const upsertMock = vi.fn((_payload: unknown) => Promise.resolve({ error: null }));
+  const getSessionMock = vi.fn(() =>
+    Promise.resolve({
+      data: { session: state.authUserId ? { user: { id: state.authUserId } } : null },
+      error: null,
+    })
+  );
   const fromMock = vi.fn(() => ({
     select: () => ({
       eq: () => ({
@@ -14,15 +24,13 @@ const h = vi.hoisted(() => {
     }),
     upsert: upsertMock,
   }));
-  return { state, upsertMock, fromMock };
+  return { state, upsertMock, getSessionMock, fromMock };
 });
 
 vi.mock('../lib/supabaseClient', () => ({
   supabase: {
     auth: {
-      getSession: vi.fn(() =>
-        Promise.resolve({ data: { session: { user: { id: 'u1' }, access_token: 'tok' } } })
-      ),
+      getSession: h.getSessionMock,
       getUser: vi.fn(() => Promise.resolve({ data: { user: { id: 'u1' } } })),
       onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
     },
@@ -79,6 +87,8 @@ const makeServerRow = (clientUpdatedAt: string, completed: boolean) => ({
 beforeEach(() => {
   h.state.serverRow = null;
   h.state.serverError = null;
+  h.state.authUserId = 'u1';
+  h.getSessionMock.mockClear();
   h.upsertMock.mockClear();
   h.fromMock.mockClear();
   localStorage.clear();
@@ -187,8 +197,107 @@ describe('A — load reconciliation (no clobbering newer local state)', () => {
       persistedUserId: 'u1',
     });
 
-    await useStore.getState().loadActiveWorkout();
+    const result = await useStore
+      .getState()
+      .loadActiveWorkout({ userId: 'u1', isCurrent: () => true });
 
+    expect(result).toEqual({ ok: false, reason: 'request-failed' });
     expect(useStore.getState().activeWorkout?.id).toBe('local-id');
+  });
+
+  it('does not commit a server result after the contextual request becomes stale', async () => {
+    h.state.serverRow = makeServerRow(ISO('2026-01-01T12:00:00Z'), /*completed*/ false);
+    useStore.setState({
+      activeWorkout: localWorkout(ISO('2026-01-01T09:00:00Z')),
+      persistedUserId: 'u1',
+    });
+    let checks = 0;
+
+    const result = await useStore
+      .getState()
+      .loadActiveWorkout({ userId: 'u1', isCurrent: () => ++checks === 1 });
+
+    expect(result).toEqual({ ok: false, reason: 'stale' });
+    expect(useStore.getState().activeWorkout?.id).toBe('local-id');
+    expect(h.upsertMock).not.toHaveBeenCalled();
+  });
+
+  it('does not flush locally newer state after the contextual request becomes stale', async () => {
+    h.state.serverRow = makeServerRow(ISO('2026-01-01T10:00:00Z'), /*completed*/ false);
+    useStore.setState({
+      activeWorkout: localWorkout(ISO('2026-01-01T11:00:00Z')),
+      persistedUserId: 'u1',
+    });
+    let checks = 0;
+
+    const result = await useStore
+      .getState()
+      .loadActiveWorkout({ userId: 'u1', isCurrent: () => ++checks === 1 });
+
+    expect(result).toEqual({ ok: false, reason: 'stale' });
+    expect(useStore.getState().activeWorkout?.id).toBe('local-id');
+    expect(h.upsertMock).not.toHaveBeenCalled();
+  });
+
+  it('does not upsert a captured workout after the session switches users during flush', async () => {
+    h.state.serverRow = makeServerRow(ISO('2026-01-01T10:00:00Z'), /*completed*/ false);
+    useStore.setState({
+      activeWorkout: localWorkout(ISO('2026-01-01T11:00:00Z')),
+      persistedUserId: 'u1',
+    });
+    h.getSessionMock
+      .mockResolvedValueOnce({
+        data: { session: { user: { id: 'u1' } } },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: { session: { user: { id: 'u2' } } },
+        error: null,
+      });
+
+    const result = await useStore
+      .getState()
+      .loadActiveWorkout({ userId: 'u1', isCurrent: () => true });
+    await vi.waitFor(() => expect(h.getSessionMock).toHaveBeenCalledTimes(2));
+
+    expect(result).toEqual({ ok: true });
+    expect(h.upsertMock).not.toHaveBeenCalled();
+  });
+
+  it('does not upsert when the contextual generation becomes stale during flush', async () => {
+    h.state.serverRow = makeServerRow(ISO('2026-01-01T10:00:00Z'), /*completed*/ false);
+    useStore.setState({
+      activeWorkout: localWorkout(ISO('2026-01-01T11:00:00Z')),
+      persistedUserId: 'u1',
+    });
+    let checks = 0;
+
+    const result = await useStore
+      .getState()
+      .loadActiveWorkout({
+        userId: 'u1',
+        isCurrent: () => ++checks < 3,
+      });
+    await vi.waitFor(() => expect(h.getSessionMock).toHaveBeenCalledTimes(2));
+
+    expect(result).toEqual({ ok: true });
+    expect(h.upsertMock).not.toHaveBeenCalled();
+  });
+
+  it('does not recreate a missing server row after the contextual request becomes stale', async () => {
+    h.state.serverRow = null;
+    useStore.setState({
+      activeWorkout: localWorkout(ISO('2026-01-01T11:00:00Z')),
+      persistedUserId: 'u1',
+    });
+    let checks = 0;
+
+    const result = await useStore
+      .getState()
+      .loadActiveWorkout({ userId: 'u1', isCurrent: () => ++checks === 1 });
+
+    expect(result).toEqual({ ok: false, reason: 'stale' });
+    expect(useStore.getState().activeWorkout?.id).toBe('local-id');
+    expect(h.upsertMock).not.toHaveBeenCalled();
   });
 });

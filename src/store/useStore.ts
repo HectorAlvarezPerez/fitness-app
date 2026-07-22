@@ -242,6 +242,66 @@ const getInitialUserScopedState = () => ({
   userData: null as UserData | null,
 });
 
+export type LoadContext = {
+  userId: string;
+  isCurrent: () => boolean;
+};
+
+export type LoadResult =
+  | { ok: true }
+  | { ok: false; reason: 'signed-out' | 'request-failed' | 'stale' };
+
+type BootstrapLoader = (context?: LoadContext) => Promise<LoadResult | void>;
+type AuthenticatedUser = {
+  id: string;
+  email?: string;
+  app_metadata?: { provider?: string };
+  last_sign_in_at?: string;
+  user_metadata?: any;
+};
+
+const LOAD_OK: LoadResult = { ok: true };
+const SIGNED_OUT: LoadResult = { ok: false, reason: 'signed-out' };
+const REQUEST_FAILED: LoadResult = { ok: false, reason: 'request-failed' };
+const STALE: LoadResult = { ok: false, reason: 'stale' };
+
+const resolveLoadUser = async (
+  context: LoadContext | undefined,
+  authSource: 'session' | 'user'
+): Promise<{ user: AuthenticatedUser | null; result?: LoadResult }> => {
+  try {
+    let user: AuthenticatedUser | null;
+    if (authSource === 'session') {
+      const { data, error } = await supabase.auth.getSession();
+      if (context && error) {
+        return { user: null, result: REQUEST_FAILED };
+      }
+      user = data.session?.user ?? null;
+    } else {
+      const { data, error } = await supabase.auth.getUser();
+      if (context && error) {
+        return { user: null, result: REQUEST_FAILED };
+      }
+      user = data.user ?? null;
+    }
+
+    if (!user) return { user, result: SIGNED_OUT };
+    if (context && (user.id !== context.userId || !context.isCurrent())) {
+      return { user: null, result: STALE };
+    }
+    return { user };
+  } catch (error) {
+    if (context) return { user: null, result: REQUEST_FAILED };
+    throw error;
+  }
+};
+
+const staleAfterRequest = (context?: LoadContext) =>
+  context ? !context.isCurrent() : false;
+
+const completeLoad = (context?: LoadContext): LoadResult | void =>
+  context ? LOAD_OK : undefined;
+
 interface AppState {
   routineName: string;
   exercises: Exercise[];
@@ -254,7 +314,7 @@ interface AppState {
 
   // Routine Folders
   routineFolders: RoutineFolder[];
-  loadFolders: () => Promise<void>;
+  loadFolders: BootstrapLoader;
   createFolder: (name: string, color?: string) => Promise<RoutineFolder | null>;
   updateFolder: (id: string, updates: Partial<RoutineFolder>) => Promise<void>;
   deleteFolder: (id: string) => Promise<void>;
@@ -276,7 +336,7 @@ interface AppState {
 
   // Body Measurements
   bodyMeasurements: BodyMeasurement[];
-  loadBodyMeasurements: () => Promise<void>;
+  loadBodyMeasurements: BootstrapLoader;
   addBodyMeasurement: (
     measurement: Omit<BodyMeasurement, 'id' | 'user_id' | 'created_at'>
   ) => Promise<void>;
@@ -285,12 +345,12 @@ interface AppState {
   // Personal Records
   personalRecords: Record<string, { weight: number; reps: number; date: string }>;
   notification: { title: string; message: string; type: 'pr' | 'error' } | null;
-  loadPersonalRecords: () => Promise<void>;
+  loadPersonalRecords: BootstrapLoader;
   dismissNotification: () => void;
   syncPersonalRecords: () => Promise<void>;
 
   userData: UserData | null;
-  loadUserData: () => Promise<void>;
+  loadUserData: BootstrapLoader;
   resetUserScopedState: () => void;
 
   setRoutineName: (name: string) => void;
@@ -301,7 +361,7 @@ interface AppState {
   updateOnboardingData: (data: Partial<OnboardingData>) => void;
 
   // Routine CRUD
-  loadRoutines: () => Promise<void>;
+  loadRoutines: BootstrapLoader;
   saveRoutine: (
     name: string,
     exercises: Exercise[],
@@ -320,7 +380,7 @@ interface AppState {
   getFilteredExercises: () => ExerciseLibraryItem[];
 
   // Workout History
-  loadWorkoutHistory: () => Promise<void>;
+  loadWorkoutHistory: BootstrapLoader;
   saveWorkoutSession: (
     session: Omit<WorkoutSession, 'id' | 'user_id' | 'created_at'>
   ) => Promise<void>;
@@ -328,7 +388,7 @@ interface AppState {
   deleteWorkoutSessions: (ids: string[]) => Promise<void>;
 
   // Active Workout
-  loadActiveWorkout: () => Promise<void>;
+  loadActiveWorkout: BootstrapLoader;
   startWorkout: (routine: Routine, overrideDate?: string) => Promise<boolean>;
   startEmptyWorkout: (overrideDate?: string) => Promise<boolean>;
   addActiveWorkoutExercise: (exercise: ExerciseLibraryItem) => Promise<void>;
@@ -346,8 +406,8 @@ interface AppState {
   resumeRestTimer: () => Promise<void>;
   extendRestTimer: (secondsToAdd: number) => Promise<void>;
   saveActiveWorkoutProgress: () => Promise<void>;
-  flushActiveWorkoutProgress: () => Promise<void>;
-  flushActiveWorkoutNow: () => Promise<void>;
+  flushActiveWorkoutProgress: (context?: LoadContext) => Promise<void>;
+  flushActiveWorkoutNow: (context?: LoadContext) => Promise<void>;
   beaconFlushActiveWorkout: () => void;
   finishWorkout: () => Promise<void>;
   clearActiveWorkout: () => void;
@@ -393,18 +453,26 @@ export const useStore = create<AppState>()(
       selectedEquipmentFilter: null,
       exerciseSearchQuery: '',
 
-      loadUserData: async () => {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        const user = session?.user ?? null;
+      loadUserData: async (context?: LoadContext) => {
+        const { user, result } = await resolveLoadUser(context, 'session');
+        if (!user) {
+          if (!context && result && 'reason' in result && result.reason === 'signed-out') {
+            set({ userData: null });
+            return;
+          }
+          return result;
+        }
+
         if (user) {
           // Fetch additional profile data
-          const { data: profile } = await supabase
+          const { data: profile, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', user.id)
             .single();
+
+          if (context && error) return REQUEST_FAILED;
+          if (staleAfterRequest(context)) return STALE;
 
           set({
             userData: {
@@ -419,9 +487,8 @@ export const useStore = create<AppState>()(
               default_weight_kg: profile?.default_weight_kg || 20,
             },
           });
-        } else {
-          set({ userData: null });
         }
+        return completeLoad(context);
       },
 
       resetUserScopedState: () => set(getInitialUserScopedState()),
@@ -451,11 +518,9 @@ export const useStore = create<AppState>()(
         set((state) => ({ onboardingData: { ...state.onboardingData, ...data } })),
 
       // Routine Management Functions
-      loadRoutines: async () => {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) return;
+      loadRoutines: async (context?: LoadContext) => {
+        const { user, result } = await resolveLoadUser(context, 'user');
+        if (!user) return context ? result : undefined;
 
         const { data, error } = await supabase
           .from('routines')
@@ -463,9 +528,12 @@ export const useStore = create<AppState>()(
           .eq('user_id', user.id)
           .order('updated_at', { ascending: false });
 
-        if (!error && data) {
-          set({ savedRoutines: data });
-        }
+        if (context && error) return REQUEST_FAILED;
+        if (staleAfterRequest(context)) return STALE;
+        if (error || !data) return;
+
+        set({ savedRoutines: data });
+        return completeLoad(context);
       },
 
       saveRoutine: async (
@@ -546,11 +614,9 @@ export const useStore = create<AppState>()(
       setCurrentRoutineId: (id: string | null) => set({ currentRoutineId: id }),
 
       // --- Folder Management Functions ---
-      loadFolders: async () => {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) return;
+      loadFolders: async (context?: LoadContext) => {
+        const { user, result } = await resolveLoadUser(context, 'user');
+        if (!user) return context ? result : undefined;
 
         const { data, error } = await supabase
           .from('routine_folders')
@@ -558,9 +624,12 @@ export const useStore = create<AppState>()(
           .eq('user_id', user.id)
           .order('order_index', { ascending: true });
 
-        if (!error && data) {
-          set({ routineFolders: data });
-        }
+        if (context && error) return REQUEST_FAILED;
+        if (staleAfterRequest(context)) return STALE;
+        if (error || !data) return;
+
+        set({ routineFolders: data });
+        return completeLoad(context);
       },
 
       createFolder: async (name: string, color?: string) => {
@@ -698,17 +767,18 @@ export const useStore = create<AppState>()(
       },
 
       // Workout History Functions
-      loadWorkoutHistory: async () => {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) return;
+      loadWorkoutHistory: async (context?: LoadContext) => {
+        const { user, result } = await resolveLoadUser(context, 'user');
+        if (!user) return context ? result : undefined;
 
         const { data, error } = await supabase
           .from('workout_sessions')
           .select('*')
           .eq('user_id', user.id)
           .order('completed_at', { ascending: false });
+
+        if (context && error) return REQUEST_FAILED;
+        if (error || !data) return;
 
         if (!error && data) {
           // Calculate Stats
@@ -739,6 +809,8 @@ export const useStore = create<AppState>()(
             streak = workoutsLastWeek > 0 ? 1 : 0;
           }
 
+          if (staleAfterRequest(context)) return STALE;
+
           set({
             workoutHistory: data,
             stats: {
@@ -748,6 +820,7 @@ export const useStore = create<AppState>()(
               streak,
             },
           });
+          return completeLoad(context);
         }
       },
 
@@ -815,14 +888,14 @@ export const useStore = create<AppState>()(
       },
 
       // Active Workout Functions
-      loadActiveWorkout: async () => {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        const user = session?.user;
+      loadActiveWorkout: async (context?: LoadContext) => {
+        const { user, result } = await resolveLoadUser(context, 'session');
         if (!user) {
-          set({ activeWorkout: null, persistedUserId: null });
-          return;
+          if (!context && result && 'reason' in result && result.reason === 'signed-out') {
+            set({ activeWorkout: null, persistedUserId: null });
+            return;
+          }
+          return result;
         }
 
         const { data, error } = await supabase
@@ -830,6 +903,15 @@ export const useStore = create<AppState>()(
           .select('*')
           .eq('user_id', user.id)
           .maybeSingle();
+
+        if (error) {
+          console.error('loadActiveWorkout error:', error);
+          if (context) return REQUEST_FAILED;
+          // On a transient fetch error, keep whatever we have locally rather than wiping it.
+          set({ persistedUserId: user.id });
+          return;
+        }
+        if (staleAfterRequest(context)) return STALE;
 
         // Reconciliation: never blindly overwrite a locally-newer in-progress workout
         // with a stale server copy (e.g. when the last write was lost to a backgrounded
@@ -845,8 +927,8 @@ export const useStore = create<AppState>()(
           if (local && sameUser && localUpdatedAt > serverUpdatedAt) {
             // Local is ahead of the server — keep it and push it back up.
             set({ persistedUserId: user.id });
-            void get().flushActiveWorkoutNow();
-            return;
+            void get().flushActiveWorkoutNow(context);
+            return completeLoad(context);
           }
 
           const workoutData = readActiveWorkoutDataPayload(data.workout_data);
@@ -873,25 +955,19 @@ export const useStore = create<AppState>()(
             },
             persistedUserId: user.id,
           });
-          return;
-        }
-
-        if (error) {
-          console.error('loadActiveWorkout error:', error);
-          // On a transient fetch error, keep whatever we have locally rather than wiping it.
-          set({ persistedUserId: user.id });
-          return;
+          return completeLoad(context);
         }
 
         // No server row. If we still hold a local in-progress workout for this user,
         // it just hasn't synced yet — keep it and recreate the row instead of wiping it.
         if (local && sameUser) {
           set({ persistedUserId: user.id });
-          void get().flushActiveWorkoutNow();
-          return;
+          void get().flushActiveWorkoutNow(context);
+          return completeLoad(context);
         }
 
         set({ activeWorkout: null, persistedUserId: user.id });
+        return completeLoad(context);
       },
 
       updateWorkoutExerciseSets: async (
@@ -1162,14 +1238,20 @@ export const useStore = create<AppState>()(
       // The actual network write. Uses getSession() (local, no auth-server round-trip)
       // and upsert (self-heals if the row is missing). Persists client_updated_at so
       // reconciliation on the next load can tell which copy is newer.
-      flushActiveWorkoutProgress: async () => {
+      flushActiveWorkoutProgress: async (context?: LoadContext) => {
         const state = get();
         if (!state.activeWorkout) return;
 
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        const user = session?.user;
+        let user: AuthenticatedUser | null;
+        if (context) {
+          ({ user } = await resolveLoadUser(context, 'session'));
+          if (!user || state.persistedUserId !== context.userId) return;
+        } else {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          user = session?.user ?? null;
+        }
         if (!user) return;
 
         const safeExercises = Array.isArray(state.activeWorkout.exercises)
@@ -1210,12 +1292,12 @@ export const useStore = create<AppState>()(
       },
 
       // Cancel any pending debounce and write immediately (used on reconnect / finish).
-      flushActiveWorkoutNow: async () => {
+      flushActiveWorkoutNow: async (context?: LoadContext) => {
         if (activeWorkoutFlushTimer) {
           clearTimeout(activeWorkoutFlushTimer);
           activeWorkoutFlushTimer = null;
         }
-        await get().flushActiveWorkoutProgress();
+        await get().flushActiveWorkoutProgress(context);
       },
 
       // Best-effort flush that survives the page being suspended/closed. Uses a
@@ -1753,11 +1835,9 @@ export const useStore = create<AppState>()(
       },
 
       // Body Measurements Functions
-      loadBodyMeasurements: async () => {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) return;
+      loadBodyMeasurements: async (context?: LoadContext) => {
+        const { user, result } = await resolveLoadUser(context, 'user');
+        if (!user) return context ? result : undefined;
 
         const { data, error } = await supabase
           .from('body_measurements')
@@ -1765,9 +1845,12 @@ export const useStore = create<AppState>()(
           .eq('user_id', user.id)
           .order('date', { ascending: true }); // Ascending for charts
 
-        if (!error && data) {
-          set({ bodyMeasurements: data });
-        }
+        if (context && error) return REQUEST_FAILED;
+        if (staleAfterRequest(context)) return STALE;
+        if (error || !data) return;
+
+        set({ bodyMeasurements: data });
+        return completeLoad(context);
       },
 
       addBodyMeasurement: async (measurement) => {
@@ -1804,16 +1887,17 @@ export const useStore = create<AppState>()(
 
       // Personal Records Implementation
 
-      loadPersonalRecords: async () => {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) return;
+      loadPersonalRecords: async (context?: LoadContext) => {
+        const { user, result } = await resolveLoadUser(context, 'user');
+        if (!user) return context ? result : undefined;
 
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('personal_records')
           .select('exercise_name, weight, reps, date')
           .eq('user_id', user.id);
+
+        if (context && error) return REQUEST_FAILED;
+        if (staleAfterRequest(context)) return STALE;
 
         if (data) {
           const records: Record<string, { weight: number; reps: number; date: string }> = {};
@@ -1821,6 +1905,7 @@ export const useStore = create<AppState>()(
             records[r.exercise_name] = { weight: r.weight, reps: r.reps, date: r.date };
           });
           set({ personalRecords: records });
+          return completeLoad(context);
         }
       },
 
