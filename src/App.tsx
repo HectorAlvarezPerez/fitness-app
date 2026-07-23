@@ -1,5 +1,5 @@
 import React from 'react';
-import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { HashRouter, Navigate, Outlet, Routes, Route, useLocation } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import OnboardingStep1 from './pages/OnboardingStep1';
 import OnboardingStep2 from './pages/OnboardingStep2';
@@ -23,11 +23,193 @@ import MainLayout from './components/MainLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 import { initTheme } from './lib/theme';
 import { supabase } from './lib/supabaseClient';
-import { useStore } from './store/useStore';
+import { useStore, type LoadResult } from './store/useStore';
 
-const App: React.FC = () => {
+type BootstrapStatus = 'resolving' | 'signed-out' | 'checking' | 'error' | 'ready';
+
+type BootstrapRun = {
+  userId: string;
+  promise: Promise<void>;
+};
+
+const isLoadResult = (result: LoadResult | void): result is LoadResult =>
+  typeof result === 'object' && result !== null && 'ok' in result;
+const isLoadSuccess = (result: LoadResult | void) => isLoadResult(result) && result.ok;
+const isLoadFailure = (
+  result: LoadResult | void,
+  reason: Exclude<LoadResult, { ok: true }>['reason']
+) => isLoadResult(result) && result.ok === false && result.reason === reason;
+
+const AuthenticatedRouteGate: React.FC<{
+  status: BootstrapStatus;
+  onRetry: () => void;
+}> = ({ status, onRetry }) => {
+  if (status === 'signed-out') {
+    return <Navigate to="/" replace />;
+  }
+
+  if (status === 'ready') {
+    return <Outlet />;
+  }
+
+  if (status === 'error') {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#050d15] px-6 text-white">
+        <div role="alert" className="max-w-md text-center">
+          <h1 className="text-2xl font-semibold">No se pudieron cargar tus datos</h1>
+          <p className="mt-3 text-sm text-slate-400">
+            Comprueba tu conexión e inténtalo de nuevo.
+          </p>
+          <button
+            type="button"
+            onClick={onRetry}
+            className="mt-6 rounded-full bg-primary px-6 py-3 text-sm font-semibold"
+          >
+            Reintentar
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main
+      role="status"
+      className="flex min-h-screen items-center justify-center bg-[#050d15] px-6 text-white"
+    >
+      <p className="text-sm text-slate-300">Preparando tus datos...</p>
+    </main>
+  );
+};
+
+export const AppRoutes: React.FC = () => {
   const resetUserScopedState = useStore((state) => state.resetUserScopedState);
-  const lastSessionUserIdRef = React.useRef<string | null | undefined>(undefined);
+  const [bootstrapStatus, setBootstrapStatus] = React.useState<BootstrapStatus>('resolving');
+  const bootstrapStatusRef = React.useRef<BootstrapStatus>('resolving');
+  const currentUserIdRef = React.useRef<string | null>(null);
+  const generationRef = React.useRef(0);
+  const authSignalRef = React.useRef(0);
+  const mountedRef = React.useRef(false);
+  const inFlightRef = React.useRef<BootstrapRun | null>(null);
+
+  const commitStatus = React.useCallback((status: BootstrapStatus) => {
+    if (!mountedRef.current) return;
+    bootstrapStatusRef.current = status;
+    setBootstrapStatus(status);
+  }, []);
+
+  const transitionToSignedOut = React.useCallback(() => {
+    generationRef.current += 1;
+    currentUserIdRef.current = null;
+    inFlightRef.current = null;
+    useStore.getState().resetUserScopedState();
+    commitStatus('signed-out');
+  }, [commitStatus]);
+
+  const startBootstrap = React.useCallback(
+    (userId: string): Promise<void> => {
+      const activeRun = inFlightRef.current;
+      if (activeRun?.userId === userId) return activeRun.promise;
+
+      const store = useStore.getState();
+      const previousUserId = currentUserIdRef.current;
+      if (
+        (previousUserId && previousUserId !== userId) ||
+        (store.persistedUserId && store.persistedUserId !== userId)
+      ) {
+        store.resetUserScopedState();
+      }
+
+      currentUserIdRef.current = userId;
+      const generation = ++generationRef.current;
+      commitStatus('checking');
+
+      const context = {
+        userId,
+        isCurrent: () =>
+          mountedRef.current &&
+          currentUserIdRef.current === userId &&
+          generationRef.current === generation,
+      };
+
+      const promise = (async () => {
+        try {
+          const results = await Promise.all([
+            store.loadUserData(context),
+            store.loadRoutines(context),
+            store.loadFolders(context),
+            store.loadWorkoutHistory(context),
+            store.loadActiveWorkout(context),
+            store.loadBodyMeasurements(context),
+            store.loadPersonalRecords(context),
+          ]);
+
+          if (!context.isCurrent()) return;
+          if (results.some((result) => isLoadFailure(result, 'signed-out'))) {
+            transitionToSignedOut();
+          } else if (results.every(isLoadSuccess)) {
+            commitStatus('ready');
+          } else if (!results.some((result) => isLoadFailure(result, 'stale'))) {
+            commitStatus('error');
+          }
+        } catch {
+          if (context.isCurrent()) commitStatus('error');
+        } finally {
+          if (inFlightRef.current?.promise === promise) inFlightRef.current = null;
+        }
+      })();
+
+      inFlightRef.current = { userId, promise };
+      return promise;
+    },
+    [commitStatus, transitionToSignedOut]
+  );
+
+  const handleSessionUser = React.useCallback(
+    (userId: string | null) => {
+      if (!userId) {
+        transitionToSignedOut();
+        return;
+      }
+
+      if (
+        currentUserIdRef.current === userId &&
+        (inFlightRef.current?.userId === userId ||
+          bootstrapStatusRef.current === 'ready' ||
+          bootstrapStatusRef.current === 'error')
+      ) {
+        return;
+      }
+
+      void startBootstrap(userId);
+    },
+    [startBootstrap, transitionToSignedOut]
+  );
+
+  const retryInitialBootstrap = React.useCallback(async () => {
+    const failedUserId = currentUserIdRef.current;
+    if (bootstrapStatusRef.current !== 'error') return;
+
+    const retryGeneration = ++generationRef.current;
+    inFlightRef.current = null;
+
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (!mountedRef.current || generationRef.current !== retryGeneration) return;
+      if (error) return;
+
+      const sessionUserId = data.session?.user?.id ?? null;
+      if (!sessionUserId) {
+        transitionToSignedOut();
+      } else if (failedUserId && sessionUserId !== failedUserId) {
+        return;
+      } else {
+        void startBootstrap(sessionUserId);
+      }
+    } catch {
+      // The existing initial error remains visible when retry cannot resolve a session.
+    }
+  }, [startBootstrap, transitionToSignedOut]);
 
   React.useEffect(() => {
     initTheme();
@@ -62,109 +244,105 @@ const App: React.FC = () => {
   }, []);
 
   React.useEffect(() => {
-    const syncSessionState = async (userId: string | null, forceReload = false) => {
-      const store = useStore.getState();
-      const previousUserId = lastSessionUserIdRef.current;
-      const sameUser = previousUserId === userId;
-      lastSessionUserIdRef.current = userId;
-
-      if (!userId) {
-        store.resetUserScopedState();
-        return;
-      }
-
-      if (store.persistedUserId && store.persistedUserId !== userId) {
-        store.resetUserScopedState();
-      }
-
-      if (sameUser && !forceReload) {
-        return;
-      }
-
-      if (previousUserId && previousUserId !== userId) {
-        store.resetUserScopedState();
-      }
-
-      await Promise.all([
-        store.loadUserData(),
-        store.loadRoutines(),
-        store.loadFolders(),
-        store.loadWorkoutHistory(),
-        store.loadActiveWorkout(),
-        store.loadBodyMeasurements(),
-        store.loadPersonalRecords(),
-      ]);
-    };
+    mountedRef.current = true;
+    const initialSessionSignal = ++authSignalRef.current;
 
     void supabase.auth
       .getSession()
-      .then(({ data }) => syncSessionState(data.session?.user?.id ?? null, true));
+      .then(({ data, error }) => {
+        if (authSignalRef.current === initialSessionSignal) {
+          if (error) {
+            commitStatus('error');
+          } else {
+            handleSessionUser(data.session?.user?.id ?? null);
+          }
+        }
+      })
+      .catch(() => {
+        if (authSignalRef.current === initialSessionSignal) commitStatus('error');
+      });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      const userId = session?.user?.id ?? null;
-      if (event === 'TOKEN_REFRESHED' && lastSessionUserIdRef.current === userId) {
-        return;
-      }
-
-      void syncSessionState(userId, event === 'SIGNED_IN');
+      if (event === 'INITIAL_SESSION') return;
+      authSignalRef.current += 1;
+      handleSessionUser(session?.user?.id ?? null);
     });
 
-    return () => subscription.unsubscribe();
-  }, [resetUserScopedState]);
+    return () => {
+      mountedRef.current = false;
+      generationRef.current += 1;
+      authSignalRef.current += 1;
+      inFlightRef.current = null;
+      subscription.unsubscribe();
+    };
+  }, [commitStatus, handleSessionUser, resetUserScopedState]);
 
   return (
-    <HashRouter>
-      <ErrorBoundary>
-        <ScrollToTop />
-        <Routes>
+    <ErrorBoundary>
+      <ScrollToTop />
+      <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/onboarding/step1" element={<OnboardingStep1 />} />
           <Route path="/onboarding/step2" element={<OnboardingStep2 />} />
           <Route path="/onboarding/step3" element={<OnboardingStep3 />} />
 
           {/* Authenticated Routes with Layout */}
-          <Route element={<MainLayout />}>
-            <Route path="/home" element={<Home />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/routine" element={<RoutinesList />} />
-            <Route path="/routine/new" element={<RoutineEditor />} />
-            <Route path="/routine/edit/:id" element={<RoutineEditor />} />
-            <Route path="/routine/free/workout" element={<WorkoutSession />} />
-            <Route path="/routine/:id/workout" element={<WorkoutSession />} />
-            <Route path="/history" element={<WorkoutHistory />} />
-            <Route path="/pr" element={<PersonalRecordsPage />} />
-            <Route path="/exercises" element={<ExercisesPage />} />
-            <Route path="/exercises/new" element={<ExerciseEditorPage />} />
-            <Route path="/exercises/:id/edit" element={<ExerciseEditorPage />} />
+          <Route
+            element={
+              <AuthenticatedRouteGate
+                status={bootstrapStatus}
+                onRetry={retryInitialBootstrap}
+              />
+            }
+          >
+            <Route element={<MainLayout />}>
+              <Route path="/home" element={<Home />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/routine" element={<RoutinesList />} />
+              <Route path="/routine/new" element={<RoutineEditor />} />
+              <Route path="/routine/edit/:id" element={<RoutineEditor />} />
+              <Route path="/routine/free/workout" element={<WorkoutSession />} />
+              <Route path="/routine/:id/workout" element={<WorkoutSession />} />
+              <Route path="/history" element={<WorkoutHistory />} />
+              <Route path="/pr" element={<PersonalRecordsPage />} />
+              <Route path="/exercises" element={<ExercisesPage />} />
+              <Route path="/exercises/new" element={<ExerciseEditorPage />} />
+              <Route path="/exercises/:id/edit" element={<ExerciseEditorPage />} />
 
-            <Route path="/progress" element={<ProgressPage />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/profile-data" element={<ProfileData />} />
-            <Route path="/guide" element={<AppGuide />} />
+              <Route path="/progress" element={<ProgressPage />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/profile-data" element={<ProfileData />} />
+              <Route path="/guide" element={<AppGuide />} />
 
-            {/* Catch-all route for diagnostics */}
-            <Route
-              path="*"
-              element={
-                <div className="flex min-h-screen items-center justify-center bg-black text-white">
-                  <div className="text-center">
-                    <h1 className="text-4xl font-bold text-red-500 mb-4">404</h1>
-                    <p className="text-xl">Route not found</p>
-                    <p className="text-sm text-gray-500 mt-2">
-                      Current Path: {window.location.hash}
-                    </p>
+              {/* Catch-all route for diagnostics */}
+              <Route
+                path="*"
+                element={
+                  <div className="flex min-h-screen items-center justify-center bg-black text-white">
+                    <div className="text-center">
+                      <h1 className="text-4xl font-bold text-red-500 mb-4">404</h1>
+                      <p className="text-xl">Route not found</p>
+                      <p className="text-sm text-gray-500 mt-2">
+                        Current Path: {window.location.hash}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              }
-            />
+                }
+              />
+            </Route>
           </Route>
-        </Routes>
-      </ErrorBoundary>
-    </HashRouter>
+      </Routes>
+    </ErrorBoundary>
   );
 };
+
+const App: React.FC = () => (
+  <HashRouter>
+    <AppRoutes />
+  </HashRouter>
+);
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();

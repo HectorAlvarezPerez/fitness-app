@@ -43,7 +43,7 @@ const LandingPage: React.FC = () => {
       if (error) {
         setMessage({ type: 'error', text: 'Credenciales inválidas o error de conexión.' });
       } else {
-        navigate('/home');
+        navigate('/home', { replace: true });
       }
     }
 
