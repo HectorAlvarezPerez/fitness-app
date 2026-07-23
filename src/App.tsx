@@ -32,6 +32,13 @@ type BootstrapRun = {
   promise: Promise<void>;
 };
 
+type BootstrapMode = 'initial' | 'refresh';
+
+type LifecycleRequest = {
+  userId: string;
+  promise: Promise<void>;
+};
+
 const isLoadResult = (result: LoadResult | void): result is LoadResult =>
   typeof result === 'object' && result !== null && 'ok' in result;
 const isLoadSuccess = (result: LoadResult | void) => isLoadResult(result) && result.ok;
@@ -42,14 +49,35 @@ const isLoadFailure = (
 
 const AuthenticatedRouteGate: React.FC<{
   status: BootstrapStatus;
+  refreshError: boolean;
   onRetry: () => void;
-}> = ({ status, onRetry }) => {
+  onRefreshRetry: () => void;
+}> = ({ status, refreshError, onRetry, onRefreshRetry }) => {
   if (status === 'signed-out') {
     return <Navigate to="/" replace />;
   }
 
   if (status === 'ready') {
-    return <Outlet />;
+    return (
+      <>
+        {refreshError && (
+          <div
+            role="alert"
+            className="flex items-center justify-center gap-4 bg-amber-950 px-4 py-3 text-sm text-amber-100"
+          >
+            <span>No se pudieron actualizar tus datos</span>
+            <button
+              type="button"
+              onClick={onRefreshRetry}
+              className="rounded-full border border-amber-300 px-4 py-2 font-semibold"
+            >
+              Reintentar actualización
+            </button>
+          </div>
+        )}
+        <Outlet />
+      </>
+    );
   }
 
   if (status === 'error') {
@@ -85,12 +113,14 @@ const AuthenticatedRouteGate: React.FC<{
 export const AppRoutes: React.FC = () => {
   const resetUserScopedState = useStore((state) => state.resetUserScopedState);
   const [bootstrapStatus, setBootstrapStatus] = React.useState<BootstrapStatus>('resolving');
+  const [refreshError, setRefreshError] = React.useState(false);
   const bootstrapStatusRef = React.useRef<BootstrapStatus>('resolving');
   const currentUserIdRef = React.useRef<string | null>(null);
   const generationRef = React.useRef(0);
   const authSignalRef = React.useRef(0);
   const mountedRef = React.useRef(false);
   const inFlightRef = React.useRef<BootstrapRun | null>(null);
+  const lifecycleRequestRef = React.useRef<LifecycleRequest | null>(null);
 
   const commitStatus = React.useCallback((status: BootstrapStatus) => {
     if (!mountedRef.current) return;
@@ -98,16 +128,23 @@ export const AppRoutes: React.FC = () => {
     setBootstrapStatus(status);
   }, []);
 
+  const commitRefreshError = React.useCallback((hasError: boolean) => {
+    if (!mountedRef.current) return;
+    setRefreshError(hasError);
+  }, []);
+
   const transitionToSignedOut = React.useCallback(() => {
     generationRef.current += 1;
     currentUserIdRef.current = null;
     inFlightRef.current = null;
+    lifecycleRequestRef.current = null;
     useStore.getState().resetUserScopedState();
+    commitRefreshError(false);
     commitStatus('signed-out');
-  }, [commitStatus]);
+  }, [commitRefreshError, commitStatus]);
 
   const startBootstrap = React.useCallback(
-    (userId: string): Promise<void> => {
+    (userId: string, mode: BootstrapMode = 'initial'): Promise<void> => {
       const activeRun = inFlightRef.current;
       if (activeRun?.userId === userId) return activeRun.promise;
 
@@ -120,9 +157,11 @@ export const AppRoutes: React.FC = () => {
         store.resetUserScopedState();
       }
 
+      if (previousUserId !== userId) lifecycleRequestRef.current = null;
       currentUserIdRef.current = userId;
       const generation = ++generationRef.current;
-      commitStatus('checking');
+      commitRefreshError(false);
+      if (mode === 'initial') commitStatus('checking');
 
       const context = {
         userId,
@@ -148,12 +187,17 @@ export const AppRoutes: React.FC = () => {
           if (results.some((result) => isLoadFailure(result, 'signed-out'))) {
             transitionToSignedOut();
           } else if (results.every(isLoadSuccess)) {
+            commitRefreshError(false);
             commitStatus('ready');
           } else if (!results.some((result) => isLoadFailure(result, 'stale'))) {
-            commitStatus('error');
+            if (mode === 'refresh') commitRefreshError(true);
+            else commitStatus('error');
           }
         } catch {
-          if (context.isCurrent()) commitStatus('error');
+          if (context.isCurrent()) {
+            if (mode === 'refresh') commitRefreshError(true);
+            else commitStatus('error');
+          }
         } finally {
           if (inFlightRef.current?.promise === promise) inFlightRef.current = null;
         }
@@ -162,7 +206,7 @@ export const AppRoutes: React.FC = () => {
       inFlightRef.current = { userId, promise };
       return promise;
     },
-    [commitStatus, transitionToSignedOut]
+    [commitRefreshError, commitStatus, transitionToSignedOut]
   );
 
   const handleSessionUser = React.useCallback(
@@ -210,6 +254,58 @@ export const AppRoutes: React.FC = () => {
       // The existing initial error remains visible when retry cannot resolve a session.
     }
   }, [startBootstrap, transitionToSignedOut]);
+
+  const requestLifecycleRefresh = React.useCallback((): Promise<void> => {
+    if (bootstrapStatusRef.current !== 'ready') return Promise.resolve();
+
+    const expectedUserId = currentUserIdRef.current;
+    if (!expectedUserId) return Promise.resolve();
+
+    const activeRequest = lifecycleRequestRef.current;
+    if (activeRequest?.userId === expectedUserId) return activeRequest.promise;
+
+    const request = (async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (
+          !mountedRef.current ||
+          bootstrapStatusRef.current !== 'ready' ||
+          currentUserIdRef.current !== expectedUserId
+        ) {
+          return;
+        }
+
+        if (error) {
+          commitRefreshError(true);
+          return;
+        }
+
+        const sessionUserId = data.session?.user?.id ?? null;
+        if (sessionUserId !== expectedUserId) return;
+        await startBootstrap(sessionUserId, 'refresh');
+      } catch {
+        if (
+          mountedRef.current &&
+          bootstrapStatusRef.current === 'ready' &&
+          currentUserIdRef.current === expectedUserId
+        ) {
+          commitRefreshError(true);
+        }
+      } finally {
+        if (lifecycleRequestRef.current?.promise === request) {
+          lifecycleRequestRef.current = null;
+        }
+      }
+    })();
+
+    lifecycleRequestRef.current = { userId: expectedUserId, promise: request };
+    return request;
+  }, [commitRefreshError, startBootstrap]);
+
+  const retryLifecycleRefresh = React.useCallback(() => {
+    if (!refreshError || bootstrapStatusRef.current !== 'ready') return;
+    void requestLifecycleRefresh();
+  }, [refreshError, requestLifecycleRefresh]);
 
   React.useEffect(() => {
     initTheme();
@@ -279,6 +375,28 @@ export const AppRoutes: React.FC = () => {
     };
   }, [commitStatus, handleSessionUser, resetUserScopedState]);
 
+  React.useEffect(() => {
+    const refresh = () => {
+      void requestLifecycleRefresh();
+    };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+
+    window.addEventListener('focus', refresh);
+    window.addEventListener('pageshow', refresh);
+    window.addEventListener('online', refresh);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('pageshow', refresh);
+      window.removeEventListener('online', refresh);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      lifecycleRequestRef.current = null;
+    };
+  }, [requestLifecycleRefresh]);
+
   return (
     <ErrorBoundary>
       <ScrollToTop />
@@ -293,7 +411,9 @@ export const AppRoutes: React.FC = () => {
             element={
               <AuthenticatedRouteGate
                 status={bootstrapStatus}
+                refreshError={refreshError}
                 onRetry={retryInitialBootstrap}
+                onRefreshRetry={retryLifecycleRefresh}
               />
             }
           >

@@ -301,6 +301,265 @@ describe('authenticated initial readiness', () => {
     }
   });
 
+  describe('authenticated lifecycle recovery', () => {
+    const lifecycleCases = [
+      ['window focus', () => window.dispatchEvent(new Event('focus'))],
+      ['page restore', () => window.dispatchEvent(new Event('pageshow'))],
+      ['visible document', () => document.dispatchEvent(new Event('visibilitychange'))],
+      ['reconnect', () => window.dispatchEvent(new Event('online'))],
+    ] as const;
+
+    it.each(lifecycleCases)('refreshes all contextual data on %s', async (_, dispatchEvent) => {
+      const visibility = vi
+        .spyOn(document, 'visibilityState', 'get')
+        .mockReturnValue('visible');
+      renderProtectedRoute();
+      expect(await screen.findByText('Protected Home')).toBeInTheDocument();
+
+      act(dispatchEvent);
+
+      await waitFor(() => expect(harness.getSession).toHaveBeenCalledTimes(2));
+      for (const name of loaderNames) {
+        await waitFor(() => expect(harness.store[name]).toHaveBeenCalledTimes(2));
+      }
+      visibility.mockRestore();
+    });
+
+    it('ignores hidden visibility and lifecycle signals while signed out', async () => {
+      const visibility = vi
+        .spyOn(document, 'visibilityState', 'get')
+        .mockReturnValue('hidden');
+      harness.getSession.mockResolvedValueOnce(authResponse(null));
+      renderProtectedRoute();
+      expect(await screen.findByText('Bienvenido de nuevo')).toBeInTheDocument();
+
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+        window.dispatchEvent(new Event('focus'));
+        window.dispatchEvent(new Event('pageshow'));
+        window.dispatchEvent(new Event('online'));
+      });
+
+      await act(async () => Promise.resolve());
+      expect(harness.getSession).toHaveBeenCalledTimes(1);
+      for (const name of loaderNames) expect(harness.store[name]).not.toHaveBeenCalled();
+      visibility.mockRestore();
+    });
+
+    it('does not refresh when a ready document becomes hidden', async () => {
+      const visibility = vi
+        .spyOn(document, 'visibilityState', 'get')
+        .mockReturnValue('hidden');
+      renderProtectedRoute();
+      expect(await screen.findByText('Protected Home')).toBeInTheDocument();
+
+      act(() => document.dispatchEvent(new Event('visibilitychange')));
+
+      await act(async () => Promise.resolve());
+      expect(harness.getSession).toHaveBeenCalledTimes(1);
+      for (const name of loaderNames) {
+        expect(harness.store[name]).toHaveBeenCalledTimes(1);
+      }
+      visibility.mockRestore();
+    });
+
+    it('does not hydrate or hide ready content when lifecycle session is signed out', async () => {
+      renderProtectedRoute();
+      expect(await screen.findByText('Protected Home')).toBeInTheDocument();
+      harness.getSession.mockResolvedValueOnce(authResponse(null));
+
+      act(() => window.dispatchEvent(new Event('focus')));
+
+      await waitFor(() => expect(harness.getSession).toHaveBeenCalledTimes(2));
+      expect(screen.getByText('Protected Home')).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      for (const name of loaderNames) {
+        expect(harness.store[name]).toHaveBeenCalledTimes(1);
+      }
+    });
+
+    it('coalesces overlapping lifecycle signals into one session lookup and loader run', async () => {
+      const visibility = vi
+        .spyOn(document, 'visibilityState', 'get')
+        .mockReturnValue('visible');
+      renderProtectedRoute();
+      expect(await screen.findByText('Protected Home')).toBeInTheDocument();
+      const lookup = deferred<ReturnType<typeof authResponse>>();
+      harness.getSession.mockReturnValueOnce(lookup.promise);
+
+      act(() => {
+        window.dispatchEvent(new Event('focus'));
+        window.dispatchEvent(new Event('pageshow'));
+        document.dispatchEvent(new Event('visibilitychange'));
+        window.dispatchEvent(new Event('online'));
+      });
+      expect(harness.getSession).toHaveBeenCalledTimes(2);
+
+      await act(async () => lookup.resolve(authResponse(sessionFor('u1'))));
+      for (const name of loaderNames) {
+        await waitFor(() => expect(harness.store[name]).toHaveBeenCalledTimes(2));
+      }
+      expect(harness.getSession).toHaveBeenCalledTimes(2);
+      visibility.mockRestore();
+    });
+
+    it('keeps protected content mounted and shows an accessible refresh error', async () => {
+      harness.store.loadFolders
+        .mockResolvedValueOnce(loadOk)
+        .mockResolvedValueOnce(requestFailed);
+      renderProtectedRoute();
+      expect(await screen.findByText('Protected Home')).toBeInTheDocument();
+
+      act(() => window.dispatchEvent(new Event('focus')));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'No se pudieron actualizar tus datos'
+      );
+      expect(screen.getByText('Protected Home')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Reintentar actualización' })
+      ).toBeInTheDocument();
+    });
+
+    it('clears the refresh error after a successful same-session retry', async () => {
+      harness.store.loadUserData
+        .mockResolvedValueOnce(loadOk)
+        .mockResolvedValueOnce(requestFailed)
+        .mockResolvedValueOnce(loadOk);
+      renderProtectedRoute();
+      expect(await screen.findByText('Protected Home')).toBeInTheDocument();
+      act(() => window.dispatchEvent(new Event('focus')));
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Reintentar actualización' })
+      );
+
+      await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+      expect(screen.getByText('Protected Home')).toBeInTheDocument();
+      expect(harness.getSession).toHaveBeenCalledTimes(3);
+      for (const name of loaderNames) {
+        expect(harness.store[name]).toHaveBeenCalledTimes(3);
+      }
+    });
+
+    it('refuses refresh retry when the resolved session belongs to another user', async () => {
+      harness.getSession
+        .mockResolvedValueOnce(authResponse(sessionFor('u1')))
+        .mockResolvedValueOnce(authResponse(sessionFor('u1')))
+        .mockResolvedValueOnce(authResponse(sessionFor('u2')));
+      harness.store.loadUserData
+        .mockResolvedValueOnce(loadOk)
+        .mockResolvedValueOnce(requestFailed);
+      renderProtectedRoute();
+      expect(await screen.findByText('Protected Home')).toBeInTheDocument();
+      act(() => window.dispatchEvent(new Event('focus')));
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Reintentar actualización' })
+      );
+
+      await waitFor(() => expect(harness.getSession).toHaveBeenCalledTimes(3));
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'No se pudieron actualizar tus datos'
+      );
+      expect(screen.getByText('Protected Home')).toBeInTheDocument();
+      expect(harness.store.resetUserScopedState).not.toHaveBeenCalled();
+      for (const name of loaderNames) {
+        expect(harness.store[name]).toHaveBeenCalledTimes(2);
+      }
+    });
+
+    it('rejects a refresh failure made stale by a newer auth owner', async () => {
+      const staleResult = deferred<LoadResult>();
+      harness.store.loadUserData
+        .mockResolvedValueOnce(loadOk)
+        .mockReturnValueOnce(staleResult.promise)
+        .mockResolvedValueOnce(loadOk);
+      renderProtectedRoute();
+      expect(await screen.findByText('Protected Home')).toBeInTheDocument();
+      act(() => window.dispatchEvent(new Event('focus')));
+      await waitFor(() => expect(harness.store.loadUserData).toHaveBeenCalledTimes(2));
+
+      act(() => harness.authCallback?.('SIGNED_IN', sessionFor('u2')));
+      expect(await screen.findByText('Protected Home')).toBeInTheDocument();
+      await act(async () => staleResult.resolve(requestFailed));
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      for (const name of loaderNames) {
+        expect(harness.store[name]).toHaveBeenCalledTimes(3);
+      }
+    });
+
+    it('starts a distinct lifecycle request for a new ready owner while the old lookup is pending', async () => {
+      const staleLookup = deferred<ReturnType<typeof authResponse>>();
+      renderProtectedRoute();
+      expect(await screen.findByText('Protected Home')).toBeInTheDocument();
+      harness.getSession
+        .mockReturnValueOnce(staleLookup.promise)
+        .mockResolvedValueOnce(authResponse(sessionFor('u2')));
+
+      act(() => window.dispatchEvent(new Event('focus')));
+      expect(harness.getSession).toHaveBeenCalledTimes(2);
+
+      act(() => harness.authCallback?.('SIGNED_IN', sessionFor('u2')));
+      await waitFor(() => expect(harness.store.loadUserData).toHaveBeenCalledTimes(2));
+      expect(await screen.findByText('Protected Home')).toBeInTheDocument();
+
+      act(() => window.dispatchEvent(new Event('pageshow')));
+
+      await waitFor(() => expect(harness.getSession).toHaveBeenCalledTimes(3));
+      for (const name of loaderNames) {
+        await waitFor(() => expect(harness.store[name]).toHaveBeenCalledTimes(3));
+      }
+
+      await act(async () => staleLookup.resolve(authResponse(sessionFor('u1'))));
+      expect(screen.getByText('Protected Home')).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      for (const name of loaderNames) {
+        expect(harness.store[name].mock.calls[2][0]).toEqual(
+          expect.objectContaining({ userId: 'u2' })
+        );
+      }
+    });
+
+    it('invalidates a pending lifecycle request on sign-out', async () => {
+      const staleLookup = deferred<ReturnType<typeof authResponse>>();
+      renderProtectedRoute();
+      expect(await screen.findByText('Protected Home')).toBeInTheDocument();
+      harness.getSession.mockReturnValueOnce(staleLookup.promise);
+
+      act(() => window.dispatchEvent(new Event('focus')));
+      expect(harness.getSession).toHaveBeenCalledTimes(2);
+      act(() => harness.authCallback?.('SIGNED_OUT', null));
+      expect(await screen.findByText('Bienvenido de nuevo')).toBeInTheDocument();
+
+      act(() => window.dispatchEvent(new Event('online')));
+      await act(async () => staleLookup.resolve(authResponse(sessionFor('u1'))));
+
+      expect(harness.getSession).toHaveBeenCalledTimes(2);
+      expect(screen.getByText('Bienvenido de nuevo')).toBeInTheDocument();
+      expect(screen.queryByText('Protected Home')).not.toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(harness.store.resetUserScopedState).toHaveBeenCalledTimes(1);
+      for (const name of loaderNames) {
+        expect(harness.store[name]).toHaveBeenCalledTimes(1);
+      }
+    });
+
+    it('removes lifecycle recovery listeners on unmount', async () => {
+      const view = renderProtectedRoute();
+      expect(await screen.findByText('Protected Home')).toBeInTheDocument();
+      view.unmount();
+
+      act(() => {
+        window.dispatchEvent(new Event('focus'));
+        window.dispatchEvent(new Event('pageshow'));
+        window.dispatchEvent(new Event('online'));
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      expect(harness.getSession).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('replaces landing history with home after successful password login', async () => {
     const router = createMemoryRouter(
       [
