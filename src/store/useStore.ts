@@ -163,6 +163,70 @@ const toSafeRestSeconds = (value: number | undefined, fallback = 90) => {
   return Math.max(0, Math.round(value));
 };
 
+const clampActiveSetIndex = (setIndex: number | undefined, setCount: number) => {
+  const requestedSetIndex =
+    typeof setIndex === 'number' && Number.isFinite(setIndex)
+      ? Math.max(0, Math.floor(setIndex))
+      : 0;
+  return Math.min(requestedSetIndex, setCount - 1);
+};
+
+const buildActiveWorkoutAfterExerciseRemoval = (
+  activeWorkout: ActiveWorkout,
+  exerciseId: string
+): { activeWorkout: ActiveWorkout; timerOwnerRemoved: boolean } | null => {
+  const removedIndex = activeWorkout.exercises.findIndex(
+    (exercise) => exercise.exerciseId === exerciseId
+  );
+  if (removedIndex < 0) return null;
+
+  const remainingExercises = activeWorkout.exercises.filter(
+    (exercise) => exercise.exerciseId !== exerciseId
+  );
+  const supersetCounts = remainingExercises.reduce<Record<string, number>>((counts, exercise) => {
+    if (exercise.supersetId) {
+      counts[exercise.supersetId] = (counts[exercise.supersetId] ?? 0) + 1;
+    }
+    return counts;
+  }, {});
+  const exercises = remainingExercises.map((exercise) =>
+    exercise.supersetId && supersetCounts[exercise.supersetId] < 2
+      ? { ...exercise, supersetId: undefined }
+      : exercise
+  );
+
+  let currentExerciseId = activeWorkout.currentExerciseId;
+  let currentSetIndex = activeWorkout.currentSetIndex;
+  if (currentExerciseId) {
+    let focusedExercise = exercises.find((exercise) => exercise.exerciseId === currentExerciseId);
+    if (!focusedExercise) {
+      focusedExercise = exercises[removedIndex] ?? exercises[removedIndex - 1];
+    }
+
+    if (focusedExercise?.sets.length) {
+      currentExerciseId = focusedExercise.exerciseId;
+      currentSetIndex = clampActiveSetIndex(currentSetIndex, focusedExercise.sets.length);
+    } else {
+      currentExerciseId = undefined;
+      currentSetIndex = undefined;
+    }
+  } else {
+    currentSetIndex = undefined;
+  }
+
+  const timerOwnerRemoved = activeWorkout.restTimer?.exerciseId === exerciseId;
+  return {
+    activeWorkout: {
+      ...activeWorkout,
+      currentExerciseId,
+      currentSetIndex,
+      restTimer: timerOwnerRemoved ? null : activeWorkout.restTimer,
+      exercises,
+    },
+    timerOwnerRemoved,
+  };
+};
+
 export interface RoutineFolder {
   id: string;
   user_id: string;
@@ -296,11 +360,9 @@ const resolveLoadUser = async (
   }
 };
 
-const staleAfterRequest = (context?: LoadContext) =>
-  context ? !context.isCurrent() : false;
+const staleAfterRequest = (context?: LoadContext) => (context ? !context.isCurrent() : false);
 
-const completeLoad = (context?: LoadContext): LoadResult | void =>
-  context ? LOAD_OK : undefined;
+const completeLoad = (context?: LoadContext): LoadResult | void => (context ? LOAD_OK : undefined);
 
 interface AppState {
   routineName: string;
@@ -395,6 +457,8 @@ interface AppState {
   updateActiveWorkoutExerciseNotes: (exerciseId: string, notes: string) => Promise<void>;
   updateActiveWorkoutExerciseRest: (exerciseId: string, restSeconds: number) => Promise<void>;
   setActiveExerciseSuperset: (exerciseId: string, supersetId: string | null) => Promise<void>;
+  removeActiveWorkoutExercise: (exerciseId: string) => Promise<boolean>;
+  reorderActiveWorkoutExercises: (activeId: string, overId: string) => Promise<boolean>;
   updateWorkoutExerciseSets: (
     exerciseId: string,
     sets: ActiveWorkoutExercise['sets']
@@ -406,8 +470,8 @@ interface AppState {
   resumeRestTimer: () => Promise<void>;
   extendRestTimer: (secondsToAdd: number) => Promise<void>;
   saveActiveWorkoutProgress: () => Promise<void>;
-  flushActiveWorkoutProgress: (context?: LoadContext) => Promise<void>;
-  flushActiveWorkoutNow: (context?: LoadContext) => Promise<void>;
+  flushActiveWorkoutProgress: (context?: LoadContext) => Promise<boolean>;
+  flushActiveWorkoutNow: (context?: LoadContext) => Promise<boolean>;
   beaconFlushActiveWorkout: () => void;
   finishWorkout: () => Promise<void>;
   clearActiveWorkout: () => void;
@@ -420,7 +484,47 @@ interface AppState {
 // (and localStorage via persist) updates instantly; the network write is coalesced
 // so a single "complete set" tap produces one write instead of several.
 const ACTIVE_WORKOUT_SAVE_DEBOUNCE_MS = 600;
+const ACTIVE_WORKOUT_WRITE_TIMEOUT_MS = 10_000;
 let activeWorkoutFlushTimer: ReturnType<typeof setTimeout> | null = null;
+const activeWorkoutFlushQueues = new Map<string, Promise<void>>();
+const serializeActiveWorkoutFlush = <T>(ownerId: string, flush: () => Promise<T>): Promise<T> => {
+  const result = (activeWorkoutFlushQueues.get(ownerId) ?? Promise.resolve()).then(flush);
+  const queueTail = result.then(
+    () => undefined,
+    () => undefined
+  );
+  activeWorkoutFlushQueues.set(ownerId, queueTail);
+  void queueTail.then(() => {
+    if (activeWorkoutFlushQueues.get(ownerId) === queueTail) {
+      activeWorkoutFlushQueues.delete(ownerId);
+    }
+  });
+  return result;
+};
+const runBoundedActiveWorkoutWrite = async <T>(
+  write: (signal: AbortSignal) => PromiseLike<T>
+): Promise<T | null> => {
+  const controller = new AbortController();
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>((resolve) => {
+    timeoutId = setTimeout(() => {
+      controller.abort();
+      resolve(null);
+    }, ACTIVE_WORKOUT_WRITE_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([Promise.resolve(write(controller.signal)), timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+};
+const ACTIVE_WORKOUT_SAVE_ERROR = {
+  title: 'No se pudo guardar',
+  message:
+    'No se pudieron guardar los cambios del entrenamiento. Se mantienen en este dispositivo para reintentarlo.',
+  type: 'error' as const,
+};
 
 export const useStore = create<AppState>()(
   persist(
@@ -1020,6 +1124,65 @@ export const useStore = create<AppState>()(
         await get().saveActiveWorkoutProgress();
       },
 
+      removeActiveWorkoutExercise: async (exerciseId: string) => {
+        const state = get();
+        if (!state.activeWorkout) return false;
+        const editOwnerId = state.persistedUserId;
+        const editStartedAt = state.activeWorkout.startedAt;
+
+        const removal = buildActiveWorkoutAfterExerciseRemoval(state.activeWorkout, exerciseId);
+        if (!removal) return false;
+
+        set({ activeWorkout: removal.activeWorkout });
+        if (removal.timerOwnerRemoved) cancelRestPush();
+        await get().saveActiveWorkoutProgress();
+
+        const persisted = await get().flushActiveWorkoutNow();
+        const currentState = get();
+        if (
+          !persisted &&
+          currentState.persistedUserId === editOwnerId &&
+          currentState.activeWorkout?.startedAt === editStartedAt
+        ) {
+          set({ notification: ACTIVE_WORKOUT_SAVE_ERROR });
+        }
+        return persisted;
+      },
+
+      reorderActiveWorkoutExercises: async (activeId: string, overId: string) => {
+        const state = get();
+        if (!state.activeWorkout) return false;
+        const editOwnerId = state.persistedUserId;
+        const editStartedAt = state.activeWorkout.startedAt;
+
+        const exercises = [...state.activeWorkout.exercises];
+        const activeIndex = exercises.findIndex((exercise) => exercise.exerciseId === activeId);
+        const overIndex = exercises.findIndex((exercise) => exercise.exerciseId === overId);
+        if (activeIndex < 0 || overIndex < 0) return false;
+        if (activeIndex === overIndex) return true;
+
+        const [moved] = exercises.splice(activeIndex, 1);
+        exercises.splice(overIndex, 0, moved);
+        set({
+          activeWorkout: {
+            ...state.activeWorkout,
+            exercises,
+          },
+        });
+        await get().saveActiveWorkoutProgress();
+
+        const persisted = await get().flushActiveWorkoutNow();
+        const currentState = get();
+        if (
+          !persisted &&
+          currentState.persistedUserId === editOwnerId &&
+          currentState.activeWorkout?.startedAt === editStartedAt
+        ) {
+          set({ notification: ACTIVE_WORKOUT_SAVE_ERROR });
+        }
+        return persisted;
+      },
+
       updateActiveWorkoutExerciseNotes: async (exerciseId: string, notes: string) => {
         const state = get();
         if (!state.activeWorkout) return;
@@ -1238,57 +1401,65 @@ export const useStore = create<AppState>()(
       // The actual network write. Uses getSession() (local, no auth-server round-trip)
       // and upsert (self-heals if the row is missing). Persists client_updated_at so
       // reconciliation on the next load can tell which copy is newer.
-      flushActiveWorkoutProgress: async (context?: LoadContext) => {
-        const state = get();
-        if (!state.activeWorkout) return;
+      flushActiveWorkoutProgress: (context?: LoadContext) => {
+        const requestedOwnerId = get().persistedUserId;
+        if (!get().activeWorkout || !requestedOwnerId) return Promise.resolve(false);
 
-        let user: AuthenticatedUser | null;
-        if (context) {
-          ({ user } = await resolveLoadUser(context, 'session'));
-          if (!user || state.persistedUserId !== context.userId) return;
-        } else {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-          user = session?.user ?? null;
-        }
-        if (!user) return;
+        return serializeActiveWorkoutFlush(requestedOwnerId, async () => {
+          let user: AuthenticatedUser | null;
+          if (context) {
+            ({ user } = await resolveLoadUser(context, 'session'));
+            if (!user || context.userId !== requestedOwnerId) return false;
+          } else {
+            const {
+              data: { session },
+            } = await supabase.auth.getSession();
+            user = session?.user ?? null;
+          }
+          if (!user || user.id !== requestedOwnerId) return false;
 
-        const safeExercises = Array.isArray(state.activeWorkout.exercises)
-          ? state.activeWorkout.exercises.filter(
-              (ex): ex is ActiveWorkoutExercise => !!ex && typeof ex.exerciseId === 'string'
-            )
-          : [];
+          const state = get();
+          if (!state.activeWorkout || state.persistedUserId !== requestedOwnerId) return false;
 
-        const workoutData = buildActiveWorkoutDataPayload({
-          exercises: safeExercises,
-          currentExerciseId: state.activeWorkout.currentExerciseId,
-          currentSetIndex: state.activeWorkout.currentSetIndex,
-          restTimer: state.activeWorkout.restTimer || null,
-          overrideDate: state.activeWorkout.overrideDate,
-        });
+          const safeExercises = Array.isArray(state.activeWorkout.exercises)
+            ? state.activeWorkout.exercises.filter(
+                (ex): ex is ActiveWorkoutExercise => !!ex && typeof ex.exerciseId === 'string'
+              )
+            : [];
 
-        const { error } = await supabase.from('active_workouts').upsert(
-          {
-            user_id: user.id,
-            routine_id: state.activeWorkout.routineId ?? null,
-            routine_name: state.activeWorkout.routineName,
-            started_at: state.activeWorkout.startedAt,
-            workout_data: {
-              ...workoutData,
-              is_paused: state.activeWorkout.isPaused ?? false,
-              paused_at: state.activeWorkout.pausedAt || null,
-              total_paused_ms: state.activeWorkout.totalPausedMs || 0,
-              client_updated_at: state.activeWorkout.updatedAt ?? new Date().toISOString(),
+          const workoutData = buildActiveWorkoutDataPayload({
+            exercises: safeExercises,
+            currentExerciseId: state.activeWorkout.currentExerciseId,
+            currentSetIndex: state.activeWorkout.currentSetIndex,
+            restTimer: state.activeWorkout.restTimer || null,
+            overrideDate: state.activeWorkout.overrideDate,
+          });
+
+          const query = supabase.from('active_workouts').upsert(
+            {
+              user_id: requestedOwnerId,
+              routine_id: state.activeWorkout.routineId ?? null,
+              routine_name: state.activeWorkout.routineName,
+              started_at: state.activeWorkout.startedAt,
+              workout_data: {
+                ...workoutData,
+                is_paused: state.activeWorkout.isPaused ?? false,
+                paused_at: state.activeWorkout.pausedAt || null,
+                total_paused_ms: state.activeWorkout.totalPausedMs || 0,
+                client_updated_at: state.activeWorkout.updatedAt ?? new Date().toISOString(),
+              },
+              updated_at: new Date().toISOString(),
             },
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'user_id' }
-        );
+            { onConflict: 'user_id' }
+          );
+          const result = await Promise.resolve(query).catch((error) => ({ error }));
 
-        if (error) {
-          console.error('flushActiveWorkoutProgress error:', error);
-        }
+          if (result.error) {
+            console.error('flushActiveWorkoutProgress error:', result.error);
+            return false;
+          }
+          return get().persistedUserId === requestedOwnerId && !!get().activeWorkout;
+        });
       },
 
       // Cancel any pending debounce and write immediately (used on reconnect / finish).
@@ -1297,63 +1468,70 @@ export const useStore = create<AppState>()(
           clearTimeout(activeWorkoutFlushTimer);
           activeWorkoutFlushTimer = null;
         }
-        await get().flushActiveWorkoutProgress(context);
+        return get().flushActiveWorkoutProgress(context);
       },
 
-      // Best-effort flush that survives the page being suspended/closed. Uses a
-      // keepalive fetch with a synchronously-cached token, since the page may be
-      // frozen before supabase.auth.getSession() could resolve. iOS Safari does not
-      // support Background Sync, so this lifecycle flush is the reliable path.
+      // Best-effort flush that survives the page being suspended/closed. It shares
+      // the owner queue with normal flushes and carries a timestamp precondition so
+      // a delayed lifecycle PATCH cannot restore an older workout snapshot.
       beaconFlushActiveWorkout: () => {
-        const state = get();
-        if (!state.activeWorkout) return;
-
+        const requestedOwnerId = get().persistedUserId;
         const { accessToken, userId } = getCachedAuth();
-        if (!accessToken || !userId) return;
+        if (!requestedOwnerId || !accessToken || userId !== requestedOwnerId) return;
 
-        const safeExercises = Array.isArray(state.activeWorkout.exercises)
-          ? state.activeWorkout.exercises.filter(
-              (ex): ex is ActiveWorkoutExercise => !!ex && typeof ex.exerciseId === 'string'
-            )
-          : [];
+        void serializeActiveWorkoutFlush(requestedOwnerId, async () => {
+          const state = get();
+          if (!state.activeWorkout || state.persistedUserId !== requestedOwnerId) return;
 
-        const workoutData = buildActiveWorkoutDataPayload({
-          exercises: safeExercises,
-          currentExerciseId: state.activeWorkout.currentExerciseId,
-          currentSetIndex: state.activeWorkout.currentSetIndex,
-          restTimer: state.activeWorkout.restTimer || null,
-          overrideDate: state.activeWorkout.overrideDate,
-        });
-
-        const body = JSON.stringify({
-          workout_data: {
-            ...workoutData,
-            is_paused: state.activeWorkout.isPaused ?? false,
-            paused_at: state.activeWorkout.pausedAt || null,
-            total_paused_ms: state.activeWorkout.totalPausedMs || 0,
-            client_updated_at: state.activeWorkout.updatedAt ?? new Date().toISOString(),
-          },
-          updated_at: new Date().toISOString(),
-        });
-
-        try {
-          void fetch(
-            `${SUPABASE_REST_URL}/rest/v1/active_workouts?user_id=eq.${encodeURIComponent(userId)}`,
-            {
-              method: 'PATCH',
-              keepalive: true,
-              headers: {
-                'Content-Type': 'application/json',
-                apikey: SUPABASE_ANON_KEY,
-                Authorization: `Bearer ${accessToken}`,
-                Prefer: 'return=minimal',
-              },
-              body,
-            }
+          const safeExercises = Array.isArray(state.activeWorkout.exercises)
+            ? state.activeWorkout.exercises.filter(
+                (ex): ex is ActiveWorkoutExercise => !!ex && typeof ex.exerciseId === 'string'
+              )
+            : [];
+          const clientUpdatedAt = state.activeWorkout.updatedAt ?? new Date().toISOString();
+          const workoutData = buildActiveWorkoutDataPayload({
+            exercises: safeExercises,
+            currentExerciseId: state.activeWorkout.currentExerciseId,
+            currentSetIndex: state.activeWorkout.currentSetIndex,
+            restTimer: state.activeWorkout.restTimer || null,
+            overrideDate: state.activeWorkout.overrideDate,
+          });
+          const body = JSON.stringify({
+            workout_data: {
+              ...workoutData,
+              is_paused: state.activeWorkout.isPaused ?? false,
+              paused_at: state.activeWorkout.pausedAt || null,
+              total_paused_ms: state.activeWorkout.totalPausedMs || 0,
+              client_updated_at: clientUpdatedAt,
+            },
+            updated_at: new Date().toISOString(),
+          });
+          const beaconUrl = new URL(`${SUPABASE_REST_URL}/rest/v1/active_workouts`);
+          beaconUrl.searchParams.set('user_id', `eq.${requestedOwnerId}`);
+          beaconUrl.searchParams.set(
+            'or',
+            `(workout_data->>client_updated_at.is.null,workout_data->>client_updated_at.lt.${clientUpdatedAt})`
           );
-        } catch (err) {
-          console.error('beaconFlushActiveWorkout error:', err);
-        }
+
+          try {
+            await runBoundedActiveWorkoutWrite((signal) =>
+              fetch(beaconUrl.toString(), {
+                method: 'PATCH',
+                keepalive: true,
+                signal,
+                headers: {
+                  'Content-Type': 'application/json',
+                  apikey: SUPABASE_ANON_KEY,
+                  Authorization: `Bearer ${accessToken}`,
+                  Prefer: 'return=minimal',
+                },
+                body,
+              })
+            );
+          } catch (err) {
+            console.error('beaconFlushActiveWorkout error:', err);
+          }
+        });
       },
 
       startEmptyWorkout: async (overrideDate?: string) => {
