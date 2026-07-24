@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
-import { useStore } from '../store/useStore';
+import { useStore, type LoadResult, type RoutineUpdateCandidate } from '../store/useStore';
 import WorkoutTimer from '../components/WorkoutTimer';
 import RestTimer from '../components/RestTimer';
 import { buildLastPerformanceMap } from '../lib/workoutUtils';
@@ -33,6 +33,55 @@ export const getWorkoutContentReservation = (hasRestTimer: boolean) => ({
   includesKeyboardInset: true as const,
 });
 
+const RoutineUpdatePrompt: React.FC<{
+  onAccept: () => void;
+  onDecline: () => void;
+}> = ({ onAccept, onDecline }) => (
+  <div
+    className="fixed inset-0 z-[80] flex items-center justify-center bg-[rgba(2,8,15,0.72)] p-4 backdrop-blur-sm"
+    onClick={onDecline}
+  >
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="routine-update-title"
+      className="relative w-full max-w-md rounded-3xl border border-[rgba(73,133,214,0.16)] bg-[#0b1724] p-6 shadow-2xl"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <button
+        type="button"
+        aria-label="Cerrar actualización de rutina"
+        onClick={onDecline}
+        className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-white/5 hover:text-white"
+      >
+        <span className="material-symbols-outlined">close</span>
+      </button>
+      <h2 id="routine-update-title" className="pr-10 text-xl font-bold text-white">
+        Actualizar rutina original
+      </h2>
+      <p className="mt-2 text-sm leading-6 text-slate-400">
+        ¿Quieres copiar la configuración final de ejercicios a esta rutina?
+      </p>
+      <div className="mt-6 flex gap-3">
+        <button
+          type="button"
+          onClick={onDecline}
+          className="flex-1 rounded-2xl border border-white/10 px-4 py-3 font-semibold text-slate-300"
+        >
+          No, mantener
+        </button>
+        <button
+          type="button"
+          onClick={onAccept}
+          className="flex-1 rounded-2xl bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] px-4 py-3 font-bold text-white"
+        >
+          Sí, actualizar
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
 const WorkoutSession: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -44,6 +93,7 @@ const WorkoutSession: React.FC = () => {
     workoutHistory,
     loadWorkoutHistory,
     activeWorkout,
+    persistedUserId,
     loadActiveWorkout,
     startWorkout,
     startEmptyWorkout,
@@ -51,6 +101,8 @@ const WorkoutSession: React.FC = () => {
     updateActiveWorkoutExerciseNotes,
     updateActiveWorkoutExerciseRest,
     setActiveExerciseSuperset,
+    removeActiveWorkoutExercise,
+    reorderActiveWorkoutExercises,
     updateWorkoutExerciseSets,
     setActiveWorkoutPosition,
     startRestTimer,
@@ -59,16 +111,25 @@ const WorkoutSession: React.FC = () => {
     resumeRestTimer,
     extendRestTimer,
     finishWorkout,
+    updateRoutineFromWorkout,
     cancelWorkout,
   } = useStore();
 
   const [expandedExercise, setExpandedExercise] = useState<string | null>(null);
   const [initializationError, setInitializationError] = useState<string | null>(null);
-  const [activeWorkoutRestored, setActiveWorkoutRestored] = useState(false);
+  const [startupResolved, setStartupResolved] = useState(false);
   const [finishConfirmOpen, setFinishConfirmOpen] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [pendingRoutineUpdate, setPendingRoutineUpdate] = useState<RoutineUpdateCandidate | null>(
+    null
+  );
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [supersetPickerFor, setSupersetPickerFor] = useState<string | null>(null);
+  const startupPromiseRef = React.useRef<{
+    userId: string;
+    promise: Promise<[LoadResult | void, LoadResult | void]>;
+  } | null>(null);
+  const initializationConsumedRef = React.useRef(false);
   // For past-day workouts, use the real page-open time for the live timer
   const realStartedAtRef = React.useRef<string>(new Date().toISOString());
 
@@ -85,18 +146,41 @@ const WorkoutSession: React.FC = () => {
   );
 
   useEffect(() => {
-    loadRoutines();
-
     let cancelled = false;
-    (async () => {
-      await loadActiveWorkout();
-      if (!cancelled) setActiveWorkoutRestored(true);
-    })();
+    if (!persistedUserId) return;
+
+    if (startupPromiseRef.current?.userId !== persistedUserId) {
+      const context = {
+        userId: persistedUserId,
+        isCurrent: () => useStore.getState().persistedUserId === persistedUserId,
+      };
+      startupPromiseRef.current = {
+        userId: persistedUserId,
+        promise: Promise.resolve().then(() =>
+          Promise.all([loadRoutines(context), loadActiveWorkout(context)])
+        ),
+      };
+    }
+    void startupPromiseRef.current.promise.then(
+      (results) => {
+        if (cancelled) return;
+        if (results.every((result) => result?.ok === true)) {
+          setStartupResolved(true);
+        } else {
+          setInitializationError('No se pudo cargar el entrenamiento.');
+        }
+      },
+      () => {
+        if (!cancelled) {
+          setInitializationError('No se pudo cargar el entrenamiento.');
+        }
+      }
+    );
 
     return () => {
       cancelled = true;
     };
-  }, [loadRoutines, loadActiveWorkout]);
+  }, [persistedUserId, loadRoutines, loadActiveWorkout]);
 
   // Keep the screen awake during the workout (gym QoL — no more screen sleeping
   // between sets). The lock auto-releases when the page is hidden, so re-acquire
@@ -139,11 +223,7 @@ const WorkoutSession: React.FC = () => {
     let cancelled = false;
 
     const initSession = async () => {
-      // First try to restore any workout already in progress (critical on iPhone resume/reload)
-      if (!activeWorkoutRestored) return;
-
-      // Safe guards
-      if (activeWorkout) return;
+      if (!startupResolved || initializationConsumedRef.current) return;
 
       // The static route /routine/free/workout has no :id param,
       // so id will be undefined. Detect both cases.
@@ -151,7 +231,10 @@ const WorkoutSession: React.FC = () => {
       // because the app uses HashRouter.
       const isFreeRoute = id === 'free' || (!id && location.pathname.includes('/free/'));
 
-      if (!isFreeRoute && savedRoutines.length === 0) return; // Wait for routines to load
+      // Consume initialization before accepting restoration or starting. A later
+      // terminal clear on this mount must never re-arm startup.
+      initializationConsumedRef.current = true;
+      if (activeWorkout) return;
 
       if (isFreeRoute) {
         try {
@@ -183,10 +266,10 @@ const WorkoutSession: React.FC = () => {
             setInitializationError('Error al iniciar entrenamiento');
           }
         } else {
-          if (savedRoutines.length > 0) {
-            navigate('/routine');
-          }
+          navigate('/routine');
         }
+      } else {
+        navigate('/routine');
       }
     };
 
@@ -204,7 +287,7 @@ const WorkoutSession: React.FC = () => {
     navigate,
     searchParams,
     location,
-    activeWorkoutRestored,
+    startupResolved,
   ]);
 
   useEffect(() => {
@@ -376,6 +459,31 @@ const WorkoutSession: React.FC = () => {
     void updateWorkoutExerciseSets(exerciseId, updatedSets);
   };
 
+  const acceptRoutineUpdate = async () => {
+    const candidate = pendingRoutineUpdate;
+    if (!candidate) return;
+    try {
+      const updated = await updateRoutineFromWorkout(candidate);
+      if (!updated) return;
+      setPendingRoutineUpdate(null);
+      navigate('/dashboard');
+    } catch {
+      // Keep the originating candidate available so the user can retry.
+    }
+  };
+
+  const declineRoutineUpdate = () => {
+    setPendingRoutineUpdate(null);
+    navigate('/dashboard');
+  };
+
+  const routineUpdatePrompt = pendingRoutineUpdate ? (
+    <RoutineUpdatePrompt
+      onAccept={() => void acceptRoutineUpdate()}
+      onDecline={declineRoutineUpdate}
+    />
+  ) : null;
+
   if (initializationError) {
     return (
       <div className="flex h-full w-full items-center justify-center p-4">
@@ -398,16 +506,19 @@ const WorkoutSession: React.FC = () => {
 
   if (!activeWorkout) {
     return (
-      <div className="flex h-full w-full items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="flex size-12 items-center justify-center rounded-full bg-primary/10">
-            <span className="material-symbols-outlined text-primary animate-spin">
-              progress_activity
-            </span>
+      <>
+        <div className="flex h-full w-full items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex size-12 items-center justify-center rounded-full bg-primary/10">
+              <span className="material-symbols-outlined text-primary animate-spin">
+                progress_activity
+              </span>
+            </div>
+            <p className="text-slate-400">Cargando entrenamiento...</p>
           </div>
-          <p className="text-slate-400">Cargando entrenamiento...</p>
         </div>
-      </div>
+        {routineUpdatePrompt}
+      </>
     );
   }
 
@@ -466,12 +577,13 @@ const WorkoutSession: React.FC = () => {
 
   const confirmFinish = async () => {
     setFinishConfirmOpen(false);
-    await finishWorkout();
-    // finishWorkout keeps the active workout and shows an error notification if
-    // the save failed; only leave the screen once it was actually saved.
-    if (!useStore.getState().activeWorkout) {
-      navigate('/dashboard');
+    const result = await finishWorkout();
+    if (!result.ok) return;
+    if (result.routineUpdate) {
+      setPendingRoutineUpdate(result.routineUpdate);
+      return;
     }
+    navigate('/dashboard');
   };
 
   const confirmCancel = () => {
@@ -488,6 +600,14 @@ const WorkoutSession: React.FC = () => {
     setIsLibraryOpen(false);
   };
 
+  const moveExercise = (exerciseIndex: number, direction: -1 | 1) => {
+    const targetIndex = exerciseIndex + direction;
+    const activeExercise = safeExercises[exerciseIndex];
+    const targetExercise = safeExercises[targetIndex];
+    if (!activeExercise || !targetExercise) return;
+    void reorderActiveWorkoutExercises(activeExercise.exerciseId, targetExercise.exerciseId);
+  };
+
   const contentReservation = getWorkoutContentReservation(Boolean(activeWorkout.restTimer));
   const contentBottomPaddingClass =
     contentReservation.mobileBaseRem === 19
@@ -498,7 +618,10 @@ const WorkoutSession: React.FC = () => {
     <div className="h-full w-full flex overflow-hidden bg-[linear-gradient(180deg,#08111d_0%,#06101a_40%,#040b13_100%)]">
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto mobile-scroll">
-        <div className={`flex flex-col max-w-3xl mx-auto ${contentBottomPaddingClass}`}>
+        <div
+          data-testid="workout-scroll-content"
+          className={`flex flex-col max-w-3xl mx-auto ${contentBottomPaddingClass}`}
+        >
           {/* Header (Mobile Only for Sidebar items) */}
           <div className="sticky top-0 z-10 border-b border-[rgba(73,133,214,0.12)] bg-[rgba(6,14,24,0.92)] p-4 backdrop-blur-xl lg:p-6">
             <div className="flex items-center justify-between mb-3">
@@ -582,6 +705,7 @@ const WorkoutSession: React.FC = () => {
             {safeExercises.map((exercise, exIndex) => (
               <div
                 key={exercise.exerciseId}
+                data-exercise-card={exercise.exerciseId}
                 className={`mobile-card overflow-hidden shadow-sm ${
                   exercise.supersetId ? 'border-l-4 border-l-violet-500' : ''
                 }`}
@@ -598,7 +722,7 @@ const WorkoutSession: React.FC = () => {
                     }
                   }}
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs font-bold text-slate-500">#{exIndex + 1}</span>
@@ -620,7 +744,47 @@ const WorkoutSession: React.FC = () => {
                         series completadas
                       </p>
                     </div>
-                    <div className="flex items-center">
+                    <div className="flex items-center self-end sm:self-auto">
+                      <button
+                        type="button"
+                        disabled={exIndex === 0}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          moveExercise(exIndex, -1);
+                        }}
+                        aria-label={`Mover ${exercise.name} arriba`}
+                        title="Mover ejercicio arriba"
+                        className="flex size-10 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">arrow_upward</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={exIndex === safeExercises.length - 1}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          moveExercise(exIndex, 1);
+                        }}
+                        aria-label={`Mover ${exercise.name} abajo`}
+                        title="Mover ejercicio abajo"
+                        className="flex size-10 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">
+                          arrow_downward
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void removeActiveWorkoutExercise(exercise.exerciseId);
+                        }}
+                        aria-label={`Eliminar ${exercise.name}`}
+                        title="Eliminar ejercicio"
+                        className="flex size-10 items-center justify-center rounded-lg text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">delete</span>
+                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -940,6 +1104,7 @@ const WorkoutSession: React.FC = () => {
           </div>
         </div>
       )}
+      {routineUpdatePrompt}
     </div>
   );
 };

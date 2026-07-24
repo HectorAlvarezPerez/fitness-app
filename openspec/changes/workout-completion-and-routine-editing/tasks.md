@@ -42,7 +42,7 @@ Apply routing: wait for explicit approval of the three stacked-to-main slices; t
 
 ## Phase 3: Session wiring and viewport (Slice 3)
 
-- [ ] 3.1 RED: extend `src/pages/WorkoutSession.test.tsx` with deferred loads/no start before both resolve and no post-finish restart.
-- [ ] 3.2 GREEN: add per-mount consumed initialization guard in `src/pages/WorkoutSession.tsx`; accept restore or start once.
-- [ ] 3.3 RED: add keyboard-capable reorder/delete labels, prompt eligibility/Yes/No/dismissal, and 375px timer reservation/focusability tests.
-- [ ] 3.4 GREEN→REFACTOR: wire sortable exercise cards and template choice after success; retain exactly `19rem`, desktop `9rem`, safe-area and keyboard reservation; run Slice 3 command and manually check 375×812 scrolling/keyboard.
+- [x] 3.1 RED: extend `src/pages/WorkoutSession.test.tsx` with deferred loads/no start before both resolve and no post-finish restart.
+- [x] 3.2 GREEN: add per-mount consumed initialization guard in `src/pages/WorkoutSession.tsx`; accept restore or start once.
+- [x] 3.3 RED: add keyboard-capable reorder/delete labels, prompt eligibility/Yes/No/dismissal, and 375px timer reservation/focusability tests.
+- [x] 3.4 GREEN→REFACTOR: wire sortable exercise cards and template choice after success; retain exactly `19rem`, desktop `9rem`, safe-area and keyboard reservation; run Slice 3 command and manually check 375×812 scrolling/keyboard.
