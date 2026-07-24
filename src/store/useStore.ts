@@ -1103,7 +1103,7 @@ export const useStore = create<AppState>()(
           if (local && sameUser && localUpdatedAt > serverUpdatedAt) {
             // Local is ahead of the server — keep it and push it back up.
             set({ persistedUserId: user.id });
-            void get().flushActiveWorkoutNow(context);
+            await get().flushActiveWorkoutNow(context);
             return completeLoad(context);
           }
 
@@ -1138,7 +1138,7 @@ export const useStore = create<AppState>()(
         // it just hasn't synced yet — keep it and recreate the row instead of wiping it.
         if (local && sameUser) {
           set({ persistedUserId: user.id });
-          void get().flushActiveWorkoutNow(context);
+          await get().flushActiveWorkoutNow(context);
           return completeLoad(context);
         }
 
