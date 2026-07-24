@@ -122,6 +122,15 @@ export interface ActiveWorkout {
   updatedAt?: string; // client ISO timestamp of last local mutation, for sync reconciliation
 }
 
+export interface RoutineUpdateCandidate {
+  routineId: string;
+  exercises: Exercise[];
+}
+
+export type WorkoutFinishResult =
+  | { ok: true; routineUpdate?: RoutineUpdateCandidate }
+  | { ok: false };
+
 const ensureSetIds = <T extends { id?: string }>(sets: T[]) => {
   let changed = false;
   const next = sets.map((set) => {
@@ -226,6 +235,37 @@ const buildActiveWorkoutAfterExerciseRemoval = (
     timerOwnerRemoved,
   };
 };
+
+const mapActiveWorkoutExercisesToRoutine = (exercises: ActiveWorkoutExercise[]): Exercise[] =>
+  exercises.map((exercise) => ({
+    id: exercise.exerciseId,
+    name: exercise.name,
+    muscleGroup: exercise.primaryMuscle,
+    notes: exercise.notes,
+    sets: exercise.sets.map((set) => ({
+      id: set.id,
+      reps: set.reps,
+      weight: set.weight,
+      isWarmup: set.isWarmup,
+      isFailure: set.isFailure,
+      dropsets: set.dropsets?.map((dropset) => ({
+        reps: dropset.reps,
+        weight: dropset.weight,
+      })),
+    })),
+    restSeconds: exercise.restSeconds,
+    secondaryMuscles: exercise.secondaryMuscles,
+    secondaryMuscleFactor: exercise.secondaryMuscleFactor,
+    includesBodyweight: exercise.includesBodyweight,
+    trackingType: exercise.trackingType,
+    supersetId: exercise.supersetId,
+  }));
+
+const isSameActiveWorkout = (candidate: ActiveWorkout | null, captured: ActiveWorkout): boolean =>
+  !!candidate &&
+  !!captured.id &&
+  candidate.id === captured.id &&
+  candidate.startedAt === captured.startedAt;
 
 export interface RoutineFolder {
   id: string;
@@ -431,6 +471,7 @@ interface AppState {
     folderId?: string | null,
     defaultRestSeconds?: number
   ) => Promise<{ data: Routine | null; error: string | null }>;
+  updateRoutineFromWorkout: (candidate: RoutineUpdateCandidate) => Promise<boolean>;
   deleteRoutine: (id: string) => Promise<void>;
   setCurrentRoutineId: (id: string | null) => void;
 
@@ -473,7 +514,7 @@ interface AppState {
   flushActiveWorkoutProgress: (context?: LoadContext) => Promise<boolean>;
   flushActiveWorkoutNow: (context?: LoadContext) => Promise<boolean>;
   beaconFlushActiveWorkout: () => void;
-  finishWorkout: () => Promise<void>;
+  finishWorkout: () => Promise<WorkoutFinishResult>;
   clearActiveWorkout: () => void;
   pauseWorkout: () => void;
   resumeWorkout: () => void;
@@ -708,6 +749,37 @@ export const useStore = create<AppState>()(
           }
         }
         return { data: null, error: 'Error desconocido al guardar.' };
+      },
+
+      updateRoutineFromWorkout: async (candidate) => {
+        try {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          const user = session?.user ?? null;
+          if (!user) return false;
+
+          const { data, error } = await supabase
+            .from('routines')
+            .update({ exercises: candidate.exercises })
+            .eq('id', candidate.routineId)
+            .eq('user_id', user.id)
+            .select('id')
+            .maybeSingle();
+
+          if (error || !data) return false;
+
+          set((state) => ({
+            savedRoutines: state.savedRoutines.map((routine) =>
+              routine.id === candidate.routineId
+                ? { ...routine, exercises: candidate.exercises }
+                : routine
+            ),
+          }));
+          return true;
+        } catch {
+          return false;
+        }
       },
 
       deleteRoutine: async (id: string) => {
@@ -1808,36 +1880,63 @@ export const useStore = create<AppState>()(
       },
 
       finishWorkout: async () => {
-        const state = get();
-        if (!state.activeWorkout) return;
+        const activeWorkout = get().activeWorkout;
+        const requestedOwnerId = get().persistedUserId;
+        if (!activeWorkout?.id || !requestedOwnerId) return { ok: false };
 
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        const user = session?.user ?? null;
-        if (!user) {
+        const stillOwnsCapturedWorkout = () =>
+          get().persistedUserId === requestedOwnerId &&
+          isSameActiveWorkout(get().activeWorkout, activeWorkout);
+        const reportFinishFailure = (message: string) => {
+          if (!stillOwnsCapturedWorkout()) return;
           set({
             notification: {
               title: 'No se pudo guardar',
-              message:
-                'Tu sesion no esta activa. Vuelve a iniciar sesion; tu entrenamiento NO se ha borrado, puedes reintentar.',
+              message,
               type: 'error',
             },
           });
-          return;
+        };
+
+        let user: AuthenticatedUser | null = null;
+        try {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          user = session?.user ?? null;
+        } catch {
+          reportFinishFailure(
+            'Tu sesion no esta activa. Vuelve a iniciar sesion; tu entrenamiento NO se ha borrado, puedes reintentar.'
+          );
+          return { ok: false };
         }
 
-        const startTime = new Date(state.activeWorkout.startedAt);
+        if (!user || user.id !== requestedOwnerId) {
+          reportFinishFailure(
+            'Tu sesion no esta activa. Vuelve a iniciar sesion; tu entrenamiento NO se ha borrado, puedes reintentar.'
+          );
+          return { ok: false };
+        }
+        if (!stillOwnsCapturedWorkout()) {
+          return { ok: false };
+        }
+
+        if (activeWorkoutFlushTimer) {
+          clearTimeout(activeWorkoutFlushTimer);
+          activeWorkoutFlushTimer = null;
+        }
+
+        const startTime = new Date(activeWorkout.startedAt);
         const endTime = new Date();
         const durationMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / 60000);
 
         let totalVolume = 0;
-        const completedExercises = Array.isArray(state.activeWorkout.exercises)
-          ? state.activeWorkout.exercises.filter(
+        const completedExercises = Array.isArray(activeWorkout.exercises)
+          ? activeWorkout.exercises.filter(
               (ex): ex is ActiveWorkoutExercise => !!ex && Array.isArray(ex.sets)
             )
           : [];
-        const userWeight = state.onboardingData?.weight || 0;
+        const userWeight = get().onboardingData?.weight || 0;
 
         completedExercises.forEach((ex) => {
           ex.sets.forEach((set) => {
@@ -1861,99 +1960,193 @@ export const useStore = create<AppState>()(
         });
 
         // Use overrideDate if set (for past-day workouts)
-        const overrideDate = state.activeWorkout.overrideDate;
+        const overrideDate = activeWorkout.overrideDate;
         const completedAt = overrideDate
           ? new Date(`${overrideDate}T10:00:00`).toISOString()
           : endTime.toISOString();
         const startedAtFinal = overrideDate
           ? new Date(`${overrideDate}T09:00:00`).toISOString()
-          : state.activeWorkout.startedAt;
-
-        const { error: saveError } = await supabase.from('workout_sessions').insert({
-          user_id: user.id,
-          routine_id: state.activeWorkout.routineId,
-          routine_name: state.activeWorkout.routineName,
-          started_at: startedAtFinal,
-          completed_at: completedAt,
-          exercises_completed: completedExercises,
-          total_volume: totalVolume,
-          duration_minutes: overrideDate ? 60 : durationMinutes,
-        });
-
-        if (saveError) {
-          set({
-            notification: {
-              title: 'No se pudo guardar',
-              message:
-                'Hubo un error al guardar el entrenamiento. NO se ha borrado; revisa tu conexion y reintenta.',
-              type: 'error',
-            },
-          });
-          return;
-        }
-
-        await supabase.from('active_workouts').delete().eq('user_id', user.id);
-
-        set({ activeWorkout: null, persistedUserId: user.id });
-        await get().loadWorkoutHistory();
-
-        // Check for PRs
-        await get().loadPersonalRecords();
-
-        const currentPRs = get().personalRecords;
-        let notificationToShow: { title: string; message: string; type: 'pr' } | null = null;
-
-        for (const ex of completedExercises) {
-          let maxWeight = 0;
-          let maxReps = 0;
-
-          ex.sets.forEach((s) => {
-            if (s.completed && s.weight > maxWeight) {
-              maxWeight = s.weight;
-              maxReps = s.reps;
-            }
-          });
-
-          if (maxWeight > 0) {
-            const previousMax = currentPRs[ex.name]?.weight || 0;
-            if (maxWeight > previousMax) {
-              // Update DB
-              const { data: existing } = await supabase
-                .from('personal_records')
-                .select('id')
-                .eq('user_id', user.id)
-                .eq('exercise_name', ex.name)
-                .maybeSingle();
-
-              if (existing) {
-                await supabase
-                  .from('personal_records')
-                  .update({ weight: maxWeight, reps: maxReps, date: new Date().toISOString() })
-                  .eq('id', existing.id);
-              } else {
-                await supabase.from('personal_records').insert({
-                  user_id: user.id,
-                  exercise_name: ex.name,
-                  weight: maxWeight,
-                  reps: maxReps,
-                });
+          : activeWorkout.startedAt;
+        const hasOriginatingTemplate =
+          !!activeWorkout.routineId &&
+          get().savedRoutines.some((routine) => routine.id === activeWorkout.routineId);
+        const routineUpdate =
+          activeWorkout.routineId && hasOriginatingTemplate
+            ? {
+                routineId: activeWorkout.routineId,
+                exercises: mapActiveWorkoutExercisesToRoutine(completedExercises),
               }
+            : undefined;
 
-              notificationToShow = {
-                title: '¡Nuevo Récord Personal!',
-                message: `${ex.name}: ${maxWeight}kg`,
-                type: 'pr' as const,
-              };
+        const finishResult = await serializeActiveWorkoutFlush(
+          requestedOwnerId,
+          async (): Promise<WorkoutFinishResult> => {
+            if (!stillOwnsCapturedWorkout()) {
+              return { ok: false };
+            }
+
+            let historyRow: { id: string } | null = null;
+            try {
+              const { data, error } = await supabase
+                .from('workout_sessions')
+                .insert({
+                  id: activeWorkout.id,
+                  user_id: requestedOwnerId,
+                  routine_id: activeWorkout.routineId,
+                  routine_name: activeWorkout.routineName,
+                  started_at: startedAtFinal,
+                  completed_at: completedAt,
+                  exercises_completed: completedExercises,
+                  total_volume: totalVolume,
+                  duration_minutes: overrideDate ? 60 : durationMinutes,
+                })
+                .select('id')
+                .single();
+              if (!error && data?.id === activeWorkout.id) {
+                historyRow = data;
+              }
+            } catch {
+              // The insert may have committed even if its response was lost.
+            }
+
+            if (!historyRow) {
+              try {
+                const { data, error } = await supabase
+                  .from('workout_sessions')
+                  .select('id')
+                  .eq('id', activeWorkout.id)
+                  .eq('user_id', requestedOwnerId)
+                  .maybeSingle();
+                if (!error && data?.id === activeWorkout.id) {
+                  historyRow = data;
+                }
+              } catch {
+                // Retry remains safe because the active UUID is also the history UUID.
+              }
+            }
+
+            if (!historyRow) {
+              reportFinishFailure(
+                'Hubo un error al guardar el entrenamiento. NO se ha borrado; revisa tu conexion y reintenta.'
+              );
+              return { ok: false };
+            }
+
+            let activeDeleteError: unknown = null;
+            let deletedActiveRow: { id: string } | null = null;
+            try {
+              const { data, error } = await supabase
+                .from('active_workouts')
+                .delete()
+                .eq('user_id', requestedOwnerId)
+                .eq('id', activeWorkout.id)
+                .eq('started_at', activeWorkout.startedAt)
+                .select('id')
+                .maybeSingle();
+              activeDeleteError = error;
+              deletedActiveRow = data;
+            } catch (error) {
+              activeDeleteError = error;
+            }
+
+            if (activeDeleteError || !deletedActiveRow) {
+              let compensationError: unknown = null;
+              try {
+                const { error } = await supabase
+                  .from('workout_sessions')
+                  .delete()
+                  .eq('id', historyRow.id)
+                  .eq('user_id', requestedOwnerId);
+                compensationError = error;
+              } catch (error) {
+                compensationError = error;
+              }
+              reportFinishFailure(
+                compensationError
+                  ? 'No se pudo finalizar el entrenamiento ni reconciliar su historial. El entrenamiento activo se conserva; reintenta.'
+                  : 'Hubo un conflicto al finalizar el entrenamiento. NO se ha borrado; puedes reintentar.'
+              );
+              return { ok: false };
+            }
+
+            if (stillOwnsCapturedWorkout()) {
+              cancelRestPush();
+              set({ activeWorkout: null, persistedUserId: requestedOwnerId });
+            }
+            return routineUpdate ? { ok: true, routineUpdate } : { ok: true };
+          }
+        );
+
+        if (!finishResult.ok) return finishResult;
+        if (get().persistedUserId !== requestedOwnerId) return finishResult;
+
+        try {
+          await get().loadWorkoutHistory();
+          if (get().persistedUserId !== requestedOwnerId) return finishResult;
+
+          // Check for PRs
+          await get().loadPersonalRecords();
+          if (get().persistedUserId !== requestedOwnerId) return finishResult;
+
+          const currentPRs = get().personalRecords;
+          let notificationToShow: { title: string; message: string; type: 'pr' } | null = null;
+
+          for (const ex of completedExercises) {
+            let maxWeight = 0;
+            let maxReps = 0;
+
+            ex.sets.forEach((s) => {
+              if (s.completed && s.weight > maxWeight) {
+                maxWeight = s.weight;
+                maxReps = s.reps;
+              }
+            });
+
+            if (maxWeight > 0) {
+              const previousMax = currentPRs[ex.name]?.weight || 0;
+              if (maxWeight > previousMax) {
+                // Update DB
+                const { data: existing } = await supabase
+                  .from('personal_records')
+                  .select('id')
+                  .eq('user_id', requestedOwnerId)
+                  .eq('exercise_name', ex.name)
+                  .maybeSingle();
+
+                if (existing) {
+                  await supabase
+                    .from('personal_records')
+                    .update({ weight: maxWeight, reps: maxReps, date: new Date().toISOString() })
+                    .eq('id', existing.id);
+                } else {
+                  await supabase.from('personal_records').insert({
+                    user_id: requestedOwnerId,
+                    exercise_name: ex.name,
+                    weight: maxWeight,
+                    reps: maxReps,
+                  });
+                }
+
+                notificationToShow = {
+                  title: '¡Nuevo Récord Personal!',
+                  message: `${ex.name}: ${maxWeight}kg`,
+                  type: 'pr' as const,
+                };
+              }
             }
           }
+
+          // Refresh PRs locally
+          await get().loadPersonalRecords();
+
+          if (notificationToShow && get().persistedUserId === requestedOwnerId) {
+            set({ notification: notificationToShow });
+          }
+        } catch {
+          // Completion is already terminal; background refresh failure must not change the result.
         }
 
-        // Refresh PRs locally
-        await get().loadPersonalRecords();
-
-        if (notificationToShow) {
-          set({ notification: notificationToShow });
-        }
+        return finishResult;
       },
 
       clearActiveWorkout: () =>

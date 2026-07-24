@@ -35,10 +35,10 @@ Apply routing: wait for explicit approval of the three stacked-to-main slices; t
 
 ## Phase 2: Completion ownership (Slice 2)
 
-- [ ] 2.1 RED: add one-history/no-active/no-restart success, unresolved startup, failed-save recovery, and delete-after-insert compensation cases.
-- [ ] 2.2 GREEN: make `finishWorkout` return the typed result; cancel debounce/rest push, delete active row, compensate history deletion on failure, and clear only on success.
-- [ ] 2.3 RED: add originating-only mapped-template Yes; No/dismissal; missing template; and free/cancelled/failed-no-prompt cases.
-- [ ] 2.4 GREEN→REFACTOR: map only durable exercise fields and add authenticated `routines.exercises` update; run Slice 2 command.
+- [x] 2.1 RED: add one-history/no-active/no-restart success, unresolved startup, failed-save recovery, and delete-after-insert compensation cases.
+- [x] 2.2 GREEN: make `finishWorkout` return the typed result; cancel debounce/rest push, delete active row, compensate history deletion on failure, and clear only on success.
+- [x] 2.3 RED: add originating-only mapped-template Yes; No/dismissal; missing template; and free/cancelled/failed-no-prompt cases.
+- [x] 2.4 GREEN→REFACTOR: map only durable exercise fields and add authenticated `routines.exercises` update; run Slice 2 command.
 
 ## Phase 3: Session wiring and viewport (Slice 3)
 

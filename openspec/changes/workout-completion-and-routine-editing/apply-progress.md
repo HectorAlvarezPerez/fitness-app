@@ -158,3 +158,91 @@ No fix-caused severe issue was observed in the bounded v2 focused suite.
 Revert only the batch-3 delta after candidate tree `cbc8c9d8e3110a46c5f6cefc6b3a69bf446c8663`: restore the bounded wrapper around ordinary active-workout upserts and remove the same-owner pending-write regression. Owner partitioning, lifecycle PATCH serialization, and all earlier Slice-1 corrections remain intact.
 
 No fix-caused severe issue was observed in the focused batch-3 validation.
+
+## Slice 2: Terminal Finish and Originating Template
+
+- Completed tasks: 2.1–2.4 (8/12 total).
+- Next pending: task 3.1.
+- Boundary: store-owned terminal finish sequencing, typed result, recovery/compensation, durable live-to-template mapping, and explicit authenticated originating-routine update.
+- UI startup/navigation and prompt rendering remain assigned to Slice 3 and were intentionally untouched.
+
+### Slice 2 TDD Evidence
+
+| Stage                 | Exact result                                                                                                                                                                                                                                      |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Safety net            | Existing Slice-1 suite remained green: 15/15 tests                                                                                                                                                                                                |
+| RED                   | 25 tests: 16 passed, 9 failed on the missing typed result, terminal failure recovery/compensation, candidate mapping, explicit routine update, missing-template handling, and free/failed prompt eligibility                                      |
+| GREEN                 | 25/25 passed after serialized terminal cleanup and the separate authenticated template-update operation                                                                                                                                           |
+| REFACTOR/final        | Tests consume the exported typed contract without casts; template mapping excludes live completion/timer/image/session fields; focused suite remained 25/25                                                                                       |
+| Focused command       | `npm test -- --run src/store/useStore.workoutFlow.test.ts` — PASS, 1 file / 25 tests                                                                                                                                                              |
+| Exact-path lint       | `npx eslint src/store/useStore.ts src/store/useStore.workoutFlow.test.ts` — PASS, 0 errors / 17 pre-existing store warnings                                                                                                                       |
+| Exact-file TypeScript | `npx tsc --noEmit --skipLibCheck --jsx react-jsx --target ES2022 --module ESNext --moduleResolution bundler --lib ES2022,DOM,DOM.Iterable --types vitest/globals,vite/client src/store/useStore.ts src/store/useStore.workoutFlow.test.ts` — PASS |
+| Format / diff check   | Exact-file Prettier checks and `git diff --check` — PASS                                                                                                                                                                                          |
+
+### Slice 2 Identity
+
+- Initial candidate tree: `1ee83a24deee7294ba09844e81d71adbb7aae1b9`.
+- Initial store blob: `a7f1e7c73b6c49c6d8829ef166ccef6927d2b2b2`.
+- Initial test blob: `ba202962200355c79fb3ed743dd2e3c45b4f61e5`.
+- Initial tasks blob: `e303bd7c1dcc95520c6f8ed8550d5a42ce4acba8`.
+- Corrected store blob: `86e9fb8ca289ed48fe8b2986fe3b0c4ad159ae50`.
+- Corrected test blob: `3176f6d23fbd922dce1539eba258094ea352e8aa`.
+- Corrected tasks blob: `036ec1f1fce935b7b06463f95d43950048c2ef8c`.
+- Store/test Slice-2 delta SHA-256: `1bf9e212b6e5203dbc94385103cd2ee382c8d73dca7dc099d8cbc2d6c3ada024`.
+
+### Slice 2 Rollback
+
+Revert only the Slice-2 delta after candidate tree `1ee83a24deee7294ba09844e81d71adbb7aae1b9`: restore the prior void `finishWorkout`, remove `WorkoutFinishResult`, the durable mapper, `updateRoutineFromWorkout`, and the ten Slice-2 tests, then uncheck tasks 2.1–2.4. Slice 1 and its correction batches remain intact.
+
+Remaining bounded risk: if active-row deletion and the compensating history deletion both fail, the active workout remains locally recoverable but the inserted history row may require later reconciliation. No schema or production changes were authorized for stronger atomicity.
+
+### Slice 2 Final Identity Addendum
+
+The final GREEN refactor suppresses prompt eligibility when the originating routine is already missing. It does not change the 25/25 focused result or the Slice-2 boundary. The following final hashes supersede the pre-refactor store/test hashes above:
+
+- Final store blob: `08d157bd008c7817a80efc5b5894be4e5468a07c`.
+- Final test blob: `45d500940e6386ef74bebba51a75107d1c26650e`.
+- Final store/test Slice-2 delta SHA-256: `89102453b0e5c35e49a7e6ddfda3a200bfe2cc3b580a4bca4337fd7c17e64178`.
+
+## Frozen Severe Slice 2 Correction
+
+- Frozen IDs corrected: `RISK-001`, `RISK-002`, `RESILIENCE-001`, `RESILIENCE-002`, `RELIABILITY-001`, `RELIABILITY-002`.
+- Informational findings intentionally untouched.
+- Schema gate: the live Supabase OpenAPI confirms UUID primary keys on `active_workouts.id` and `workout_sessions.id`, plus immutable `active_workouts.started_at`; no schema change is required.
+- Boundary: stable history identity, ambiguous-insert reconciliation, owner/workout-conditional active deletion with returned-row proof, inspected compensation, and post-await local ownership guards.
+
+### Severe Correction TDD Evidence
+
+| Stage                 | Exact result                                                                                                                                                                                                                                      |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Safety net            | Existing Slice-1/2 focused suite remained green: 25/25 tests                                                                                                                                                                                      |
+| RED                   | 30 tests: 25 passed, 5 failed on duplicate history after ambiguous commit/retry, ignored fulfilled compensation error, deletion of a newer cross-tab row, and local owner/workout overwrite after deferred history/delete writes                  |
+| GREEN                 | 30/30 passed after stable-ID history reconciliation, conditional returned-row deletion, compensation inspection, and captured-local guards                                                                                                        |
+| Focused command       | `npm test -- --run src/store/useStore.workoutFlow.test.ts` — PASS, 1 file / 30 tests                                                                                                                                                              |
+| Exact-path lint       | `npx eslint src/store/useStore.ts src/store/useStore.workoutFlow.test.ts` — PASS, 0 errors / 17 pre-existing store warnings                                                                                                                       |
+| Exact-file TypeScript | `npx tsc --noEmit --skipLibCheck --jsx react-jsx --target ES2022 --module ESNext --moduleResolution bundler --lib ES2022,DOM,DOM.Iterable --types vitest/globals,vite/client src/store/useStore.ts src/store/useStore.workoutFlow.test.ts` — PASS |
+| Format / diff check   | Exact-file Prettier check and `git diff --check` — PASS                                                                                                                                                                                           |
+
+### Per-Finding Closure
+
+- `RISK-001`: each completion history row now uses the captured active-workout UUID, preventing retry duplicates.
+- `RISK-002`: active deletion now requires captured owner, active UUID, and `started_at`, then requires a returned deleted row.
+- `RESILIENCE-001`: an insert error/rejection is reconciled by the same history UUID and owner before deciding whether completion failed.
+- `RESILIENCE-002`: fulfilled and rejected compensation failures are inspected; the active workout remains recoverable and a stable-ID retry reconciles the retained history row.
+- `RELIABILITY-001`: a zero-row conditional delete is a conflict; history is compensated and a newer server active row is preserved.
+- `RELIABILITY-002`: deferred history/delete completion clears or notifies only when the captured owner and workout still own local state.
+
+### Severe Correction Identity
+
+- Initial candidate tree: `3e3e481c763bed9c3120039a443c9929169fd2c9`.
+- Initial store blob: `08d157bd008c7817a80efc5b5894be4e5468a07c`.
+- Initial test blob: `45d500940e6386ef74bebba51a75107d1c26650e`.
+- Corrected store blob: `c46becf27f351a4fc68582c55e4ab331bbd0900f`.
+- Corrected test blob: `a6eddc556bc8b38c0b76bdf13afa83ed5ea57282`.
+- Store/test correction delta SHA-256: `87ed55b152a61153a3eb6c0394a0988563bb4b9f46fce28e5385280205cfdeed`.
+
+### Severe Correction Rollback
+
+Revert only the correction delta after candidate tree `3e3e481c763bed9c3120039a443c9929169fd2c9`: remove the stable-ID reconciliation, conditional returned-row delete, compensation-result handling, captured-local guards, and five correction tests. Tasks 2.1–2.4 and the original 25 Slice-1/2 tests remain intact.
+
+Remaining bounded risk: if compensation fails, the stable history row intentionally remains for retry reconciliation. Atomic history-insert/active-delete semantics would require a database transaction or RPC, which is outside the authorized no-schema boundary.
