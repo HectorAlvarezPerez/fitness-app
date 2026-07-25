@@ -368,6 +368,42 @@ const LOAD_OK: LoadResult = { ok: true };
 const SIGNED_OUT: LoadResult = { ok: false, reason: 'signed-out' };
 const REQUEST_FAILED: LoadResult = { ok: false, reason: 'request-failed' };
 const STALE: LoadResult = { ok: false, reason: 'stale' };
+const isMissingPersonalRecordsTable = (error: { code?: string } | null | undefined) =>
+  error?.code === 'PGRST205';
+
+type LegacyPersonalRecord = { weight: number; reps: number; date: string };
+
+const deriveLegacyPersonalRecords = (
+  history: Array<{
+    completed_at: string;
+    exercises_completed?: Array<{
+      name?: string;
+      sets?: Array<{ completed?: boolean; weight?: number; reps?: number }>;
+    }> | null;
+  }>
+) => {
+  const records: Record<string, LegacyPersonalRecord> = {};
+
+  history.forEach((session) => {
+    session.exercises_completed?.forEach((exercise) => {
+      if (!exercise.name || !Array.isArray(exercise.sets)) return;
+
+      exercise.sets.forEach((setData) => {
+        if (!setData.completed) return;
+        const currentMax = records[exercise.name]?.weight || 0;
+        if ((setData.weight as number) > currentMax) {
+          records[exercise.name] = {
+            weight: setData.weight as number,
+            reps: setData.reps as number,
+            date: session.completed_at,
+          };
+        }
+      });
+    });
+  });
+
+  return records;
+};
 
 const resolveLoadUser = async (
   context: LoadContext | undefined,
@@ -614,7 +650,7 @@ export const useStore = create<AppState>()(
             .from('profiles')
             .select('*')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
           if (context && error) return REQUEST_FAILED;
           if (staleAfterRequest(context)) return STALE;
@@ -2267,8 +2303,23 @@ export const useStore = create<AppState>()(
           .select('exercise_name, weight, reps, date')
           .eq('user_id', user.id);
 
-        if (context && error) return REQUEST_FAILED;
+        const missingTable = isMissingPersonalRecordsTable(error);
+        if (error && !missingTable) return context ? REQUEST_FAILED : undefined;
         if (staleAfterRequest(context)) return STALE;
+
+        if (missingTable) {
+          const { data: history, error: historyError } = await supabase
+            .from('workout_sessions')
+            .select('completed_at, exercises_completed')
+            .eq('user_id', user.id)
+            .order('completed_at', { ascending: true });
+
+          if (historyError || !history) return context ? REQUEST_FAILED : undefined;
+          if (staleAfterRequest(context)) return STALE;
+
+          set({ personalRecords: deriveLegacyPersonalRecords(history) });
+          return completeLoad(context);
+        }
 
         if (data) {
           const records: Record<string, { weight: number; reps: number; date: string }> = {};
@@ -2299,30 +2350,21 @@ export const useStore = create<AppState>()(
           if (error || !history) return;
 
           // 2. Recalculate PRs
-          const recalculatedPRs: Record<string, { weight: number; reps: number; date: string }> =
-            {};
+          const recalculatedPRs = deriveLegacyPersonalRecords(history);
 
-          history.forEach((session) => {
-            session.exercises_completed?.forEach((ex: any) => {
-              if (ex.sets && Array.isArray(ex.sets)) {
-                ex.sets.forEach((s: any) => {
-                  if (s.completed) {
-                    const currentMax = recalculatedPRs[ex.name]?.weight || 0;
-                    if (s.weight > currentMax) {
-                      recalculatedPRs[ex.name] = {
-                        weight: s.weight,
-                        reps: s.reps,
-                        date: session.completed_at,
-                      };
-                    }
-                  }
-                });
-              }
-            });
+          // 3. Keep the history-derived records available even when the optional
+          // persistence table is absent or temporarily unavailable.
+          set({
+            personalRecords: recalculatedPRs,
           });
 
-          // 3. Sync to DB - delete all existing PRs and re-insert
-          await supabase.from('personal_records').delete().eq('user_id', user.id);
+          const { error: deleteError } = await supabase
+            .from('personal_records')
+            .delete()
+            .eq('user_id', user.id);
+
+          if (isMissingPersonalRecordsTable(deleteError)) return;
+          if (deleteError) throw deleteError;
 
           if (Object.keys(recalculatedPRs).length > 0) {
             const prsToInsert = Object.entries(recalculatedPRs).map(([name, data]) => ({
@@ -2332,13 +2374,11 @@ export const useStore = create<AppState>()(
               reps: data.reps,
               date: data.date,
             }));
-            await supabase.from('personal_records').insert(prsToInsert);
+            const { error: insertError } = await supabase
+              .from('personal_records')
+              .insert(prsToInsert);
+            if (insertError) throw insertError;
           }
-
-          // 4. Update Local State
-          set({
-            personalRecords: recalculatedPRs,
-          });
         } catch (err) {
           console.error('Error syncing PRs:', err);
         }

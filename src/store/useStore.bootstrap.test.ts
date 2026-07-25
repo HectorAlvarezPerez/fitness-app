@@ -18,14 +18,21 @@ const h = vi.hoisted(() => {
 
   const queryByTable = new Map<string, any>();
   const fromMock = vi.fn((table: string) => {
-    const response = () =>
-      Promise.resolve(state.responses[table] ?? { data: [], error: null });
+    const response = () => Promise.resolve(state.responses[table] ?? { data: [], error: null });
+    const maybeSingleResponse = () =>
+      response().then((result) =>
+        result.error?.code === 'PGRST116' && result.error?.details?.includes('0 rows')
+          ? { data: null, error: null }
+          : result
+      );
     const query: any = {
       select: vi.fn(() => query),
       eq: vi.fn(() => query),
       order: vi.fn(() => response()),
       single: vi.fn(() => response()),
-      maybeSingle: vi.fn(() => response()),
+      maybeSingle: vi.fn(() => maybeSingleResponse()),
+      delete: vi.fn(() => query),
+      insert: vi.fn(() => response()),
       upsert: vi.fn(() => response()),
       then: (resolve: (value: Response) => unknown, reject: (reason: unknown) => unknown) =>
         response().then(resolve, reject),
@@ -192,9 +199,7 @@ describe('contextual bootstrap loader identity guards', () => {
 
     const results = await loadAll({ userId: 'u1', isCurrent: () => true });
 
-    expect(results).toEqual(
-      Array.from({ length: 7 }, () => ({ ok: false, reason: 'signed-out' }))
-    );
+    expect(results).toEqual(Array.from({ length: 7 }, () => ({ ok: false, reason: 'signed-out' })));
     expect(h.fromMock).not.toHaveBeenCalled();
     expect(readSlices()).toEqual(before);
   });
@@ -297,6 +302,149 @@ describe('contextual bootstrap loader result and commit contract', () => {
     expect(state.personalRecords).toEqual({});
   });
 
+  it('treats an absent profile and missing optional personal-record table as successful empty reads', async () => {
+    h.state.responses = {
+      profiles: {
+        data: null,
+        error: {
+          code: 'PGRST116',
+          details: 'The result contains 0 rows',
+        },
+      },
+      routines: { data: [], error: null },
+      routine_folders: { data: [], error: null },
+      workout_sessions: { data: [], error: null },
+      active_workouts: { data: null, error: null },
+      body_measurements: { data: [], error: null },
+      personal_records: {
+        data: null,
+        error: {
+          code: 'PGRST205',
+          message: "Could not find the table 'public.personal_records' in the schema cache",
+        },
+      },
+    };
+
+    const results = await loadAll({ userId: 'u1', isCurrent: () => true });
+    const state = useStore.getState();
+    const profileQuery = h.queryByTable.get('profiles');
+
+    expect(results).toEqual(Array.from({ length: 7 }, () => ({ ok: true })));
+    expect(profileQuery.maybeSingle).toHaveBeenCalledTimes(1);
+    expect(profileQuery.single).not.toHaveBeenCalled();
+    expect(state.userData).toMatchObject({
+      id: 'u1',
+      default_rest_seconds: 90,
+      default_sets_count: 3,
+      default_reps_count: 10,
+      default_weight_kg: 20,
+    });
+    expect(state.workoutHistory).toEqual([]);
+    expect(state.personalRecords).toEqual({});
+  });
+
+  it('rebuilds the legacy record map directly from canonical history when the auxiliary table is missing', async () => {
+    h.state.responses = {
+      personal_records: {
+        data: null,
+        error: {
+          code: 'PGRST205',
+          message: "Could not find the table 'public.personal_records' in the schema cache",
+        },
+      },
+      workout_sessions: {
+        data: [
+          {
+            ...oldSession,
+            id: 'older-session',
+            completed_at: '2026-01-01',
+            exercises_completed: [
+              {
+                name: 'Press',
+                sets: [
+                  { completed: true, weight: 100, reps: 5 },
+                  { completed: false, weight: 200, reps: 1 },
+                ],
+              },
+            ],
+          },
+          {
+            ...oldSession,
+            id: 'newer-session',
+            completed_at: '2026-02-01',
+            exercises_completed: [
+              {
+                name: 'Press',
+                sets: [{ completed: true, weight: 120, reps: 3 }],
+              },
+            ],
+          },
+        ],
+        error: null,
+      },
+    };
+    useStore.setState({ workoutHistory: [], personalRecords: {} });
+
+    const result = await useStore
+      .getState()
+      .loadPersonalRecords({ userId: 'u1', isCurrent: () => true });
+
+    expect(result).toEqual({ ok: true });
+    expect(useStore.getState().workoutHistory).toEqual([]);
+    expect(useStore.getState().personalRecords).toEqual({
+      Press: { weight: 120, reps: 3, date: '2026-02-01' },
+    });
+  });
+
+  it('retains the previous record map and fails closed when fallback history cannot load', async () => {
+    h.state.responses = {
+      personal_records: {
+        data: null,
+        error: {
+          code: 'PGRST205',
+          message: "Could not find the table 'public.personal_records' in the schema cache",
+        },
+      },
+      workout_sessions: {
+        data: null,
+        error: { code: '42501', message: 'history denied' },
+      },
+    };
+    const previousRecords = useStore.getState().personalRecords;
+
+    const result = await useStore
+      .getState()
+      .loadPersonalRecords({ userId: 'u1', isCurrent: () => true });
+
+    expect(result).toEqual({ ok: false, reason: 'request-failed' });
+    expect(useStore.getState().personalRecords).toEqual(previousRecords);
+  });
+
+  it('keeps unexpected profile and personal-record errors as request failures without replacing prior state', async () => {
+    h.state.responses = {
+      profiles: { data: null, error: { code: '42501', message: 'profile denied' } },
+      routines: { data: [], error: null },
+      routine_folders: { data: [], error: null },
+      workout_sessions: { data: [], error: null },
+      active_workouts: { data: null, error: null },
+      body_measurements: { data: [], error: null },
+      personal_records: {
+        data: null,
+        error: { code: 'PGRST301', message: 'records unavailable' },
+      },
+    };
+
+    const results = await loadAll({ userId: 'u1', isCurrent: () => true });
+    const state = useStore.getState();
+
+    expect(results[0]).toEqual({ ok: false, reason: 'request-failed' });
+    expect(results[6]).toEqual({ ok: false, reason: 'request-failed' });
+    expect(state.userData).toEqual({ id: 'old-user', default_rest_seconds: 120 });
+    expect(state.personalRecords).toEqual({
+      Press: { weight: 100, reps: 5, date: '2026-01-01' },
+    });
+  });
+
   it('commits non-empty successful reads for the current authenticated user', async () => {
     h.state.responses = {
       profiles: {
@@ -392,6 +540,64 @@ describe('contextual bootstrap loader result and commit contract', () => {
 
     expect(results).toEqual(Array.from({ length: 7 }, () => ({ ok: false, reason: 'stale' })));
     expect(readSlices()).toEqual(before);
+  });
+});
+
+describe('personal-record history reconciliation', () => {
+  const rebuiltHistory = {
+    ...oldSession,
+    exercises_completed: [
+      {
+        name: 'Press',
+        sets: [{ completed: true, weight: 120, reps: 3 }],
+      },
+    ],
+  };
+
+  it('rebuilds local records and stops without insert when the auxiliary table is missing', async () => {
+    h.state.responses = {
+      workout_sessions: { data: [rebuiltHistory], error: null },
+      personal_records: {
+        data: null,
+        error: {
+          code: 'PGRST205',
+          message: "Could not find the table 'public.personal_records' in the schema cache",
+        },
+      },
+    };
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await useStore.getState().syncPersonalRecords();
+
+    expect(useStore.getState().personalRecords).toEqual({
+      Press: { weight: 120, reps: 3, date: '2026-01-01' },
+    });
+    expect(h.fromMock.mock.calls.filter(([table]) => table === 'personal_records')).toHaveLength(1);
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
+  it('reports an unexpected persistence error and does not continue to insert', async () => {
+    h.state.responses = {
+      workout_sessions: { data: [rebuiltHistory], error: null },
+      personal_records: {
+        data: null,
+        error: { code: '42501', message: 'records denied' },
+      },
+    };
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await useStore.getState().syncPersonalRecords();
+
+    expect(useStore.getState().personalRecords).toEqual({
+      Press: { weight: 120, reps: 3, date: '2026-01-01' },
+    });
+    expect(h.fromMock.mock.calls.filter(([table]) => table === 'personal_records')).toHaveLength(1);
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Error syncing PRs:',
+      expect.objectContaining({ code: '42501' })
+    );
+    errorSpy.mockRestore();
   });
 });
 
