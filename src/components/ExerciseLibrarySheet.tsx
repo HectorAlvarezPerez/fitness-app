@@ -183,13 +183,15 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
           transform: isOpen ? `translateY(${currentY}px)` : 'translateY(100%)',
           transition: isDragging ? 'none' : 'transform 0.3s ease-out',
         }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       >
         <div className="shrink-0 bg-[#0f1214]">
           {/* Drag handle */}
-          <div className="flex justify-center pt-3 pb-2 touch-none">
+          <div
+            className="flex justify-center pt-3 pb-2 touch-none"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             <div className="w-12 h-1.5 bg-white/25 rounded-full" />
           </div>
 
