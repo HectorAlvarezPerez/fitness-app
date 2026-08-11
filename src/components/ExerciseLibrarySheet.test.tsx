@@ -70,18 +70,31 @@ afterEach(() => {
 });
 
 describe('ExerciseLibrarySheet touch dismissal', () => {
-  it('keeps the close control touch sequence outside drag capture and closes once on activation', () => {
+  it('closes from touchend after adding an exercise even when Safari cancels the synthetic click', () => {
     const { onClose } = renderSheet();
-    const closeButton = screen.getByRole('button', { name: 'close' });
+    const exerciseButton = screen.getByRole('button', { name: /Bench Press/ });
+    const closeButton = screen.getByRole('button', {
+      name: 'Cerrar biblioteca de ejercicios',
+    });
 
+    fireEvent.click(exerciseButton);
     dispatchTouch(closeButton, 'touchstart', 20);
     const moveEvent = dispatchTouch(closeButton, 'touchmove', 25);
     dispatchTouch(closeButton, 'touchend');
 
     expect(moveEvent.defaultPrevented).toBe(false);
-    expect(onClose).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 
-    fireEvent.click(closeButton);
+  it('still closes once from a desktop or keyboard click', () => {
+    const { onClose } = renderSheet();
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Cerrar biblioteca de ejercicios',
+      })
+    );
+
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

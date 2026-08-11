@@ -161,6 +161,14 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
     }
   };
 
+  const handleCloseTouchEnd = (event: React.TouchEvent<HTMLButtonElement>) => {
+    // Mobile Safari can cancel the synthetic click when the finger moves slightly.
+    // Close on touchend as well, while preventing a second synthetic activation.
+    event.preventDefault();
+    event.stopPropagation();
+    onClose();
+  };
+
   return (
     <>
       {/* Backdrop */}
@@ -205,7 +213,10 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
                 <h2 className="text-xl font-bold text-white">Biblioteca</h2>
               </div>
               <button
+                type="button"
+                aria-label="Cerrar biblioteca de ejercicios"
                 onClick={onClose}
+                onTouchEnd={handleCloseTouchEnd}
                 className="p-2 rounded-full hover:bg-white/5 transition-colors"
               >
                 <span className="material-symbols-outlined text-slate-400">close</span>
