@@ -31,4 +31,29 @@ describe('activeWorkout utils', () => {
     expect(restored.restTimer?.durationSeconds).toBe(90);
     expect(restored.exercises).toHaveLength(1);
   });
+
+  it('round-trips prescription, RIR, and cardio metrics without dropping JSONB fields', () => {
+    const payload = buildActiveWorkoutDataPayload({
+      exercises: [
+        {
+          exerciseId: 'cardio-1',
+          activityType: 'cardio',
+          prescription: { repMin: 30, repMax: 45, rirMin: 1, rirMax: 2 },
+          cardioTargets: { modality: 'run', distanceKm: 7 },
+          sets: [
+            {
+              reps: 2700,
+              weight: 0,
+              completed: true,
+              cardioMetrics: { durationSeconds: 2700, distanceKm: 7.2, rpe: 4 },
+              rir: 2,
+            },
+          ],
+        },
+      ],
+    });
+
+    const restored = readActiveWorkoutDataPayload(payload);
+    expect(restored.exercises).toEqual(payload.exercises);
+  });
 });

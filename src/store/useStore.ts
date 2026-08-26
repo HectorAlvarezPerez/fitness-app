@@ -15,11 +15,24 @@ import {
 } from '../lib/activeWorkout';
 import { getRestTimerElapsedSeconds } from '../lib/restTimer';
 import { scheduleRestPush, cancelRestPush } from '../lib/push';
+import { getActivityTypeFromLibraryExercise, type CardioMetrics } from '../lib/trainingMetrics';
+import { TRAINING_PLAN_FOLDER_NAME, buildTrainingPlanRoutines } from '../lib/trainingPlan';
+
+export interface ExercisePrescription {
+  repMin?: number;
+  repMax?: number;
+  rirMin?: number;
+  rirMax?: number;
+  restMinSeconds?: number;
+  restMaxSeconds?: number;
+}
 
 export interface RoutineSet {
   id?: string;
   reps: number;
   weight: number;
+  rir?: number;
+  cardioMetrics?: CardioMetrics;
   isWarmup?: boolean;
   isFailure?: boolean; // set taken to muscular failure
   // Sub-series para dropsets (3.1, 3.2, etc.) - cada una con peso/reps diferentes
@@ -38,6 +51,9 @@ export interface Exercise {
   includesBodyweight?: boolean; // For exercises like dips, pull-ups where volume = bodyweight + added weight
   trackingType?: 'reps' | 'time'; // 'reps' for repetitions, 'time' for time-based (seconds)
   supersetId?: string; // exercises sharing a supersetId form a superset/circuit
+  activityType?: 'strength' | 'cardio';
+  prescription?: ExercisePrescription;
+  cardioTargets?: CardioMetrics;
   // Legacy fields for backward compatibility - optional or deprecated
   reps?: number;
   weight?: number;
@@ -97,11 +113,16 @@ export interface ActiveWorkoutExercise {
     weight: number;
     restSeconds?: number; // Legacy, rest now lives at exercise level
     completed: boolean;
+    rir?: number;
+    cardioMetrics?: CardioMetrics;
     isWarmup?: boolean;
     isFailure?: boolean; // set taken to muscular failure
     // Sub-series para dropsets (3.1, 3.2, etc.)
     dropsets?: Array<{ reps: number; weight: number; completed?: boolean }>;
   }>;
+  activityType?: 'strength' | 'cardio';
+  prescription?: ExercisePrescription;
+  cardioTargets?: CardioMetrics;
 }
 
 export interface ActiveWorkoutRestTimer extends PersistedRestTimer {}
@@ -161,7 +182,7 @@ const normalizeActiveWorkoutExercises = (exercises: ActiveWorkoutExercise[]) =>
         : Math.max(
             0,
             Math.round(
-              exercise.sets?.find((set) => typeof set.restSeconds === 'number')?.restSeconds || 90
+              exercise.sets?.find((set) => typeof set.restSeconds === 'number')?.restSeconds ?? 90
             )
           ),
       sets: Array.isArray(exercise.sets) ? ensureSetIds(exercise.sets) : [],
@@ -241,24 +262,39 @@ const mapActiveWorkoutExercisesToRoutine = (exercises: ActiveWorkoutExercise[]):
     id: exercise.exerciseId,
     name: exercise.name,
     muscleGroup: exercise.primaryMuscle,
-    notes: exercise.notes,
+    ...(exercise.notes !== undefined ? { notes: exercise.notes } : {}),
     sets: exercise.sets.map((set) => ({
       id: set.id,
       reps: set.reps,
       weight: set.weight,
-      isWarmup: set.isWarmup,
-      isFailure: set.isFailure,
-      dropsets: set.dropsets?.map((dropset) => ({
-        reps: dropset.reps,
-        weight: dropset.weight,
-      })),
+      ...(set.rir !== undefined ? { rir: set.rir } : {}),
+      ...(set.cardioMetrics ? { cardioMetrics: set.cardioMetrics } : {}),
+      ...(set.isWarmup !== undefined ? { isWarmup: set.isWarmup } : {}),
+      ...(set.isFailure !== undefined ? { isFailure: set.isFailure } : {}),
+      ...(set.dropsets
+        ? {
+            dropsets: set.dropsets.map((dropset) => ({
+              reps: dropset.reps,
+              weight: dropset.weight,
+            })),
+          }
+        : {}),
     })),
     restSeconds: exercise.restSeconds,
-    secondaryMuscles: exercise.secondaryMuscles,
-    secondaryMuscleFactor: exercise.secondaryMuscleFactor,
-    includesBodyweight: exercise.includesBodyweight,
-    trackingType: exercise.trackingType,
-    supersetId: exercise.supersetId,
+    ...(exercise.secondaryMuscles !== undefined
+      ? { secondaryMuscles: exercise.secondaryMuscles }
+      : {}),
+    ...(exercise.secondaryMuscleFactor !== undefined
+      ? { secondaryMuscleFactor: exercise.secondaryMuscleFactor }
+      : {}),
+    ...(exercise.includesBodyweight !== undefined
+      ? { includesBodyweight: exercise.includesBodyweight }
+      : {}),
+    ...(exercise.trackingType !== undefined ? { trackingType: exercise.trackingType } : {}),
+    ...(exercise.supersetId !== undefined ? { supersetId: exercise.supersetId } : {}),
+    ...(exercise.activityType !== undefined ? { activityType: exercise.activityType } : {}),
+    ...(exercise.prescription ? { prescription: exercise.prescription } : {}),
+    ...(exercise.cardioTargets ? { cardioTargets: exercise.cardioTargets } : {}),
   }));
 
 const isSameActiveWorkout = (candidate: ActiveWorkout | null, captured: ActiveWorkout): boolean =>
@@ -287,6 +323,14 @@ export interface Routine {
   created_at: string;
   updated_at: string;
 }
+
+export type TrainingPlanInstallResult = {
+  ok: boolean;
+  created: number;
+  skipped: number;
+  folderId?: string;
+  error?: string;
+};
 
 interface UserStats {
   recovery: number;
@@ -378,7 +422,12 @@ const deriveLegacyPersonalRecords = (
     completed_at: string;
     exercises_completed?: Array<{
       name?: string;
-      sets?: Array<{ completed?: boolean; weight?: number; reps?: number }>;
+      sets?: Array<{
+        completed?: boolean;
+        weight?: number;
+        reps?: number;
+        isWarmup?: boolean;
+      }>;
     }> | null;
   }>
 ) => {
@@ -389,7 +438,7 @@ const deriveLegacyPersonalRecords = (
       if (!exercise.name || !Array.isArray(exercise.sets)) return;
 
       exercise.sets.forEach((setData) => {
-        if (!setData.completed) return;
+        if (!setData.completed || setData.isWarmup) return;
         const currentMax = records[exercise.name]?.weight || 0;
         if ((setData.weight as number) > currentMax) {
           records[exercise.name] = {
@@ -459,6 +508,7 @@ interface AppState {
   deleteFolder: (id: string) => Promise<void>;
   moveRoutineToFolder: (routineId: string, folderId: string | null) => Promise<void>;
   duplicateRoutine: (routineId: string) => Promise<Routine | null>;
+  installTrainingPlan: () => Promise<TrainingPlanInstallResult>;
 
   // Exercise Library
   exerciseLibrary: ExerciseLibraryItem[];
@@ -603,6 +653,8 @@ const ACTIVE_WORKOUT_SAVE_ERROR = {
     'No se pudieron guardar los cambios del entrenamiento. Se mantienen en este dispositivo para reintentarlo.',
   type: 'error' as const,
 };
+
+let trainingPlanInstallPromise: Promise<TrainingPlanInstallResult> | null = null;
 
 export const useStore = create<AppState>()(
   persist(
@@ -1014,6 +1066,126 @@ export const useStore = create<AppState>()(
         return null;
       },
 
+      installTrainingPlan: (): Promise<TrainingPlanInstallResult> => {
+        if (trainingPlanInstallPromise) return trainingPlanInstallPromise;
+
+        const operation = (async (): Promise<TrainingPlanInstallResult> => {
+          try {
+            const {
+              data: { user },
+            } = await supabase.auth.getUser();
+            if (!user) {
+              return {
+                ok: false,
+                created: 0,
+                skipped: 0,
+                error: 'No se detectó un usuario autenticado. Por favor inicia sesión.',
+              };
+            }
+
+            // Read from Supabase before deciding what to create. The page loads
+            // these collections asynchronously, so in-memory state may still be
+            // empty when the user taps the import button.
+            const [foldersResult, routinesResult] = await Promise.all([
+              supabase
+                .from('routine_folders')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('order_index', { ascending: true }),
+              supabase
+                .from('routines')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('updated_at', { ascending: false }),
+            ]);
+            if (foldersResult.error || routinesResult.error) {
+              return {
+                ok: false,
+                created: 0,
+                skipped: 0,
+                error: 'No se pudieron cargar tus rutinas. Vuelve a intentarlo.',
+              };
+            }
+
+            const folders = (foldersResult.data || []) as RoutineFolder[];
+            const routines = (routinesResult.data || []) as Routine[];
+            set({ routineFolders: folders, savedRoutines: routines });
+
+            let folder = folders.find((candidate) => candidate.name === TRAINING_PLAN_FOLDER_NAME);
+            if (!folder) {
+              folder = await get().createFolder(TRAINING_PLAN_FOLDER_NAME, '#22c55e');
+            }
+            if (!folder) {
+              // Another tab may have created the folder between the read and
+              // insert. Re-read once before reporting a hard failure.
+              const { data: refreshedFolders, error: refreshError } = await supabase
+                .from('routine_folders')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('name', TRAINING_PLAN_FOLDER_NAME)
+                .order('order_index', { ascending: true });
+              folder =
+                !refreshError && refreshedFolders?.[0]
+                  ? (refreshedFolders[0] as RoutineFolder)
+                  : undefined;
+            }
+            if (!folder) {
+              return {
+                ok: false,
+                created: 0,
+                skipped: 0,
+                error: 'No se pudo crear la carpeta del plan.',
+              };
+            }
+
+            const existingNames = new Set(
+              routines
+                .filter((routine) => routine.folder_id === folder.id)
+                .map((routine) => routine.name)
+            );
+            const planRoutines = buildTrainingPlanRoutines(user.id, folder.id);
+            let created = 0;
+            let skipped = 0;
+
+            for (const routine of planRoutines) {
+              if (existingNames.has(routine.name)) {
+                skipped += 1;
+                continue;
+              }
+
+              const { error } = await supabase.from('routines').insert([routine]);
+              if (error) {
+                await get().loadRoutines();
+                return {
+                  ok: false,
+                  created,
+                  skipped,
+                  folderId: folder.id,
+                  error: `No se pudo importar el plan: ${error.message}`,
+                };
+              }
+              existingNames.add(routine.name);
+              created += 1;
+            }
+
+            await Promise.all([get().loadFolders(), get().loadRoutines()]);
+            return { ok: true, created, skipped, folderId: folder.id };
+          } catch (error) {
+            return {
+              ok: false,
+              created: 0,
+              skipped: 0,
+              error: error instanceof Error ? error.message : 'No se pudo importar el plan.',
+            };
+          }
+        })();
+
+        trainingPlanInstallPromise = operation.finally(() => {
+          trainingPlanInstallPromise = null;
+        });
+        return trainingPlanInstallPromise;
+      },
+
       // Exercise Library Functions
       loadExerciseLibrary: async () => {
         const { data, error } = await supabase
@@ -1226,7 +1398,9 @@ export const useStore = create<AppState>()(
 
           const workoutData = readActiveWorkoutDataPayload(data.workout_data);
           const rawExercises = workoutData.exercises;
-          const normalizedExercises = normalizeActiveWorkoutExercises(rawExercises);
+          const normalizedExercises = normalizeActiveWorkoutExercises(
+            rawExercises as ActiveWorkoutExercise[]
+          );
           set({
             activeWorkout: {
               id: data.id,
@@ -1808,6 +1982,7 @@ export const useStore = create<AppState>()(
           secondaryMuscleFactor: exercise.secondary_muscles?.length ? 0.35 : 0,
           restSeconds,
           trackingType,
+          activityType: getActivityTypeFromLibraryExercise(exercise),
           sets: Array.from({ length: defaultSets }).map(() => ({
             id: createId('set'),
             reps: defaultReps,
@@ -1853,6 +2028,8 @@ export const useStore = create<AppState>()(
               id?: string;
               reps: number;
               weight: number;
+              rir?: number;
+              cardioMetrics?: CardioMetrics;
               isWarmup?: boolean;
               isFailure?: boolean;
               dropsets?: Array<{ reps: number; weight: number }>;
@@ -1864,6 +2041,8 @@ export const useStore = create<AppState>()(
                 id: s.id || createId('set'),
                 reps: s.reps,
                 weight: s.weight,
+                rir: s.rir,
+                cardioMetrics: s.cardioMetrics,
                 isWarmup: s.isWarmup,
                 isFailure: s.isFailure,
                 dropsets: s.dropsets,
@@ -1894,8 +2073,16 @@ export const useStore = create<AppState>()(
               );
               if (lastExercise && lastExercise.sets) {
                 // Apply last weights/reps to current sets
-                parsedSets = parsedSets.map((defaultSet, index) => {
-                  const lastSet = lastExercise.sets[index];
+                const lastWorkingSets = Array.isArray(lastExercise.sets)
+                  ? lastExercise.sets.filter((set: any) => !set?.isWarmup)
+                  : [];
+                let workingSetIndex = 0;
+                parsedSets = parsedSets.map((defaultSet) => {
+                  // A planned warmup is a separate slot and must never receive
+                  // the previous working-set values by array position.
+                  if (defaultSet.isWarmup) return defaultSet;
+                  const lastSet = lastWorkingSets[workingSetIndex];
+                  workingSetIndex += 1;
                   if (lastSet) {
                     return {
                       ...defaultSet,
@@ -1910,9 +2097,9 @@ export const useStore = create<AppState>()(
 
             // Use exercise's restSeconds, fallback to routine's default, then user's default, then 90
             const restSeconds = toSafeRestSeconds(
-              ex.restSeconds ||
-                routine.default_rest_seconds ||
-                get().userData?.default_rest_seconds ||
+              ex.restSeconds ??
+                routine.default_rest_seconds ??
+                get().userData?.default_rest_seconds ??
                 90
             );
 
@@ -1929,11 +2116,16 @@ export const useStore = create<AppState>()(
               includesBodyweight: ex.includesBodyweight, // Pass bodyweight flag
               trackingType: ex.trackingType || 'reps', // Pass tracking type (reps or time)
               supersetId: ex.supersetId, // Carry superset grouping into the live workout
+              activityType: ex.activityType,
+              prescription: ex.prescription,
+              cardioTargets: ex.cardioTargets,
               sets: parsedSets.map((s) => ({
                 id: s.id || createId('set'),
                 reps: s.reps,
                 weight: s.weight,
                 completed: false,
+                rir: s.rir,
+                cardioMetrics: s.cardioMetrics,
                 isWarmup: s.isWarmup,
                 isFailure: s.isFailure,
                 dropsets: s.dropsets?.map((d) => ({ ...d, completed: false })),
@@ -2213,7 +2405,12 @@ export const useStore = create<AppState>()(
             let maxReps = 0;
 
             ex.sets.forEach((s) => {
-              if (s.completed && s.weight > maxWeight) {
+              if (
+                s.completed &&
+                !s.isWarmup &&
+                ex.trackingType !== 'time' &&
+                s.weight > maxWeight
+              ) {
                 maxWeight = s.weight;
                 maxReps = s.reps;
               }

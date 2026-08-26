@@ -9,14 +9,14 @@ export type PersistedRestTimer = {
 };
 
 type ActiveWorkoutLike = {
-  exercises: any[];
+  exercises: unknown[];
   currentExerciseId?: string;
   currentSetIndex?: number;
   restTimer?: PersistedRestTimer | null;
   overrideDate?: string;
 };
 
-const isObject = (value: unknown): value is Record<string, any> =>
+const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
 export const getActiveWorkoutPath = (routineId?: string | null) =>
@@ -34,7 +34,7 @@ export const buildActiveWorkoutDataPayload = (activeWorkout: ActiveWorkoutLike) 
 export const readActiveWorkoutDataPayload = (workoutData: unknown) => {
   if (!isObject(workoutData)) {
     return {
-      exercises: [] as any[],
+      exercises: [] as unknown[],
       currentExerciseId: undefined as string | undefined,
       currentSetIndex: undefined as number | undefined,
       restTimer: null as PersistedRestTimer | null,

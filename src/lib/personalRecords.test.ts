@@ -116,4 +116,27 @@ describe('personalRecords helpers', () => {
     expect(formatDuration(75)).toBe('01:15');
     expect(formatDuration(3661)).toBe('01:01:01');
   });
+
+  it('ignores completed warmup sets when deriving records', () => {
+    const rows = derivePersonalRecordRows(
+      [
+        {
+          completed_at: '2026-02-02T10:00:00.000Z',
+          exercises_completed: [
+            {
+              name: 'Bench Press',
+              trackingType: 'reps',
+              sets: [
+                { reps: 3, weight: 160, completed: true, isWarmup: true },
+                { reps: 5, weight: 100, completed: true },
+              ],
+            },
+          ],
+        },
+      ],
+      []
+    );
+
+    expect(rows[0]).toMatchObject({ bestE1RM: 116.5, bestReps: 5 });
+  });
 });

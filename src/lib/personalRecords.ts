@@ -17,6 +17,7 @@ export type WorkoutSetLike = {
   reps?: number;
   weight?: number;
   completed?: boolean;
+  isWarmup?: boolean;
 };
 
 export type WorkoutExerciseLike = {
@@ -76,7 +77,7 @@ export const calculateE1RM = (weight: number, reps: number) => {
   return roundToHalf(e1rm);
 };
 
-const shouldUseSet = (set: WorkoutSetLike) => set.completed !== false;
+const shouldUseSet = (set: WorkoutSetLike) => set.completed !== false && !set.isWarmup;
 
 const hasValue = (value?: number) => typeof value === 'number' && value > 0;
 

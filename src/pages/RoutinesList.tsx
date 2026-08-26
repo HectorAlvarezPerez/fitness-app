@@ -29,6 +29,7 @@ const RoutinesList: React.FC = () => {
     deleteFolder,
     moveRoutineToFolder,
     duplicateRoutine,
+    installTrainingPlan,
     startWorkout,
     startEmptyWorkout,
     activeWorkout,
@@ -50,6 +51,8 @@ const RoutinesList: React.FC = () => {
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<RoutineFolder | null>(null);
   const [folderOrderError, setFolderOrderError] = useState<string | null>(null);
   const [isReorderingFolders, setIsReorderingFolders] = useState(false);
+  const [isInstallingTrainingPlan, setIsInstallingTrainingPlan] = useState(false);
+  const [trainingPlanMessage, setTrainingPlanMessage] = useState<string | null>(null);
 
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const knownFolderIdsRef = useRef<Set<string>>(new Set());
@@ -193,6 +196,28 @@ const RoutinesList: React.FC = () => {
     window.alert(
       'No se pudo iniciar el entrenamiento. Revisa que tengas sesión iniciada y vuelve a intentar.'
     );
+  };
+
+  const handleInstallTrainingPlan = async () => {
+    if (isInstallingTrainingPlan || typeof installTrainingPlan !== 'function') return;
+    setIsInstallingTrainingPlan(true);
+    setTrainingPlanMessage(null);
+    try {
+      const result = await installTrainingPlan();
+      if (result.ok) {
+        setTrainingPlanMessage(
+          result.created > 0
+            ? `Plan importado: ${result.created} rutinas nuevas${result.skipped ? `, ${result.skipped} ya existentes` : ''}.`
+            : 'El plan ya estaba importado en tu cuenta.'
+        );
+      } else {
+        setTrainingPlanMessage(result.error || 'No se pudo importar el plan. Vuelve a intentarlo.');
+      }
+    } catch {
+      setTrainingPlanMessage('No se pudo importar el plan. Vuelve a intentarlo.');
+    } finally {
+      setIsInstallingTrainingPlan(false);
+    }
   };
 
   // Group routines by folder
@@ -388,8 +413,31 @@ const RoutinesList: React.FC = () => {
                 <span>Carpeta</span>
               </button>
             </div>
+            <button
+              type="button"
+              onClick={() => void handleInstallTrainingPlan()}
+              aria-label="Importar plan atlético"
+              disabled={isInstallingTrainingPlan}
+              className="mobile-card mt-2 flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-60"
+            >
+              <span className="material-symbols-outlined text-[20px]">
+                {isInstallingTrainingPlan ? 'progress_activity' : 'playlist_add'}
+              </span>
+              <span>
+                {isInstallingTrainingPlan ? 'Importando plan...' : 'Importar plan atlético'}
+              </span>
+            </button>
           </div>
         </header>
+
+        {trainingPlanMessage && (
+          <div
+            role="status"
+            className="rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-blue-100"
+          >
+            {trainingPlanMessage}
+          </div>
+        )}
 
         {folderOrderError && (
           <div

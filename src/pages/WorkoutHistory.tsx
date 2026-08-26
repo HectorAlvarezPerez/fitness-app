@@ -2,6 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { isPartialWorkout } from '../lib/workoutUtils';
+import {
+  formatCardioDuration,
+  formatPace,
+  getCardioMetricsFromSet,
+  getCardioProgressPoints,
+  isCardioExercise,
+} from '../lib/trainingMetrics';
 import ConfirmDialog from '../components/ConfirmDialog';
 
 const WorkoutHistory: React.FC = () => {
@@ -166,6 +173,12 @@ const WorkoutHistory: React.FC = () => {
               const isExpanded = expandedWorkouts.has(workout.id);
               const isPartial = isPartialWorkout(workout);
               const isSelected = selectedIds.has(workout.id);
+              const cardioPoints = getCardioProgressPoints([workout]);
+              const cardioDistance = cardioPoints.reduce(
+                (total, point) => total + (point.distanceKm || 0),
+                0
+              );
+              const hasCardio = cardioPoints.length > 0;
 
               return (
                 <div
@@ -271,12 +284,16 @@ const WorkoutHistory: React.FC = () => {
                       <div className="rounded-2xl border border-white/10 bg-[#07131d] p-3">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="material-symbols-outlined text-primary text-[16px]">
-                            scale
+                            {hasCardio ? 'route' : 'scale'}
                           </span>
-                          <span className="text-xs text-slate-400">Volumen</span>
+                          <span className="text-xs text-slate-400">
+                            {hasCardio ? 'Distancia' : 'Volumen'}
+                          </span>
                         </div>
                         <p className="font-bold text-white">
-                          {(workout.total_volume / 1000).toFixed(1)}k kg
+                          {hasCardio
+                            ? `${cardioDistance.toFixed(2)} km`
+                            : `${(workout.total_volume / 1000).toFixed(1)}k kg`}
                         </p>
                       </div>
                     </div>
@@ -310,10 +327,17 @@ const WorkoutHistory: React.FC = () => {
                             >
                               <div className="flex items-center gap-2 mb-3">
                                 <span className="material-symbols-outlined text-primary">
-                                  fitness_center
+                                  {isCardioExercise(exercise) ? 'directions_run' : 'fitness_center'}
                                 </span>
                                 <h5 className="font-bold text-white">{exercise.name}</h5>
                               </div>
+
+                              {isCardioExercise(exercise) && (
+                                <p className="mb-3 text-xs text-cyan-100">
+                                  Registra duración, distancia, ritmo, frecuencia cardiaca,
+                                  cadencia, calorías y RPE desde la sesión para ver su evolución.
+                                </p>
+                              )}
 
                               {/* Sets Table */}
                               <div className="space-y-2">
@@ -326,19 +350,64 @@ const WorkoutHistory: React.FC = () => {
                                       <span className="w-16 font-bold text-slate-400">
                                         Serie {setIdx + 1}
                                       </span>
-                                      <div className="flex items-center gap-4 flex-1">
-                                        <div className="flex items-center gap-1">
-                                          <span className="font-bold text-primary">
-                                            {set.weight}
-                                          </span>
-                                          <span className="text-xs text-slate-500">kg</span>
+                                      {isCardioExercise(exercise) ? (
+                                        (() => {
+                                          const metrics = getCardioMetricsFromSet(set);
+                                          const pace =
+                                            metrics?.paceSecondsPerKm ??
+                                            (metrics?.durationSeconds && metrics.distanceKm
+                                              ? metrics.durationSeconds / metrics.distanceKm
+                                              : undefined);
+                                          return (
+                                            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                                              <span className="font-bold text-cyan-100">
+                                                {formatCardioDuration(metrics?.durationSeconds)}
+                                              </span>
+                                              {metrics?.distanceKm !== undefined && (
+                                                <span className="text-slate-300">
+                                                  {metrics.distanceKm.toFixed(2)} km
+                                                </span>
+                                              )}
+                                              {pace !== undefined && (
+                                                <span className="text-slate-300">
+                                                  {formatPace(pace)}
+                                                </span>
+                                              )}
+                                              {metrics?.averageHeartRateBpm !== undefined && (
+                                                <span className="text-slate-300">
+                                                  FC {metrics.averageHeartRateBpm} ppm
+                                                </span>
+                                              )}
+                                              {metrics?.rpe !== undefined && (
+                                                <span className="text-slate-300">
+                                                  RPE {metrics.rpe}
+                                                </span>
+                                              )}
+                                            </div>
+                                          );
+                                        })()
+                                      ) : (
+                                        <div className="flex items-center gap-4 flex-1">
+                                          <div className="flex items-center gap-1">
+                                            <span className="font-bold text-primary">
+                                              {set.weight}
+                                            </span>
+                                            <span className="text-xs text-slate-500">kg</span>
+                                          </div>
+                                          <span className="text-slate-500">×</span>
+                                          <div className="flex items-center gap-1">
+                                            <span className="font-bold text-primary">
+                                              {set.reps}
+                                            </span>
+                                            <span className="text-xs text-slate-500">reps</span>
+                                          </div>
+                                          {set.rir !== undefined && (
+                                            <span className="text-xs text-slate-400">
+                                              RIR {set.rir}
+                                            </span>
+                                          )}
                                         </div>
-                                        <span className="text-slate-500">×</span>
-                                        <div className="flex items-center gap-1">
-                                          <span className="font-bold text-primary">{set.reps}</span>
-                                          <span className="text-xs text-slate-500">reps</span>
-                                        </div>
-                                      </div>
+                                      )}
                                       {set.completed && (
                                         <span className="material-symbols-outlined text-[18px] text-emerald-300">
                                           check_circle

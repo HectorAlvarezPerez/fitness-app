@@ -1,11 +1,23 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
-import { useStore, type LoadResult, type RoutineUpdateCandidate } from '../store/useStore';
+import {
+  useStore,
+  type ActiveWorkoutExercise,
+  type LoadResult,
+  type RoutineUpdateCandidate,
+} from '../store/useStore';
 import WorkoutTimer from '../components/WorkoutTimer';
 import RestTimer from '../components/RestTimer';
 import { buildLastPerformanceMap } from '../lib/workoutUtils';
 import { parseLocaleDecimal } from '../lib/numberUtils';
 import { createId } from '../lib/id';
+import {
+  formatCardioDuration,
+  formatPace,
+  isCardioExercise,
+  sanitizeCardioMetrics,
+  type CardioMetricKey,
+} from '../lib/trainingMetrics';
 import ConfirmDialog from '../components/ConfirmDialog';
 import ExerciseLibrarySheet from '../components/ExerciseLibrarySheet';
 import {
@@ -32,6 +44,63 @@ export const getWorkoutContentReservation = (hasRestTimer: boolean) => ({
   includesSafeAreaInset: true as const,
   includesKeyboardInset: true as const,
 });
+
+const CARDIO_INPUTS: Array<{
+  key: CardioMetricKey;
+  label: string;
+  unit: string;
+  step?: string;
+}> = [
+  { key: 'durationSeconds', label: 'Duración', unit: 'seg' },
+  { key: 'distanceKm', label: 'Distancia', unit: 'km', step: '0.01' },
+  { key: 'paceSecondsPerKm', label: 'Ritmo', unit: 'seg/km' },
+  { key: 'averageHeartRateBpm', label: 'FC media', unit: 'ppm' },
+  { key: 'maxHeartRateBpm', label: 'FC máxima', unit: 'ppm' },
+  { key: 'cadenceRpm', label: 'Cadencia', unit: 'rpm' },
+  { key: 'calories', label: 'Calorías', unit: 'kcal' },
+  { key: 'rpe', label: 'RPE', unit: '0-10', step: '0.5' },
+];
+
+const formatPrescription = (
+  prescription?: {
+    repMin?: number;
+    repMax?: number;
+    rirMin?: number;
+    rirMax?: number;
+    restMinSeconds?: number;
+    restMaxSeconds?: number;
+  },
+  trackingType: 'reps' | 'time' = 'reps'
+) => {
+  if (!prescription) return null;
+  const reps =
+    prescription.repMin !== undefined && prescription.repMax !== undefined
+      ? trackingType === 'time'
+        ? `duración ${formatCardioDuration(prescription.repMin)}-${formatCardioDuration(prescription.repMax)}`
+        : `${prescription.repMin}-${prescription.repMax} reps`
+      : null;
+  const rir =
+    prescription.rirMin !== undefined && prescription.rirMax !== undefined
+      ? prescription.rirMin === prescription.rirMax
+        ? `RIR ${prescription.rirMin}`
+        : `RIR ${prescription.rirMin}-${prescription.rirMax}`
+      : null;
+  const rest =
+    prescription.restMinSeconds !== undefined && prescription.restMaxSeconds !== undefined
+      ? (() => {
+          const restMin = formatRestDuration(prescription.restMinSeconds);
+          const restMax = formatRestDuration(prescription.restMaxSeconds);
+          return `descanso ${restMin === restMax ? restMin : `${restMin}-${restMax}`}`;
+        })()
+      : null;
+  return [reps, rir, rest].filter(Boolean).join(' · ');
+};
+
+const formatRestDuration = (seconds: number) => {
+  const minutes = Math.floor(seconds / 60);
+  const remainder = Math.round(seconds % 60);
+  return `${minutes}:${String(remainder).padStart(2, '0')}`;
+};
 
 const RoutineUpdatePrompt: React.FC<{
   onAccept: () => void;
@@ -374,6 +443,45 @@ const WorkoutSession: React.FC = () => {
     void setActiveWorkoutPosition(exerciseId, setIndex);
   };
 
+  const updateSetRir = (exerciseId: string, setIndex: number, value: number | undefined) => {
+    if (!activeWorkout) return;
+    const exercise = activeWorkout.exercises.find((ex) => ex && ex.exerciseId === exerciseId);
+    if (!exercise) return;
+
+    const updatedSets = exercise.sets.map((set, index) =>
+      index === setIndex ? { ...set, rir: value } : set
+    );
+    void updateWorkoutExerciseSets(exerciseId, updatedSets);
+    void setActiveWorkoutPosition(exerciseId, setIndex);
+  };
+
+  const updateCardioMetric = (
+    exerciseId: string,
+    field: CardioMetricKey,
+    value: number | undefined
+  ) => {
+    if (!activeWorkout) return;
+    const exercise = activeWorkout.exercises.find((ex) => ex && ex.exerciseId === exerciseId);
+    if (!exercise || exercise.sets.length === 0) return;
+
+    const setIndex = exercise.sets.findIndex((set) => !set.isWarmup);
+    const targetIndex = setIndex >= 0 ? setIndex : 0;
+    const targetSet = exercise.sets[targetIndex];
+    const metrics = sanitizeCardioMetrics({
+      ...(targetSet.cardioMetrics || {}),
+      [field]: value,
+    });
+    const updatedSets = exercise.sets.map((set, index) => {
+      if (index !== targetIndex) return set;
+      return {
+        ...set,
+        ...(metrics ? { cardioMetrics: metrics } : { cardioMetrics: undefined }),
+        ...(field === 'durationSeconds' ? { reps: value ?? 0 } : {}),
+      };
+    });
+    void updateWorkoutExerciseSets(exerciseId, updatedSets);
+  };
+
   const updateDropsetValue = (
     exerciseId: string,
     setIndex: number,
@@ -537,9 +645,11 @@ const WorkoutSession: React.FC = () => {
     }
   });
 
-  const totalSets = safeExercises.reduce((acc, ex) => acc + ex.sets.length, 0);
+  const getWorkingSets = (exercise: ActiveWorkoutExercise) =>
+    exercise.sets.filter((set) => !set.isWarmup);
+  const totalSets = safeExercises.reduce((acc, ex) => acc + getWorkingSets(ex).length, 0);
   const completedSets = safeExercises.reduce(
-    (acc, ex) => acc + ex.sets.filter((s) => s.completed).length,
+    (acc, ex) => acc + getWorkingSets(ex).filter((s) => s.completed).length,
     0
   );
   const progress = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
@@ -740,8 +850,8 @@ const WorkoutSession: React.FC = () => {
                       </div>
                       <h3 className="text-lg font-bold">{exercise.name}</h3>
                       <p className="mt-1 text-sm text-slate-400">
-                        {exercise.sets.filter((s) => s.completed).length}/{exercise.sets.length}{' '}
-                        series completadas
+                        {getWorkingSets(exercise).filter((s) => s.completed).length}/
+                        {getWorkingSets(exercise).length} series completadas
                       </p>
                     </div>
                     <div className="flex items-center self-end sm:self-auto">
@@ -869,6 +979,85 @@ const WorkoutSession: React.FC = () => {
                       )}
                     </div>
 
+                    {formatPrescription(exercise.prescription, exercise.trackingType) && (
+                      <div
+                        data-testid={`exercise-prescription-${exercise.exerciseId}`}
+                        className="mb-4 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-xs text-blue-100"
+                      >
+                        <span className="font-bold text-primary">Objetivo:</span>{' '}
+                        {formatPrescription(exercise.prescription, exercise.trackingType)}
+                      </div>
+                    )}
+
+                    {isCardioExercise({
+                      activityType: exercise.activityType,
+                      trackingType: exercise.trackingType,
+                      primaryMuscle: exercise.primaryMuscle,
+                    }) && (
+                      <div className="mb-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-3">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <h4 className="text-sm font-bold text-cyan-100">Datos de cardio</h4>
+                          <span className="text-xs text-slate-400">
+                            {exercise.cardioTargets?.modality || 'sesión'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          {CARDIO_INPUTS.map(({ key, label, unit, step }) => {
+                            const cardioSet = getWorkingSets(exercise)[0] || exercise.sets[0];
+                            const metrics = cardioSet?.cardioMetrics;
+                            const fallbackDuration =
+                              key === 'durationSeconds' ? cardioSet?.reps : undefined;
+                            const value = metrics?.[key] ?? fallbackDuration ?? '';
+                            return (
+                              <label key={key} className="flex min-w-0 flex-col gap-1">
+                                <span className="text-[10px] font-bold uppercase text-slate-400">
+                                  {label}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    aria-label={label}
+                                    min={0}
+                                    max={key === 'rpe' ? 10 : undefined}
+                                    step={step || '1'}
+                                    value={value}
+                                    onChange={(event) => {
+                                      const raw = event.target.value;
+                                      const parsed = raw === '' ? undefined : Number(raw);
+                                      if (parsed === undefined || Number.isFinite(parsed)) {
+                                        updateCardioMetric(exercise.exerciseId, key, parsed);
+                                      }
+                                    }}
+                                    className="w-full min-w-0 rounded-lg border border-white/10 bg-[#07131d] px-2 py-1.5 text-center text-sm font-bold text-white"
+                                  />
+                                  <span className="shrink-0 text-[10px] text-slate-500">
+                                    {unit}
+                                  </span>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                        {(() => {
+                          const cardioSet = getWorkingSets(exercise)[0] || exercise.sets[0];
+                          const metrics = cardioSet?.cardioMetrics;
+                          const duration = metrics?.durationSeconds ?? cardioSet?.reps;
+                          const pace =
+                            metrics?.paceSecondsPerKm ??
+                            (duration && metrics?.distanceKm
+                              ? duration / metrics.distanceKm
+                              : undefined);
+                          return (
+                            <p className="mt-2 text-xs text-slate-400">
+                              Resumen: {formatCardioDuration(duration)}
+                              {metrics?.distanceKm ? ` · ${metrics.distanceKm.toFixed(2)} km` : ''}
+                              {pace ? ` · ${formatPace(pace)}` : ''}
+                            </p>
+                          );
+                        })()}
+                      </div>
+                    )}
+
                     <div className="flex flex-col gap-2">
                       <DndContext
                         sensors={setSensors}
@@ -881,7 +1070,15 @@ const WorkoutSession: React.FC = () => {
                         >
                           {exercise.sets.map((set, setIndex) => {
                             const lastExercise = lastPerformanceByExercise[exercise.name];
-                            const lastSet = lastExercise?.sets?.[setIndex];
+                            const previousWorkingSets = lastExercise?.sets?.filter(
+                              (previousSet) => !previousSet.isWarmup
+                            );
+                            const workingSetIndex = exercise.sets
+                              .slice(0, setIndex)
+                              .filter((currentSet) => !currentSet.isWarmup).length;
+                            const lastSet = set.isWarmup
+                              ? undefined
+                              : previousWorkingSets?.[workingSetIndex];
                             const lastLabel = formatLastSet(lastSet);
 
                             return (
@@ -898,6 +1095,7 @@ const WorkoutSession: React.FC = () => {
                                 trackingType={exercise.trackingType || 'reps'}
                                 toggleSetComplete={toggleSetComplete}
                                 updateSetValue={updateSetValue}
+                                updateSetRir={updateSetRir}
                                 updateDropsetValue={updateDropsetValue}
                                 removeSet={removeSet}
                                 lastLabel={lastLabel}
@@ -1123,6 +1321,7 @@ const SortableWorkoutSetRow: React.FC<{
     field: 'reps' | 'weight',
     value: number
   ) => void;
+  updateSetRir: (exerciseId: string, setIndex: number, value: number | undefined) => void;
   updateDropsetValue: (
     exerciseId: string,
     setIndex: number,
@@ -1142,6 +1341,7 @@ const SortableWorkoutSetRow: React.FC<{
   trackingType,
   toggleSetComplete,
   updateSetValue,
+  updateSetRir,
   updateDropsetValue,
   removeSet,
   lastLabel,
@@ -1300,6 +1500,32 @@ const SortableWorkoutSetRow: React.FC<{
               {trackingType === 'time' ? 'seg' : 'reps'}
             </span>
           </div>
+          {trackingType !== 'time' && (
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={6}
+                step={1}
+                value={set.rir ?? ''}
+                placeholder="—"
+                aria-label={`RIR serie ${setIndex + 1}`}
+                onChange={(event) => {
+                  const raw = event.target.value;
+                  const parsed = raw === '' ? undefined : Number(raw);
+                  if (
+                    parsed === undefined ||
+                    (Number.isFinite(parsed) && parsed >= 0 && parsed <= 6)
+                  ) {
+                    updateSetRir(exerciseId, setIndex, parsed);
+                  }
+                }}
+                className="w-full min-w-[44px] rounded-xl border border-white/10 bg-[#07131d] px-2 py-1.5 text-center text-sm font-bold text-white sm:w-14"
+              />
+              <span className="text-xs text-slate-500">RIR</span>
+            </div>
+          )}
         </div>
 
         {/* Delete Set */}

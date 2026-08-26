@@ -4,6 +4,8 @@ import { BodyHeatmap } from '../components/BodyHeatmap';
 import {
   AreaChart,
   Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -15,6 +17,12 @@ import {
   Legend,
 } from 'recharts';
 import { accumulateMuscleSeriesDistribution } from '../lib/muscleStats';
+import {
+  formatCardioDuration,
+  formatPace,
+  getCardioProgressPoints,
+  summarizeCardioProgress,
+} from '../lib/trainingMetrics';
 
 export default function ProgressPage() {
   const {
@@ -26,7 +34,7 @@ export default function ProgressPage() {
     deleteBodyMeasurement,
   } = useStore();
 
-  const [activeTab, setActiveTab] = useState<'heatmap' | 'measurements'>('heatmap');
+  const [activeTab, setActiveTab] = useState<'heatmap' | 'cardio' | 'measurements'>('heatmap');
 
   // --- HEATMAP STATE ---
   const [selectedWeekOffset, setSelectedWeekOffset] = useState(0);
@@ -158,6 +166,23 @@ export default function ProgressPage() {
       .sort((a, b) => b.value - a.value);
   }, [weeklyMuscleData.raw]);
 
+  const cardioPoints = useMemo(() => getCardioProgressPoints(workoutHistory), [workoutHistory]);
+  const cardioSummary = useMemo(() => summarizeCardioProgress(cardioPoints), [cardioPoints]);
+  const cardioChartData = useMemo(
+    () =>
+      cardioPoints.map((point) => ({
+        date: new Date(point.date).toLocaleDateString('es-ES', {
+          day: 'numeric',
+          month: 'short',
+        }),
+        distanceKm: point.distanceKm || 0,
+        durationMinutes: Math.round((point.durationSeconds || 0) / 60),
+        paceSecondsPerKm: point.paceSecondsPerKm || 0,
+        exerciseName: point.exerciseName,
+      })),
+    [cardioPoints]
+  );
+
   // --- MEASUREMENTS HELPERS ---
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -238,6 +263,12 @@ export default function ProgressPage() {
               className={`pb-3 px-1 font-bold text-sm transition-colors ${activeTab === 'measurements' ? 'text-[#4ea0ff] border-b-2 border-[#2f8cff]' : 'text-slate-500 hover:text-slate-300'}`}
             >
               Medidas Corporales
+            </button>
+            <button
+              onClick={() => setActiveTab('cardio')}
+              className={`pb-3 px-1 font-bold text-sm transition-colors ${activeTab === 'cardio' ? 'text-[#4ea0ff] border-b-2 border-[#2f8cff]' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              Cardio
             </button>
           </div>
         </header>
@@ -375,6 +406,133 @@ export default function ProgressPage() {
                       </p>
                     )}
                   </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : activeTab === 'cardio' ? (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="mobile-card p-6">
+              <div className="mb-5 flex items-center gap-3">
+                <div className="flex size-11 items-center justify-center rounded-2xl bg-cyan-400/12 text-cyan-200">
+                  <span className="material-symbols-outlined">directions_run</span>
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white">Progresión de cardio</h2>
+                  <p className="text-sm text-slate-400">
+                    Registra cada sesión desde la rutina para comparar volumen e intensidad.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <div className="mobile-card-soft p-3">
+                  <p className="text-xs text-slate-400">Sesiones</p>
+                  <p className="mt-1 text-xl font-bold text-white">{cardioSummary.sessions}</p>
+                </div>
+                <div className="mobile-card-soft p-3">
+                  <p className="text-xs text-slate-400">Distancia total</p>
+                  <p className="mt-1 text-xl font-bold text-white">
+                    {cardioSummary.distanceKm.toFixed(2)} km
+                  </p>
+                </div>
+                <div className="mobile-card-soft p-3">
+                  <p className="text-xs text-slate-400">Tiempo total</p>
+                  <p className="mt-1 text-xl font-bold text-white">
+                    {formatCardioDuration(cardioSummary.durationSeconds)}
+                  </p>
+                </div>
+                <div className="mobile-card-soft p-3">
+                  <p className="text-xs text-slate-400">Ritmo medio</p>
+                  <p className="mt-1 text-xl font-bold text-white">
+                    {formatPace(cardioSummary.averagePaceSecondsPerKm)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mobile-card p-6">
+              <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-white">
+                <span className="material-symbols-outlined text-primary">show_chart</span>
+                Distancia por sesión
+              </h3>
+              {cardioChartData.length === 0 ? (
+                <div className="flex min-h-[260px] items-center justify-center text-center text-sm text-slate-400">
+                  Todavía no hay sesiones de cardio registradas.
+                </div>
+              ) : (
+                <div className="h-[280px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={cardioChartData}>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.1} vertical={false} />
+                      <XAxis
+                        dataKey="date"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#9ca3af', fontSize: 12 }}
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#9ca3af', fontSize: 12 }}
+                        unit=" km"
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#1e293b',
+                          border: 'none',
+                          borderRadius: '8px',
+                          color: '#fff',
+                        }}
+                        formatter={(value: number, name: string) => [
+                          name === 'distanceKm' ? `${value.toFixed(2)} km` : `${value} min`,
+                          name === 'distanceKm' ? 'Distancia' : 'Duración',
+                        ]}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="distanceKm"
+                        name="distanceKm"
+                        stroke="#22d3ee"
+                        strokeWidth={3}
+                        dot={{ fill: '#22d3ee', r: 4 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+
+            {cardioPoints.length > 0 && (
+              <div className="mobile-card p-6">
+                <h3 className="mb-4 text-lg font-bold text-white">Últimas sesiones</h3>
+                <div className="space-y-2">
+                  {[...cardioPoints]
+                    .reverse()
+                    .slice(0, 8)
+                    .map((point, index) => (
+                      <div
+                        key={`${point.date}-${point.exerciseName}-${index}`}
+                        className="mobile-card-soft flex flex-wrap items-center justify-between gap-2 p-3 text-sm"
+                      >
+                        <div>
+                          <p className="font-semibold text-white">{point.exerciseName}</p>
+                          <p className="text-xs text-slate-400">
+                            {new Date(point.date).toLocaleDateString('es-ES')}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-3 text-xs text-slate-300">
+                          <span>{formatCardioDuration(point.durationSeconds)}</span>
+                          {point.distanceKm !== undefined && (
+                            <span>{point.distanceKm.toFixed(2)} km</span>
+                          )}
+                          {point.averageHeartRateBpm !== undefined && (
+                            <span>FC {point.averageHeartRateBpm}</span>
+                          )}
+                          {point.rpe !== undefined && <span>RPE {point.rpe}</span>}
+                        </div>
+                      </div>
+                    ))}
                 </div>
               </div>
             )}

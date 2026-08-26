@@ -473,3 +473,30 @@ describe('getWorkoutContentReservation', () => {
     });
   });
 });
+
+describe('training plan session fields', () => {
+  it('shows prescription and cardio metrics fields for a cardio exercise', async () => {
+    h.store.current.activeWorkout = activeWorkout({
+      exercises: [
+        {
+          ...exercise('cardio'),
+          name: 'Correr en Cinta',
+          activityType: 'cardio',
+          trackingType: 'time',
+          prescription: { repMin: 30, repMax: 45, rirMin: 1, rirMax: 2 },
+          cardioTargets: { modality: 'run', distanceKm: 7 },
+          sets: [{ id: 'cardio-set', reps: 2700, weight: 0, completed: false }],
+        },
+      ],
+      currentExerciseId: 'cardio',
+    });
+
+    render(<WorkoutSession />);
+
+    expect(await screen.findByTestId('exercise-prescription-cardio')).toHaveTextContent(
+      'duración 0:30-0:45'
+    );
+    expect(screen.getByLabelText('Duración')).toHaveValue(2700);
+    expect(screen.getByText('Datos de cardio')).toBeInTheDocument();
+  });
+});

@@ -32,6 +32,19 @@ describe('workoutUtils', () => {
     expect(isPartialWorkout(workout)).toBe(false);
   });
 
+  it('does not count warmups towards completion', () => {
+    const workout = {
+      exercises_completed: [
+        {
+          sets: [{ completed: true, isWarmup: true }, { completed: false }, { completed: true }],
+        },
+      ],
+    };
+
+    expect(getSetCompletionCounts(workout)).toEqual({ totalSets: 2, completedSets: 1 });
+    expect(isPartialWorkout(workout)).toBe(true);
+  });
+
   it('builds last performance map from history', () => {
     const history = [
       {

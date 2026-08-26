@@ -1,12 +1,12 @@
 export type WorkoutSessionLike = {
   exercises_completed?: Array<{
-    sets?: Array<{ completed?: boolean }>;
+    sets?: Array<{ completed?: boolean; isWarmup?: boolean }>;
   }> | null;
 };
 
 export type WorkoutExerciseLike = {
   name?: string;
-  sets?: Array<{ reps?: number; weight?: number }>;
+  sets?: Array<{ reps?: number; weight?: number; completed?: boolean; isWarmup?: boolean }>;
 };
 
 export type WorkoutHistoryEntryLike = {
@@ -20,8 +20,9 @@ export const getSetCompletionCounts = (workout: WorkoutSessionLike) => {
 
   exercises.forEach((exercise) => {
     if (!Array.isArray(exercise.sets)) return;
-    totalSets += exercise.sets.length;
-    completedSets += exercise.sets.filter((set) => set.completed).length;
+    const workingSets = exercise.sets.filter((set) => !set.isWarmup);
+    totalSets += workingSets.length;
+    completedSets += workingSets.filter((set) => set.completed).length;
   });
 
   return { totalSets, completedSets };

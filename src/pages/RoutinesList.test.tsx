@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const h = vi.hoisted(() => ({
   store: { current: {} as any },
   reorderFolders: vi.fn(),
+  installTrainingPlan: vi.fn(),
 }));
 
 vi.mock('../store/useStore', () => ({
@@ -26,6 +27,8 @@ const folder = (id: string, name: string, orderIndex: number) => ({
 beforeEach(() => {
   h.reorderFolders.mockReset();
   h.reorderFolders.mockResolvedValue(true);
+  h.installTrainingPlan.mockReset();
+  h.installTrainingPlan.mockResolvedValue({ ok: true, created: 6, skipped: 0 });
   h.store.current = {
     savedRoutines: [],
     routineFolders: [
@@ -41,6 +44,7 @@ beforeEach(() => {
     deleteFolder: vi.fn(),
     moveRoutineToFolder: vi.fn(),
     duplicateRoutine: vi.fn(),
+    installTrainingPlan: h.installTrainingPlan,
     reorderFolders: h.reorderFolders,
     startWorkout: vi.fn(),
     startEmptyWorkout: vi.fn(),
@@ -134,6 +138,19 @@ describe('routine folder order controls', () => {
     await act(async () => pending.resolve(true));
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Mover Fuerza abajo' })).toBeEnabled()
+    );
+  });
+});
+
+describe('training plan import', () => {
+  it('imports the plan explicitly and reports the result', async () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Importar plan atlético' }));
+
+    await waitFor(() => expect(h.installTrainingPlan).toHaveBeenCalledTimes(1));
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Plan importado: 6 rutinas nuevas.'
     );
   });
 });

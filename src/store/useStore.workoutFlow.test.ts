@@ -27,7 +27,7 @@ const h = vi.hoisted(() => {
   const pendingHistoryInserts: Array<{ resolve: () => void }> = [];
   const pendingActiveDeletes: Array<{ resolve: () => void }> = [];
   const persistPayload = (payload: any, error: { message: string } | null) => {
-    if (error) return { error };
+    if (error) return { data: null, error };
     state.serverRow = {
       id: 'active-row',
       user_id: payload.user_id,
@@ -37,18 +37,27 @@ const h = vi.hoisted(() => {
       updated_at: payload.updated_at,
       workout_data: payload.workout_data,
     };
-    return { error: null };
+    return { data: { id: 'active-row' }, error: null };
+  };
+  const upsertResult = (promise: Promise<any>) => {
+    (promise as any).select = () => ({ single: () => promise });
+    return promise;
   };
   const upsertMock = vi.fn((payload: any) => {
     if (state.deferUpserts) {
-      return new Promise<{ error: { message: string } | null }>((resolve) => {
-        pendingUpserts.push({
-          resolve: (error = null) => resolve(persistPayload(payload, error)),
-        });
-      });
+      return upsertResult(
+        new Promise<{ data: { id: string } | null; error: { message: string } | null }>(
+          (resolve) => {
+            pendingUpserts.push({
+              resolve: (error = null) => resolve(persistPayload(payload, error)),
+            });
+          }
+        )
+      );
     }
-    if (state.upsertError) return Promise.resolve({ error: state.upsertError });
-    return Promise.resolve(persistPayload(payload, null));
+    if (state.upsertError)
+      return upsertResult(Promise.resolve({ data: null, error: state.upsertError }));
+    return upsertResult(Promise.resolve(persistPayload(payload, null)));
   });
   const getSessionMock = vi.fn(() => {
     if (state.deferSessions) {
@@ -1034,5 +1043,46 @@ describe('originating routine template ownership', () => {
 
     expect(await useStore.getState().finishWorkout()).toEqual({ ok: false });
     expect(h.routineUpdateMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('routine metadata when starting a workout', () => {
+  it('preserves zero rest and keeps a time-based strength exercise out of cardio', async () => {
+    useStore.setState({
+      userData: { id: 'u1', default_rest_seconds: 90 },
+      workoutHistory: [
+        {
+          id: 'history-1',
+          user_id: 'u1',
+          routine_name: 'Previous',
+          started_at: '2026-08-01T08:00:00.000Z',
+          completed_at: '2026-08-01T08:30:00.000Z',
+          exercises_completed: [],
+          total_volume: 0,
+          duration_minutes: 30,
+        },
+      ],
+    });
+
+    const started = await useStore.getState().startWorkout(
+      routine('cardio-strength', [
+        {
+          id: 'plank',
+          name: 'Plancha',
+          muscleGroup: 'Core',
+          trackingType: 'time',
+          activityType: 'strength',
+          restSeconds: 0,
+          sets: [{ id: 'plank-set', reps: 45, weight: 0 }],
+        },
+      ])
+    );
+
+    expect(started).toBe(true);
+    expect(useStore.getState().activeWorkout?.exercises[0]).toMatchObject({
+      restSeconds: 0,
+      activityType: 'strength',
+      trackingType: 'time',
+    });
   });
 });
