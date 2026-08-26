@@ -25,6 +25,7 @@ const RoutinesList: React.FC = () => {
     deleteRoutine,
     createFolder,
     updateFolder,
+    reorderFolders,
     deleteFolder,
     moveRoutineToFolder,
     duplicateRoutine,
@@ -47,8 +48,12 @@ const RoutinesList: React.FC = () => {
   const [movingRoutine, setMovingRoutine] = useState<string | null>(null);
   const [deleteRoutineTarget, setDeleteRoutineTarget] = useState<Routine | null>(null);
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<RoutineFolder | null>(null);
+  const [folderOrderError, setFolderOrderError] = useState<string | null>(null);
+  const [isReorderingFolders, setIsReorderingFolders] = useState(false);
 
   const contextMenuRef = useRef<HTMLDivElement>(null);
+  const knownFolderIdsRef = useRef<Set<string>>(new Set());
+  const reorderInFlightRef = useRef(false);
 
   useEffect(() => {
     loadRoutines();
@@ -66,9 +71,17 @@ const RoutinesList: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Expand all folders by default
+  // Expand newly loaded folders by default without reopening folders after a reorder.
   useEffect(() => {
-    setExpandedFolders(new Set(routineFolders.map((f) => f.id)));
+    const currentFolderIds = new Set(routineFolders.map((folder) => folder.id));
+    setExpandedFolders((previous) => {
+      const next = new Set([...previous].filter((id) => currentFolderIds.has(id)));
+      routineFolders.forEach((folder) => {
+        if (!knownFolderIdsRef.current.has(folder.id)) next.add(folder.id);
+      });
+      return next;
+    });
+    knownFolderIdsRef.current = currentFolderIds;
   }, [routineFolders]);
 
   const toggleFolder = (folderId: string) => {
@@ -120,6 +133,36 @@ const RoutinesList: React.FC = () => {
     if (movingRoutine) {
       await moveRoutineToFolder(movingRoutine, folderId);
       setMovingRoutine(null);
+    }
+  };
+
+  const handleMoveFolder = async (folderId: string, direction: -1 | 1) => {
+    if (reorderInFlightRef.current) return;
+
+    const currentIndex = routineFolders.findIndex((folder) => folder.id === folderId);
+    const targetIndex = currentIndex + direction;
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= routineFolders.length) return;
+
+    const reorderedIds = routineFolders.map((folder) => folder.id);
+    [reorderedIds[currentIndex], reorderedIds[targetIndex]] = [
+      reorderedIds[targetIndex],
+      reorderedIds[currentIndex],
+    ];
+
+    reorderInFlightRef.current = true;
+    setIsReorderingFolders(true);
+    try {
+      const success = await reorderFolders(reorderedIds);
+      setFolderOrderError(
+        success ? null : 'No se pudo guardar el nuevo orden de las carpetas. Vuelve a intentarlo.'
+      );
+    } catch {
+      setFolderOrderError(
+        'No se pudo guardar el nuevo orden de las carpetas. Vuelve a intentarlo.'
+      );
+    } finally {
+      reorderInFlightRef.current = false;
+      setIsReorderingFolders(false);
     }
   };
 
@@ -202,7 +245,7 @@ const RoutinesList: React.FC = () => {
     </div>
   );
 
-  const renderFolderCard = (folder: RoutineFolder) => {
+  const renderFolderCard = (folder: RoutineFolder, folderIndex: number) => {
     const folderRoutines = getRoutinesInFolder(folder.id);
     const isExpanded = expandedFolders.has(folder.id);
     const isEditing = editingFolderId === folder.id;
@@ -245,6 +288,32 @@ const RoutinesList: React.FC = () => {
           )}
 
           <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleMoveFolder(folder.id, -1);
+              }}
+              disabled={isReorderingFolders || folderIndex === 0}
+              className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+              title={`Mover ${folder.name} arriba`}
+              aria-label={`Mover ${folder.name} arriba`}
+            >
+              <span className="material-symbols-outlined text-[18px]">arrow_upward</span>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleMoveFolder(folder.id, 1);
+              }}
+              disabled={isReorderingFolders || folderIndex === routineFolders.length - 1}
+              className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+              title={`Mover ${folder.name} abajo`}
+              aria-label={`Mover ${folder.name} abajo`}
+            >
+              <span className="material-symbols-outlined text-[18px]">arrow_downward</span>
+            </button>
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -321,6 +390,15 @@ const RoutinesList: React.FC = () => {
             </div>
           </div>
         </header>
+
+        {folderOrderError && (
+          <div
+            role="alert"
+            className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+          >
+            {folderOrderError}
+          </div>
+        )}
 
         {activeWorkout && (
           <Link

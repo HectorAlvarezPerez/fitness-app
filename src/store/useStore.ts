@@ -455,6 +455,7 @@ interface AppState {
   loadFolders: BootstrapLoader;
   createFolder: (name: string, color?: string) => Promise<RoutineFolder | null>;
   updateFolder: (id: string, updates: Partial<RoutineFolder>) => Promise<void>;
+  reorderFolders: (folderIds: string[]) => Promise<boolean>;
   deleteFolder: (id: string) => Promise<void>;
   moveRoutineToFolder: (routineId: string, folderId: string | null) => Promise<void>;
   duplicateRoutine: (routineId: string) => Promise<Routine | null>;
@@ -881,6 +882,86 @@ export const useStore = create<AppState>()(
 
         if (!error) {
           await get().loadFolders();
+        }
+      },
+
+      reorderFolders: async (folderIds: string[]) => {
+        try {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) return false;
+
+          const folders = get().routineFolders;
+          const uniqueIds = new Set(folderIds);
+          const foldersById = new Map(folders.map((folder) => [folder.id, folder]));
+          const isValidOrder =
+            folderIds.length === folders.length &&
+            uniqueIds.size === folders.length &&
+            folders.every((folder) => folder.user_id === user.id) &&
+            folderIds.every((id) => foldersById.has(id));
+
+          if (!isValidOrder) return false;
+
+          const reorderedFolders = folderIds.map((id, index) => ({
+            ...foldersById.get(id)!,
+            order_index: index + 1,
+          }));
+          const originalOrderIndexes = new Map(
+            folders.map((folder) => [folder.id, folder.order_index])
+          );
+          const writtenFolderIds: string[] = [];
+          const loadCanonicalFolders = async () => {
+            try {
+              const result = await get().loadFolders({
+                userId: user.id,
+                isCurrent: () => true,
+              });
+              return typeof result === 'object' && result !== null && result.ok === true;
+            } catch {
+              return false;
+            }
+          };
+          const compensateWrittenFolders = async () => {
+            for (const folderId of [...writtenFolderIds].reverse()) {
+              const originalOrderIndex = originalOrderIndexes.get(folderId);
+              if (originalOrderIndex === undefined) continue;
+
+              try {
+                await supabase
+                  .from('routine_folders')
+                  .update({ order_index: originalOrderIndex })
+                  .eq('id', folderId)
+                  .eq('user_id', user.id);
+              } catch {
+                // Compensation is best effort; the canonical reload remains authoritative.
+              }
+            }
+          };
+          const reconcileFailure = async () => {
+            await compensateWrittenFolders();
+            await loadCanonicalFolders();
+            return false;
+          };
+
+          try {
+            for (const folder of reorderedFolders) {
+              const { error } = await supabase
+                .from('routine_folders')
+                .update({ order_index: folder.order_index })
+                .eq('id', folder.id)
+                .eq('user_id', user.id);
+
+              if (error) return await reconcileFailure();
+              writtenFolderIds.push(folder.id);
+            }
+          } catch {
+            return await reconcileFailure();
+          }
+
+          return await loadCanonicalFolders();
+        } catch {
+          return false;
         }
       },
 
