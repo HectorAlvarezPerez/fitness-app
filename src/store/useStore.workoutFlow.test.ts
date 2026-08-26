@@ -1087,4 +1087,45 @@ describe('routine metadata when starting a workout', () => {
       trackingType: 'time',
     });
   });
+
+  it('keeps the planned cardio duration instead of borrowing another session with the same exercise', async () => {
+    useStore.setState({
+      workoutHistory: [
+        {
+          id: 'cardio-history',
+          user_id: 'u1',
+          routine_name: 'Cardio calidad',
+          started_at: '2026-08-01T08:00:00.000Z',
+          completed_at: '2026-08-01T08:40:00.000Z',
+          exercises_completed: [
+            {
+              name: 'Correr en Cinta',
+              trackingType: 'time',
+              activityType: 'cardio',
+              sets: [{ reps: 2400, weight: 0, completed: true }],
+            },
+          ],
+          total_volume: 0,
+          duration_minutes: 40,
+        },
+      ],
+    });
+
+    const started = await useStore.getState().startWorkout(
+      routine('zone-2', [
+        {
+          id: 'zone-2-run',
+          name: 'Correr en Cinta',
+          muscleGroup: 'Cardio',
+          trackingType: 'time',
+          activityType: 'cardio',
+          restSeconds: 0,
+          sets: [{ id: 'zone-2-set', reps: 2700, weight: 0 }],
+        },
+      ])
+    );
+
+    expect(started).toBe(true);
+    expect(useStore.getState().activeWorkout?.exercises[0].sets[0].reps).toBe(2700);
+  });
 });

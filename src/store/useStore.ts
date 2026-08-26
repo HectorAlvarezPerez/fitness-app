@@ -2081,7 +2081,9 @@ export const useStore = create<AppState>()(
                   if (defaultSet.isWarmup) return defaultSet;
                   const lastSet = lastWorkingSets[workingSetIndex];
                   workingSetIndex += 1;
-                  if (lastSet) {
+                  const reuseHistoricalValues =
+                    ex.trackingType !== 'time' || ex.activityType === 'strength';
+                  if (lastSet && reuseHistoricalValues) {
                     return {
                       ...defaultSet,
                       reps: lastSet.reps,
