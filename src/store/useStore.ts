@@ -267,8 +267,6 @@ const mapActiveWorkoutExercisesToRoutine = (exercises: ActiveWorkoutExercise[]):
       id: set.id,
       reps: set.reps,
       weight: set.weight,
-      ...(set.rir !== undefined ? { rir: set.rir } : {}),
-      ...(set.cardioMetrics ? { cardioMetrics: set.cardioMetrics } : {}),
       ...(set.isWarmup !== undefined ? { isWarmup: set.isWarmup } : {}),
       ...(set.isFailure !== undefined ? { isFailure: set.isFailure } : {}),
       ...(set.dropsets

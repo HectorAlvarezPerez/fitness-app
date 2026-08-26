@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import ExerciseLibrarySheet from '../components/ExerciseLibrarySheet';
 import { createId } from '../lib/id';
+import { getActivityTypeFromLibraryExercise } from '../lib/trainingMetrics';
 import {
   DndContext,
   closestCenter,
@@ -58,13 +59,13 @@ const RoutineEditor: React.FC = () => {
       if (routine) {
         setRoutineName(routine.name);
         setExercises(routine.exercises);
-        setDefaultRestSeconds(routine.default_rest_seconds || 90);
+        setDefaultRestSeconds(routine.default_rest_seconds ?? 90);
       }
     } else {
       // Reset for new routine
       setRoutineName('Nueva Rutina');
       setExercises([]);
-      setDefaultRestSeconds(userData?.default_rest_seconds || 90);
+      setDefaultRestSeconds(userData?.default_rest_seconds ?? 90);
     }
   }, [id, savedRoutines, setRoutineName, setExercises, userData?.default_rest_seconds]);
 
@@ -117,6 +118,7 @@ const RoutineEditor: React.FC = () => {
       restSeconds: defaultRestSeconds,
       sets: newSets,
       trackingType: exerciseLibItem.tracking_type || 'reps',
+      activityType: getActivityTypeFromLibraryExercise(exerciseLibItem),
     });
   };
 
@@ -721,9 +723,11 @@ function SortableExerciseItem({
           <input
             type="number"
             inputMode="numeric"
-            value={exercise.restSeconds || ''}
+            value={exercise.restSeconds ?? ''}
             onChange={(e) =>
-              updateExercise(exercise.id, { restSeconds: parseInt(e.target.value) || undefined })
+              updateExercise(exercise.id, {
+                restSeconds: e.target.value === '' ? undefined : parseInt(e.target.value, 10),
+              })
             }
             placeholder="90"
             className="w-full rounded-xl border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] py-2.5 pl-8 pr-2 text-center text-sm text-white placeholder:text-slate-500 transition-all focus:outline-none focus:border-[#2f8cff] focus:ring-1 focus:ring-[#2f8cff]"

@@ -529,6 +529,11 @@ export default function ProgressPage() {
                           {point.averageHeartRateBpm !== undefined && (
                             <span>FC {point.averageHeartRateBpm}</span>
                           )}
+                          {point.maxHeartRateBpm !== undefined && (
+                            <span>FC máx {point.maxHeartRateBpm}</span>
+                          )}
+                          {point.cadenceRpm !== undefined && <span>{point.cadenceRpm} rpm</span>}
+                          {point.calories !== undefined && <span>{point.calories} kcal</span>}
                           {point.rpe !== undefined && <span>RPE {point.rpe}</span>}
                         </div>
                       </div>

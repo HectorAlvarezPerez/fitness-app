@@ -920,6 +920,8 @@ describe('originating routine template ownership', () => {
           reps: 7,
           weight: 32,
           completed: false,
+          rir: 1,
+          cardioMetrics: { durationSeconds: 30, distanceKm: 0.1 },
           isWarmup: false,
           isFailure: true,
           restSeconds: 12,

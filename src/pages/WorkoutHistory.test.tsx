@@ -38,6 +38,9 @@ vi.mock('../store/useStore', () => ({
                   durationSeconds: 1800,
                   distanceKm: 6,
                   averageHeartRateBpm: 150,
+                  maxHeartRateBpm: 165,
+                  cadenceRpm: 88,
+                  calories: 420,
                   rpe: 7,
                 },
               },
@@ -80,6 +83,9 @@ describe('WorkoutHistory', () => {
     expect(screen.getAllByText('6.00 km').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('5:00 /km')).toBeInTheDocument();
     expect(screen.getByText('FC 150 ppm')).toBeInTheDocument();
+    expect(screen.getByText('FC máx 165 ppm')).toBeInTheDocument();
+    expect(screen.getByText('88 rpm')).toBeInTheDocument();
+    expect(screen.getByText('420 kcal')).toBeInTheDocument();
     expect(screen.getByText('RPE 7')).toBeInTheDocument();
   });
 });

@@ -378,6 +378,21 @@ const WorkoutHistory: React.FC = () => {
                                                   FC {metrics.averageHeartRateBpm} ppm
                                                 </span>
                                               )}
+                                              {metrics?.maxHeartRateBpm !== undefined && (
+                                                <span className="text-slate-300">
+                                                  FC máx {metrics.maxHeartRateBpm} ppm
+                                                </span>
+                                              )}
+                                              {metrics?.cadenceRpm !== undefined && (
+                                                <span className="text-slate-300">
+                                                  {metrics.cadenceRpm} rpm
+                                                </span>
+                                              )}
+                                              {metrics?.calories !== undefined && (
+                                                <span className="text-slate-300">
+                                                  {metrics.calories} kcal
+                                                </span>
+                                              )}
                                               {metrics?.rpe !== undefined && (
                                                 <span className="text-slate-300">
                                                   RPE {metrics.rpe}
