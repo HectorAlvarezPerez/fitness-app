@@ -85,9 +85,7 @@ const AuthenticatedRouteGate: React.FC<{
       <main className="flex min-h-screen items-center justify-center bg-[#050d15] px-6 text-white">
         <div role="alert" className="max-w-md text-center">
           <h1 className="text-2xl font-semibold">No se pudieron cargar tus datos</h1>
-          <p className="mt-3 text-sm text-slate-400">
-            Comprueba tu conexión e inténtalo de nuevo.
-          </p>
+          <p className="mt-3 text-sm text-slate-400">Comprueba tu conexión e inténtalo de nuevo.</p>
           <button
             type="button"
             onClick={onRetry}
@@ -108,6 +106,17 @@ const AuthenticatedRouteGate: React.FC<{
       <p className="text-sm text-slate-300">Preparando tus datos...</p>
     </main>
   );
+};
+
+const RootRoute: React.FC<{
+  status: BootstrapStatus;
+  userId: string | null;
+}> = ({ status, userId }) => {
+  if (userId && status !== 'signed-out') {
+    return <Navigate to="/home" replace />;
+  }
+
+  return <LandingPage />;
 };
 
 export const AppRoutes: React.FC = () => {
@@ -144,9 +153,14 @@ export const AppRoutes: React.FC = () => {
   }, [commitRefreshError, commitStatus]);
 
   const startBootstrap = React.useCallback(
-    (userId: string, mode: BootstrapMode = 'initial'): Promise<void> => {
+    (userId: string, mode: BootstrapMode = 'initial', forceRestart = false): Promise<void> => {
       const activeRun = inFlightRef.current;
-      if (activeRun?.userId === userId) return activeRun.promise;
+      if (activeRun?.userId === userId && !forceRestart) return activeRun.promise;
+
+      // A new sign-in can issue a fresh access token for the same user. The
+      // previous request cannot be aborted by every loader, so invalidate its
+      // generation and ignore its eventual result instead of reusing it.
+      if (forceRestart) inFlightRef.current = null;
 
       const store = useStore.getState();
       const previousUserId = currentUserIdRef.current;
@@ -210,13 +224,14 @@ export const AppRoutes: React.FC = () => {
   );
 
   const handleSessionUser = React.useCallback(
-    (userId: string | null) => {
+    (userId: string | null, forceRestart = false) => {
       if (!userId) {
         transitionToSignedOut();
         return;
       }
 
       if (
+        !forceRestart &&
         currentUserIdRef.current === userId &&
         (inFlightRef.current?.userId === userId ||
           bootstrapStatusRef.current === 'ready' ||
@@ -225,7 +240,7 @@ export const AppRoutes: React.FC = () => {
         return;
       }
 
-      void startBootstrap(userId);
+      void startBootstrap(userId, 'initial', forceRestart);
     },
     [startBootstrap, transitionToSignedOut]
   );
@@ -363,7 +378,7 @@ export const AppRoutes: React.FC = () => {
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'INITIAL_SESSION') return;
       authSignalRef.current += 1;
-      handleSessionUser(session?.user?.id ?? null);
+      handleSessionUser(session?.user?.id ?? null, event === 'SIGNED_IN');
     });
 
     return () => {
@@ -401,58 +416,61 @@ export const AppRoutes: React.FC = () => {
     <ErrorBoundary>
       <ScrollToTop />
       <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/onboarding/step1" element={<OnboardingStep1 />} />
-          <Route path="/onboarding/step2" element={<OnboardingStep2 />} />
-          <Route path="/onboarding/step3" element={<OnboardingStep3 />} />
+        <Route
+          path="/"
+          element={<RootRoute status={bootstrapStatus} userId={currentUserIdRef.current} />}
+        />
+        <Route path="/onboarding/step1" element={<OnboardingStep1 />} />
+        <Route path="/onboarding/step2" element={<OnboardingStep2 />} />
+        <Route path="/onboarding/step3" element={<OnboardingStep3 />} />
 
-          {/* Authenticated Routes with Layout */}
-          <Route
-            element={
-              <AuthenticatedRouteGate
-                status={bootstrapStatus}
-                refreshError={refreshError}
-                onRetry={retryInitialBootstrap}
-                onRefreshRetry={retryLifecycleRefresh}
-              />
-            }
-          >
-            <Route element={<MainLayout />}>
-              <Route path="/home" element={<Home />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/routine" element={<RoutinesList />} />
-              <Route path="/routine/new" element={<RoutineEditor />} />
-              <Route path="/routine/edit/:id" element={<RoutineEditor />} />
-              <Route path="/routine/free/workout" element={<WorkoutSession />} />
-              <Route path="/routine/:id/workout" element={<WorkoutSession />} />
-              <Route path="/history" element={<WorkoutHistory />} />
-              <Route path="/pr" element={<PersonalRecordsPage />} />
-              <Route path="/exercises" element={<ExercisesPage />} />
-              <Route path="/exercises/new" element={<ExerciseEditorPage />} />
-              <Route path="/exercises/:id/edit" element={<ExerciseEditorPage />} />
+        {/* Authenticated Routes with Layout */}
+        <Route
+          element={
+            <AuthenticatedRouteGate
+              status={bootstrapStatus}
+              refreshError={refreshError}
+              onRetry={retryInitialBootstrap}
+              onRefreshRetry={retryLifecycleRefresh}
+            />
+          }
+        >
+          <Route element={<MainLayout />}>
+            <Route path="/home" element={<Home />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/routine" element={<RoutinesList />} />
+            <Route path="/routine/new" element={<RoutineEditor />} />
+            <Route path="/routine/edit/:id" element={<RoutineEditor />} />
+            <Route path="/routine/free/workout" element={<WorkoutSession />} />
+            <Route path="/routine/:id/workout" element={<WorkoutSession />} />
+            <Route path="/history" element={<WorkoutHistory />} />
+            <Route path="/pr" element={<PersonalRecordsPage />} />
+            <Route path="/exercises" element={<ExercisesPage />} />
+            <Route path="/exercises/new" element={<ExerciseEditorPage />} />
+            <Route path="/exercises/:id/edit" element={<ExerciseEditorPage />} />
 
-              <Route path="/progress" element={<ProgressPage />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/profile-data" element={<ProfileData />} />
-              <Route path="/guide" element={<AppGuide />} />
+            <Route path="/progress" element={<ProgressPage />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/profile-data" element={<ProfileData />} />
+            <Route path="/guide" element={<AppGuide />} />
 
-              {/* Catch-all route for diagnostics */}
-              <Route
-                path="*"
-                element={
-                  <div className="flex min-h-screen items-center justify-center bg-black text-white">
-                    <div className="text-center">
-                      <h1 className="text-4xl font-bold text-red-500 mb-4">404</h1>
-                      <p className="text-xl">Route not found</p>
-                      <p className="text-sm text-gray-500 mt-2">
-                        Current Path: {window.location.hash}
-                      </p>
-                    </div>
+            {/* Catch-all route for diagnostics */}
+            <Route
+              path="*"
+              element={
+                <div className="flex min-h-screen items-center justify-center bg-black text-white">
+                  <div className="text-center">
+                    <h1 className="text-4xl font-bold text-red-500 mb-4">404</h1>
+                    <p className="text-xl">Route not found</p>
+                    <p className="text-sm text-gray-500 mt-2">
+                      Current Path: {window.location.hash}
+                    </p>
                   </div>
-                }
-              />
-            </Route>
+                </div>
+              }
+            />
           </Route>
+        </Route>
       </Routes>
     </ErrorBoundary>
   );

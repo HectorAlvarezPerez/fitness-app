@@ -200,7 +200,7 @@ describe('authenticated initial readiness', () => {
     for (const name of loaderNames) expect(harness.store[name]).not.toHaveBeenCalled();
   });
 
-  it('coalesces duplicate initial-session and sign-in signals into the active run', async () => {
+  it('coalesces duplicate initial-session signals into the active run', async () => {
     const pending = deferred<LoadResult>();
     harness.store.loadPersonalRecords.mockReturnValueOnce(pending.promise);
 
@@ -209,7 +209,7 @@ describe('authenticated initial readiness', () => {
     await waitFor(() => expect(harness.store.loadPersonalRecords).toHaveBeenCalledTimes(1));
     act(() => {
       harness.authCallback?.('INITIAL_SESSION', sessionFor('u1'));
-      harness.authCallback?.('SIGNED_IN', sessionFor('u1'));
+      harness.authCallback?.('INITIAL_SESSION', sessionFor('u1'));
     });
 
     for (const name of loaderNames) {
@@ -217,10 +217,56 @@ describe('authenticated initial readiness', () => {
     }
   });
 
+  it('restarts a pending same-user bootstrap after a real sign-in and ignores the old run', async () => {
+    harness.store.persistedUserId = 'u1';
+    const oldPending = deferred<LoadResult>();
+    harness.store.loadPersonalRecords
+      .mockReturnValueOnce(oldPending.promise)
+      .mockResolvedValueOnce(loadOk);
+
+    renderProtectedRoute();
+
+    await waitFor(() => expect(harness.store.loadPersonalRecords).toHaveBeenCalledTimes(1));
+    const oldContext = harness.store.loadPersonalRecords.mock.calls[0][0];
+
+    act(() => harness.authCallback?.('SIGNED_IN', sessionFor('u1')));
+
+    await waitFor(() => expect(harness.store.loadPersonalRecords).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText('Protected Home')).toBeInTheDocument();
+    const newContext = harness.store.loadPersonalRecords.mock.calls[1][0];
+    expect(oldContext.isCurrent()).toBe(false);
+    expect(newContext.isCurrent()).toBe(true);
+
+    await act(async () => {
+      oldPending.resolve(requestFailed);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText('Protected Home')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    for (const name of loaderNames) {
+      expect(harness.store[name]).toHaveBeenCalledTimes(2);
+    }
+  });
+
+  it('redirects an authenticated root visit to the protected home route', async () => {
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <AppRoutes />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('Protected Home')).toBeInTheDocument();
+    expect(screen.queryByText('Bienvenido de nuevo')).not.toBeInTheDocument();
+  });
+
   it('keeps the new user ready when an older user run completes later', async () => {
     const initialSession = deferred<ReturnType<typeof authResponse>>();
     harness.getSession.mockReturnValueOnce(initialSession.promise);
-    const oldResults = new Map<(typeof loaderNames)[number], ReturnType<typeof deferred<LoadResult>>>();
+    const oldResults = new Map<
+      (typeof loaderNames)[number],
+      ReturnType<typeof deferred<LoadResult>>
+    >();
     for (const name of loaderNames) {
       const oldResult = deferred<LoadResult>();
       oldResults.set(name, oldResult);
@@ -271,9 +317,7 @@ describe('authenticated initial readiness', () => {
   });
 
   it('starts a new generation when same-session retry succeeds', async () => {
-    harness.store.loadUserData
-      .mockResolvedValueOnce(requestFailed)
-      .mockResolvedValueOnce(loadOk);
+    harness.store.loadUserData.mockResolvedValueOnce(requestFailed).mockResolvedValueOnce(loadOk);
     renderProtectedRoute();
     fireEvent.click(await screen.findByRole('button', { name: 'Reintentar' }));
 
@@ -310,9 +354,7 @@ describe('authenticated initial readiness', () => {
     ] as const;
 
     it.each(lifecycleCases)('refreshes all contextual data on %s', async (_, dispatchEvent) => {
-      const visibility = vi
-        .spyOn(document, 'visibilityState', 'get')
-        .mockReturnValue('visible');
+      const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
       renderProtectedRoute();
       expect(await screen.findByText('Protected Home')).toBeInTheDocument();
 
@@ -326,9 +368,7 @@ describe('authenticated initial readiness', () => {
     });
 
     it('ignores hidden visibility and lifecycle signals while signed out', async () => {
-      const visibility = vi
-        .spyOn(document, 'visibilityState', 'get')
-        .mockReturnValue('hidden');
+      const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
       harness.getSession.mockResolvedValueOnce(authResponse(null));
       renderProtectedRoute();
       expect(await screen.findByText('Bienvenido de nuevo')).toBeInTheDocument();
@@ -347,9 +387,7 @@ describe('authenticated initial readiness', () => {
     });
 
     it('does not refresh when a ready document becomes hidden', async () => {
-      const visibility = vi
-        .spyOn(document, 'visibilityState', 'get')
-        .mockReturnValue('hidden');
+      const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
       renderProtectedRoute();
       expect(await screen.findByText('Protected Home')).toBeInTheDocument();
 
@@ -379,9 +417,7 @@ describe('authenticated initial readiness', () => {
     });
 
     it('coalesces overlapping lifecycle signals into one session lookup and loader run', async () => {
-      const visibility = vi
-        .spyOn(document, 'visibilityState', 'get')
-        .mockReturnValue('visible');
+      const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
       renderProtectedRoute();
       expect(await screen.findByText('Protected Home')).toBeInTheDocument();
       const lookup = deferred<ReturnType<typeof authResponse>>();
@@ -404,9 +440,7 @@ describe('authenticated initial readiness', () => {
     });
 
     it('keeps protected content mounted and shows an accessible refresh error', async () => {
-      harness.store.loadFolders
-        .mockResolvedValueOnce(loadOk)
-        .mockResolvedValueOnce(requestFailed);
+      harness.store.loadFolders.mockResolvedValueOnce(loadOk).mockResolvedValueOnce(requestFailed);
       renderProtectedRoute();
       expect(await screen.findByText('Protected Home')).toBeInTheDocument();
 
@@ -416,9 +450,7 @@ describe('authenticated initial readiness', () => {
         'No se pudieron actualizar tus datos'
       );
       expect(screen.getByText('Protected Home')).toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: 'Reintentar actualización' })
-      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Reintentar actualización' })).toBeInTheDocument();
     });
 
     it('clears the refresh error after a successful same-session retry', async () => {
@@ -429,9 +461,7 @@ describe('authenticated initial readiness', () => {
       renderProtectedRoute();
       expect(await screen.findByText('Protected Home')).toBeInTheDocument();
       act(() => window.dispatchEvent(new Event('focus')));
-      fireEvent.click(
-        await screen.findByRole('button', { name: 'Reintentar actualización' })
-      );
+      fireEvent.click(await screen.findByRole('button', { name: 'Reintentar actualización' }));
 
       await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
       expect(screen.getByText('Protected Home')).toBeInTheDocument();
@@ -446,20 +476,14 @@ describe('authenticated initial readiness', () => {
         .mockResolvedValueOnce(authResponse(sessionFor('u1')))
         .mockResolvedValueOnce(authResponse(sessionFor('u1')))
         .mockResolvedValueOnce(authResponse(sessionFor('u2')));
-      harness.store.loadUserData
-        .mockResolvedValueOnce(loadOk)
-        .mockResolvedValueOnce(requestFailed);
+      harness.store.loadUserData.mockResolvedValueOnce(loadOk).mockResolvedValueOnce(requestFailed);
       renderProtectedRoute();
       expect(await screen.findByText('Protected Home')).toBeInTheDocument();
       act(() => window.dispatchEvent(new Event('focus')));
-      fireEvent.click(
-        await screen.findByRole('button', { name: 'Reintentar actualización' })
-      );
+      fireEvent.click(await screen.findByRole('button', { name: 'Reintentar actualización' }));
 
       await waitFor(() => expect(harness.getSession).toHaveBeenCalledTimes(3));
-      expect(screen.getByRole('alert')).toHaveTextContent(
-        'No se pudieron actualizar tus datos'
-      );
+      expect(screen.getByRole('alert')).toHaveTextContent('No se pudieron actualizar tus datos');
       expect(screen.getByText('Protected Home')).toBeInTheDocument();
       expect(harness.store.resetUserScopedState).not.toHaveBeenCalled();
       for (const name of loaderNames) {
