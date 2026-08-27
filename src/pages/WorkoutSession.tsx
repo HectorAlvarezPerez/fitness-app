@@ -65,8 +65,6 @@ const formatPrescription = (
   prescription?: {
     repMin?: number;
     repMax?: number;
-    rirMin?: number;
-    rirMax?: number;
     restMinSeconds?: number;
     restMaxSeconds?: number;
   },
@@ -79,12 +77,6 @@ const formatPrescription = (
         ? `duración ${formatCardioDuration(prescription.repMin)}-${formatCardioDuration(prescription.repMax)}`
         : `${prescription.repMin}-${prescription.repMax} reps`
       : null;
-  const rir =
-    prescription.rirMin !== undefined && prescription.rirMax !== undefined
-      ? prescription.rirMin === prescription.rirMax
-        ? `RIR ${prescription.rirMin}`
-        : `RIR ${prescription.rirMin}-${prescription.rirMax}`
-      : null;
   const rest =
     prescription.restMinSeconds !== undefined && prescription.restMaxSeconds !== undefined
       ? (() => {
@@ -93,7 +85,7 @@ const formatPrescription = (
           return `descanso ${restMin === restMax ? restMin : `${restMin}-${restMax}`}`;
         })()
       : null;
-  return [reps, rir, rest].filter(Boolean).join(' · ');
+  return [reps, rest].filter(Boolean).join(' · ');
 };
 
 const formatRestDuration = (seconds: number) => {
@@ -439,18 +431,6 @@ const WorkoutSession: React.FC = () => {
       idx === setIndex ? { ...set, [field]: value } : set
     );
 
-    void updateWorkoutExerciseSets(exerciseId, updatedSets);
-    void setActiveWorkoutPosition(exerciseId, setIndex);
-  };
-
-  const updateSetRir = (exerciseId: string, setIndex: number, value: number | undefined) => {
-    if (!activeWorkout) return;
-    const exercise = activeWorkout.exercises.find((ex) => ex && ex.exerciseId === exerciseId);
-    if (!exercise) return;
-
-    const updatedSets = exercise.sets.map((set, index) =>
-      index === setIndex ? { ...set, rir: value } : set
-    );
     void updateWorkoutExerciseSets(exerciseId, updatedSets);
     void setActiveWorkoutPosition(exerciseId, setIndex);
   };
@@ -1095,7 +1075,6 @@ const WorkoutSession: React.FC = () => {
                                 trackingType={exercise.trackingType || 'reps'}
                                 toggleSetComplete={toggleSetComplete}
                                 updateSetValue={updateSetValue}
-                                updateSetRir={updateSetRir}
                                 updateDropsetValue={updateDropsetValue}
                                 removeSet={removeSet}
                                 lastLabel={lastLabel}
@@ -1321,7 +1300,6 @@ const SortableWorkoutSetRow: React.FC<{
     field: 'reps' | 'weight',
     value: number
   ) => void;
-  updateSetRir: (exerciseId: string, setIndex: number, value: number | undefined) => void;
   updateDropsetValue: (
     exerciseId: string,
     setIndex: number,
@@ -1341,7 +1319,6 @@ const SortableWorkoutSetRow: React.FC<{
   trackingType,
   toggleSetComplete,
   updateSetValue,
-  updateSetRir,
   updateDropsetValue,
   removeSet,
   lastLabel,
@@ -1500,32 +1477,6 @@ const SortableWorkoutSetRow: React.FC<{
               {trackingType === 'time' ? 'seg' : 'reps'}
             </span>
           </div>
-          {trackingType !== 'time' && (
-            <div className="flex items-center gap-1">
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={6}
-                step={1}
-                value={set.rir ?? ''}
-                placeholder="—"
-                aria-label={`RIR serie ${setIndex + 1}`}
-                onChange={(event) => {
-                  const raw = event.target.value;
-                  const parsed = raw === '' ? undefined : Number(raw);
-                  if (
-                    parsed === undefined ||
-                    (Number.isFinite(parsed) && parsed >= 0 && parsed <= 6)
-                  ) {
-                    updateSetRir(exerciseId, setIndex, parsed);
-                  }
-                }}
-                className="w-full min-w-[44px] rounded-xl border border-white/10 bg-[#07131d] px-2 py-1.5 text-center text-sm font-bold text-white sm:w-14"
-              />
-              <span className="text-xs text-slate-500">RIR</span>
-            </div>
-          )}
         </div>
 
         {/* Delete Set */}

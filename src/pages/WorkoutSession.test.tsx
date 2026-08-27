@@ -499,4 +499,32 @@ describe('training plan session fields', () => {
     expect(screen.getByLabelText('Duración')).toHaveValue(2700);
     expect(screen.getByText('Datos de cardio')).toBeInTheDocument();
   });
+
+  it('keeps RIR guidance in exercise notes instead of adding a per-set input', async () => {
+    h.store.current.activeWorkout = activeWorkout({
+      exercises: [
+        {
+          ...exercise('strength'),
+          notes: 'Objetivo: 8-12 reps · RIR 1-2 · descanso 2:00.',
+          prescription: {
+            repMin: 8,
+            repMax: 12,
+            rirMin: 1,
+            rirMax: 2,
+            restMinSeconds: 120,
+            restMaxSeconds: 120,
+          },
+        },
+      ],
+      currentExerciseId: 'strength',
+    });
+
+    render(<WorkoutSession />);
+
+    expect(
+      await screen.findByDisplayValue('Objetivo: 8-12 reps · RIR 1-2 · descanso 2:00.')
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('RIR serie 1')).not.toBeInTheDocument();
+    expect(screen.getByTestId('exercise-prescription-strength')).not.toHaveTextContent('RIR');
+  });
 });
