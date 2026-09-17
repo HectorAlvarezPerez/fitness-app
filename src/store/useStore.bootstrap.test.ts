@@ -94,7 +94,7 @@ vi.mock('../lib/supabaseClient', () => ({
   SUPABASE_ANON_KEY: 'anon',
 }));
 
-import { useStore } from './useStore';
+import { useStore, type CachedUserData, type LoadContext } from './useStore';
 
 const oldRoutine = {
   id: 'old-routine',
@@ -166,7 +166,7 @@ const readSlices = () => {
   };
 };
 
-const loadAll = (context: { userId: string; isCurrent: () => boolean }) => {
+const loadAll = (context: LoadContext) => {
   const state = useStore.getState();
   return Promise.all([
     state.loadUserData(context),
@@ -178,6 +178,63 @@ const loadAll = (context: { userId: string; isCurrent: () => boolean }) => {
     state.loadPersonalRecords(context),
   ]);
 };
+
+describe('staged bootstrap hydration', () => {
+  it('collects non-active user slices without committing them before the app accepts the batch', async () => {
+    h.state.responses = {
+      profiles: { data: null, error: null },
+      routines: { data: [{ ...oldRoutine, id: 'new-routine' }], error: null },
+      routine_folders: { data: [{ ...oldFolder, id: 'new-folder' }], error: null },
+      workout_sessions: { data: [{ ...oldSession, id: 'new-session' }], error: null },
+      active_workouts: { data: null, error: null },
+      body_measurements: { data: [{ ...oldMeasurement, id: 'new-measurement' }], error: null },
+      personal_records: {
+        data: [{ exercise_name: 'Squat', weight: 150, reps: 3, date: '2026-01-02' }],
+        error: null,
+      },
+    };
+    const before = useStore.getState().getCachedUserData();
+    const staged: Partial<CachedUserData>[] = [];
+    const context: LoadContext = {
+      userId: 'u1',
+      isCurrent: () => true,
+      stage: (patch) => staged.push(patch),
+    };
+
+    const results = await loadAll(context);
+    const after = useStore.getState().getCachedUserData();
+
+    expect(results).toEqual(Array.from({ length: 7 }, () => ({ ok: true })));
+    expect(staged).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ userData: expect.objectContaining({ id: 'u1' }) }),
+        expect.objectContaining({
+          savedRoutines: [expect.objectContaining({ id: 'new-routine' })],
+        }),
+        expect.objectContaining({
+          routineFolders: [expect.objectContaining({ id: 'new-folder' })],
+        }),
+        expect.objectContaining({
+          workoutHistory: [expect.objectContaining({ id: 'new-session' })],
+        }),
+        expect.objectContaining({
+          bodyMeasurements: [expect.objectContaining({ id: 'new-measurement' })],
+        }),
+        expect.objectContaining({
+          personalRecords: { Squat: { weight: 150, reps: 3, date: '2026-01-02' } },
+        }),
+        expect.objectContaining({ stats: expect.any(Object) }),
+      ])
+    );
+    expect(after.userData).toBe(before.userData);
+    expect(after.savedRoutines).toBe(before.savedRoutines);
+    expect(after.routineFolders).toBe(before.routineFolders);
+    expect(after.workoutHistory).toBe(before.workoutHistory);
+    expect(after.stats).toBe(before.stats);
+    expect(after.bodyMeasurements).toBe(before.bodyMeasurements);
+    expect(after.personalRecords).toBe(before.personalRecords);
+  });
+});
 
 beforeEach(() => {
   h.state.userId = 'u1';

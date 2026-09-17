@@ -23,7 +23,8 @@ import MainLayout from './components/MainLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 import { initTheme } from './lib/theme';
 import { supabase } from './lib/supabaseClient';
-import { useStore, type LoadResult } from './store/useStore';
+import { deleteUserDataCache, readUserDataCache, writeUserDataCache } from './lib/userDataCache';
+import { useStore, type CachedUserData, type LoadResult } from './store/useStore';
 
 type BootstrapStatus = 'resolving' | 'signed-out' | 'checking' | 'error' | 'ready';
 
@@ -38,6 +39,8 @@ type LifecycleRequest = {
   userId: string;
   promise: Promise<void>;
 };
+
+const LIFECYCLE_REFRESH_COOLDOWN_MS = 5 * 60 * 1000;
 
 const isLoadResult = (result: LoadResult | void): result is LoadResult =>
   typeof result === 'object' && result !== null && 'ok' in result;
@@ -130,6 +133,7 @@ export const AppRoutes: React.FC = () => {
   const mountedRef = React.useRef(false);
   const inFlightRef = React.useRef<BootstrapRun | null>(null);
   const lifecycleRequestRef = React.useRef<LifecycleRequest | null>(null);
+  const lastRefreshAttemptAtRef = React.useRef(0);
 
   const commitStatus = React.useCallback((status: BootstrapStatus) => {
     if (!mountedRef.current) return;
@@ -143,10 +147,13 @@ export const AppRoutes: React.FC = () => {
   }, []);
 
   const transitionToSignedOut = React.useCallback(() => {
+    const signedOutUserId = currentUserIdRef.current ?? useStore.getState().persistedUserId;
     generationRef.current += 1;
     currentUserIdRef.current = null;
     inFlightRef.current = null;
     lifecycleRequestRef.current = null;
+    lastRefreshAttemptAtRef.current = 0;
+    if (signedOutUserId) void deleteUserDataCache(signedOutUserId);
     useStore.getState().resetUserScopedState();
     commitRefreshError(false);
     commitStatus('signed-out');
@@ -164,9 +171,17 @@ export const AppRoutes: React.FC = () => {
 
       const store = useStore.getState();
       const previousUserId = currentUserIdRef.current;
+      const previousStoreUserId = store.persistedUserId;
+      const departingUserId =
+        (previousUserId && previousUserId !== userId ? previousUserId : null) ??
+        (previousStoreUserId && previousStoreUserId !== userId ? previousStoreUserId : null);
+      if (departingUserId) {
+        void deleteUserDataCache(departingUserId);
+        lastRefreshAttemptAtRef.current = 0;
+      }
       if (
         (previousUserId && previousUserId !== userId) ||
-        (store.persistedUserId && store.persistedUserId !== userId)
+        (previousStoreUserId && previousStoreUserId !== userId)
       ) {
         store.resetUserScopedState();
       }
@@ -186,30 +201,105 @@ export const AppRoutes: React.FC = () => {
       };
 
       const promise = (async () => {
+        let failureMode = mode;
         try {
+          if (mode === 'initial') {
+            const cachedSnapshot = await readUserDataCache(userId);
+            if (!context.isCurrent()) return;
+            if (cachedSnapshot?.userId === userId) {
+              try {
+                const { data, error } = await supabase.auth.getUser();
+                if (!context.isCurrent()) return;
+                if (!error) {
+                  if (data.user?.id !== userId) {
+                    transitionToSignedOut();
+                    return;
+                  }
+
+                  try {
+                    store.restoreCachedUserData(userId, cachedSnapshot.data);
+                    failureMode = 'refresh';
+                    commitStatus('ready');
+                  } catch {
+                    // A malformed legacy snapshot should be discarded so the
+                    // regular server bootstrap can still populate the app.
+                    void deleteUserDataCache(userId);
+                  }
+                }
+              } catch {
+                // Never expose private cached data without server-verified auth.
+                // The normal loaders below can still recover if the network works.
+              }
+            }
+          }
+
+          if (!context.isCurrent()) return;
+
+          const baseline = store.getCachedUserData();
+          const staged: Partial<CachedUserData> = {};
+          let acceptingStagedData = true;
+          const loaderContext = {
+            ...context,
+            stage: (patch: Partial<CachedUserData>) => {
+              if (acceptingStagedData && context.isCurrent()) Object.assign(staged, patch);
+            },
+          };
           const results = await Promise.all([
-            store.loadUserData(context),
-            store.loadRoutines(context),
-            store.loadFolders(context),
-            store.loadWorkoutHistory(context),
-            store.loadActiveWorkout(context),
-            store.loadBodyMeasurements(context),
-            store.loadPersonalRecords(context),
+            store.loadUserData(loaderContext),
+            store.loadRoutines(loaderContext),
+            store.loadFolders(loaderContext),
+            store.loadWorkoutHistory(loaderContext),
+            store.loadActiveWorkout(loaderContext),
+            store.loadBodyMeasurements(loaderContext),
+            store.loadPersonalRecords(loaderContext),
           ]);
+          acceptingStagedData = false;
 
           if (!context.isCurrent()) return;
           if (results.some((result) => isLoadFailure(result, 'signed-out'))) {
             transitionToSignedOut();
           } else if (results.every(isLoadSuccess)) {
+            const current = store.getCachedUserData();
+            const safePatch: Partial<CachedUserData> = {};
+
+            if (current.userData === baseline.userData && 'userData' in staged) {
+              safePatch.userData = staged.userData;
+            }
+            if (
+              current.savedRoutines === baseline.savedRoutines &&
+              current.routineFolders === baseline.routineFolders
+            ) {
+              if ('savedRoutines' in staged) safePatch.savedRoutines = staged.savedRoutines;
+              if ('routineFolders' in staged) safePatch.routineFolders = staged.routineFolders;
+            }
+            if (
+              current.workoutHistory === baseline.workoutHistory &&
+              current.stats === baseline.stats &&
+              current.personalRecords === baseline.personalRecords
+            ) {
+              if ('workoutHistory' in staged) safePatch.workoutHistory = staged.workoutHistory;
+              if ('stats' in staged) safePatch.stats = staged.stats;
+              if ('personalRecords' in staged) safePatch.personalRecords = staged.personalRecords;
+            }
+            if (
+              current.bodyMeasurements === baseline.bodyMeasurements &&
+              'bodyMeasurements' in staged
+            ) {
+              safePatch.bodyMeasurements = staged.bodyMeasurements;
+            }
+
+            store.applyHydratedUserData(safePatch);
+            lastRefreshAttemptAtRef.current = Date.now();
+            void writeUserDataCache(userId, store.getCachedUserData());
             commitRefreshError(false);
             commitStatus('ready');
           } else if (!results.some((result) => isLoadFailure(result, 'stale'))) {
-            if (mode === 'refresh') commitRefreshError(true);
+            if (failureMode === 'refresh') commitRefreshError(true);
             else commitStatus('error');
           }
         } catch {
           if (context.isCurrent()) {
-            if (mode === 'refresh') commitRefreshError(true);
+            if (failureMode === 'refresh') commitRefreshError(true);
             else commitStatus('error');
           }
         } finally {
@@ -272,56 +362,66 @@ export const AppRoutes: React.FC = () => {
     }
   }, [startBootstrap, transitionToSignedOut]);
 
-  const requestLifecycleRefresh = React.useCallback((): Promise<void> => {
-    if (bootstrapStatusRef.current !== 'ready') return Promise.resolve();
+  const requestLifecycleRefresh = React.useCallback(
+    (force = false): Promise<void> => {
+      if (bootstrapStatusRef.current !== 'ready') return Promise.resolve();
 
-    const expectedUserId = currentUserIdRef.current;
-    if (!expectedUserId) return Promise.resolve();
+      const expectedUserId = currentUserIdRef.current;
+      if (!expectedUserId) return Promise.resolve();
 
-    const activeRequest = lifecycleRequestRef.current;
-    if (activeRequest?.userId === expectedUserId) return activeRequest.promise;
-
-    const request = (async () => {
-      try {
-        const { data, error } = await supabase.auth.getSession();
-        if (
-          !mountedRef.current ||
-          bootstrapStatusRef.current !== 'ready' ||
-          currentUserIdRef.current !== expectedUserId
-        ) {
-          return;
-        }
-
-        if (error) {
-          commitRefreshError(true);
-          return;
-        }
-
-        const sessionUserId = data.session?.user?.id ?? null;
-        if (sessionUserId !== expectedUserId) return;
-        await startBootstrap(sessionUserId, 'refresh');
-      } catch {
-        if (
-          mountedRef.current &&
-          bootstrapStatusRef.current === 'ready' &&
-          currentUserIdRef.current === expectedUserId
-        ) {
-          commitRefreshError(true);
-        }
-      } finally {
-        if (lifecycleRequestRef.current?.promise === request) {
-          lifecycleRequestRef.current = null;
-        }
+      const activeRequest = lifecycleRequestRef.current;
+      if (activeRequest?.userId === expectedUserId) return activeRequest.promise;
+      const activeBootstrap = inFlightRef.current;
+      if (activeBootstrap?.userId === expectedUserId) return activeBootstrap.promise;
+      const requestedAt = Date.now();
+      if (!force && requestedAt - lastRefreshAttemptAtRef.current < LIFECYCLE_REFRESH_COOLDOWN_MS) {
+        return Promise.resolve();
       }
-    })();
+      lastRefreshAttemptAtRef.current = requestedAt;
 
-    lifecycleRequestRef.current = { userId: expectedUserId, promise: request };
-    return request;
-  }, [commitRefreshError, startBootstrap]);
+      const request = (async () => {
+        try {
+          const { data, error } = await supabase.auth.getSession();
+          if (
+            !mountedRef.current ||
+            bootstrapStatusRef.current !== 'ready' ||
+            currentUserIdRef.current !== expectedUserId
+          ) {
+            return;
+          }
+
+          if (error) {
+            commitRefreshError(true);
+            return;
+          }
+
+          const sessionUserId = data.session?.user?.id ?? null;
+          if (sessionUserId !== expectedUserId) return;
+          await startBootstrap(sessionUserId, 'refresh');
+        } catch {
+          if (
+            mountedRef.current &&
+            bootstrapStatusRef.current === 'ready' &&
+            currentUserIdRef.current === expectedUserId
+          ) {
+            commitRefreshError(true);
+          }
+        } finally {
+          if (lifecycleRequestRef.current?.promise === request) {
+            lifecycleRequestRef.current = null;
+          }
+        }
+      })();
+
+      lifecycleRequestRef.current = { userId: expectedUserId, promise: request };
+      return request;
+    },
+    [commitRefreshError, startBootstrap]
+  );
 
   const retryLifecycleRefresh = React.useCallback(() => {
     if (!refreshError || bootstrapStatusRef.current !== 'ready') return;
-    void requestLifecycleRefresh();
+    void requestLifecycleRefresh(true);
   }, [refreshError, requestLifecycleRefresh]);
 
   React.useEffect(() => {

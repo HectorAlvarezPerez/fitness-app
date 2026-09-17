@@ -330,12 +330,22 @@ export type TrainingPlanInstallResult = {
   error?: string;
 };
 
-interface UserStats {
+export interface UserStats {
   recovery: number;
   totalVolume: number; // in kg
   consistency: number; // percentage
   streak: number;
 }
+
+export type CachedUserData = {
+  userData: UserData | null;
+  savedRoutines: Routine[];
+  routineFolders: RoutineFolder[];
+  workoutHistory: WorkoutSession[];
+  stats: UserStats;
+  bodyMeasurements: BodyMeasurement[];
+  personalRecords: Record<string, { weight: number; reps: number; date: string }>;
+};
 
 interface OnboardingData {
   level: string;
@@ -374,6 +384,27 @@ const defaultStats: UserStats = {
   streak: 5,
 };
 
+const calculateWorkoutStats = (history: WorkoutSession[], now = new Date()): UserStats => {
+  const lastWorkout = history[0];
+  let recovery = 100;
+  if (lastWorkout) {
+    const lastDate = new Date(lastWorkout.completed_at);
+    const hoursSince = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60);
+    recovery = Math.min(100, Math.round((hoursSince / 48) * 100));
+  }
+
+  const totalVolume = history.reduce((acc, session) => acc + (session.total_volume || 0), 0);
+  const oneWeekAgo = new Date(now);
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  const workoutsLastWeek = history.filter(
+    (session) => new Date(session.completed_at) > oneWeekAgo
+  ).length;
+  const consistency = Math.min(100, Math.round((workoutsLastWeek / 3) * 100));
+  const streak = history.length > 0 && workoutsLastWeek > 0 ? 1 : 0;
+
+  return { recovery, totalVolume, consistency, streak };
+};
+
 const getInitialUserScopedState = () => ({
   stats: { ...defaultStats },
   savedRoutines: [] as Routine[],
@@ -391,6 +422,7 @@ const getInitialUserScopedState = () => ({
 export type LoadContext = {
   userId: string;
   isCurrent: () => boolean;
+  stage?: (patch: Partial<CachedUserData>) => void;
 };
 
 export type LoadResult =
@@ -539,6 +571,9 @@ interface AppState {
   userData: UserData | null;
   loadUserData: BootstrapLoader;
   resetUserScopedState: () => void;
+  getCachedUserData: () => CachedUserData;
+  restoreCachedUserData: (userId: string, data: CachedUserData) => void;
+  applyHydratedUserData: (patch: Partial<CachedUserData>) => void;
 
   setRoutineName: (name: string) => void;
   addExercise: (exercise: Exercise) => void;
@@ -706,24 +741,42 @@ export const useStore = create<AppState>()(
           if (context && error) return REQUEST_FAILED;
           if (staleAfterRequest(context)) return STALE;
 
-          set({
-            userData: {
-              id: user.id,
-              email: user.email,
-              provider: user.app_metadata.provider,
-              last_sign_in_at: user.last_sign_in_at,
-              user_metadata: user.user_metadata,
-              default_rest_seconds: profile?.default_rest_seconds || 90,
-              default_sets_count: profile?.default_sets_count || 3,
-              default_reps_count: profile?.default_reps_count || 10,
-              default_weight_kg: profile?.default_weight_kg || 20,
-            },
-          });
+          const userData = {
+            id: user.id,
+            email: user.email,
+            provider: user.app_metadata.provider,
+            last_sign_in_at: user.last_sign_in_at,
+            user_metadata: user.user_metadata,
+            default_rest_seconds: profile?.default_rest_seconds || 90,
+            default_sets_count: profile?.default_sets_count || 3,
+            default_reps_count: profile?.default_reps_count || 10,
+            default_weight_kg: profile?.default_weight_kg || 20,
+          };
+          if (context?.stage) context.stage({ userData });
+          else set({ userData });
         }
         return completeLoad(context);
       },
 
       resetUserScopedState: () => set(getInitialUserScopedState()),
+      getCachedUserData: () => {
+        const state = get();
+        return {
+          userData: state.userData,
+          savedRoutines: state.savedRoutines,
+          routineFolders: state.routineFolders,
+          workoutHistory: state.workoutHistory,
+          stats: state.stats,
+          bodyMeasurements: state.bodyMeasurements,
+          personalRecords: state.personalRecords,
+        };
+      },
+      restoreCachedUserData: (userId, data) => {
+        const state = get();
+        if (state.persistedUserId && state.persistedUserId !== userId) return;
+        set({ ...data, stats: calculateWorkoutStats(data.workoutHistory) });
+      },
+      applyHydratedUserData: (patch) => set(patch),
 
       setRoutineName: (name) => set({ routineName: name }),
       addExercise: (exercise) =>
@@ -764,7 +817,8 @@ export const useStore = create<AppState>()(
         if (staleAfterRequest(context)) return STALE;
         if (error || !data) return;
 
-        set({ savedRoutines: data });
+        if (context?.stage) context.stage({ savedRoutines: data });
+        else set({ savedRoutines: data });
         return completeLoad(context);
       },
 
@@ -891,7 +945,8 @@ export const useStore = create<AppState>()(
         if (staleAfterRequest(context)) return STALE;
         if (error || !data) return;
 
-        set({ routineFolders: data });
+        if (context?.stage) context.stage({ routineFolders: data });
+        else set({ routineFolders: data });
         return completeLoad(context);
       },
 
@@ -1244,45 +1299,14 @@ export const useStore = create<AppState>()(
         if (error || !data) return;
 
         if (!error && data) {
-          // Calculate Stats
-          const now = new Date();
-          const lastWorkout = data[0]; // Most recent because of ordering
-
-          // 1. Recovery (Simple Algorithm: 24h = 50%, 48h = 100%)
-          let recovery = 100;
-          if (lastWorkout) {
-            const lastDate = new Date(lastWorkout.completed_at);
-            const hoursSince = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60);
-            recovery = Math.min(100, Math.round((hoursSince / 48) * 100));
-          }
-
-          // 2. Total Volume
-          const totalVolume = data.reduce((acc, curr) => acc + (curr.total_volume || 0), 0);
-
-          // 3. Consistency (Workouts in last 7 days vs Goal of 3)
-          const oneWeekAgo = new Date();
-          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-          const workoutsLastWeek = data.filter((w) => new Date(w.completed_at) > oneWeekAgo).length;
-          const consistency = Math.min(100, Math.round((workoutsLastWeek / 3) * 100)); // Assuming 3 workouts/week goal
-
-          // 4. Streak (Weeks with at least 1 workout) - Simple approximation
-          let streak = 0;
-          if (data.length > 0) {
-            // This is a placeholder for a complex streak calc, sticking to simple active valid workouts for now
-            streak = workoutsLastWeek > 0 ? 1 : 0;
-          }
-
           if (staleAfterRequest(context)) return STALE;
 
-          set({
+          const patch = {
             workoutHistory: data,
-            stats: {
-              recovery,
-              totalVolume,
-              consistency,
-              streak,
-            },
-          });
+            stats: calculateWorkoutStats(data),
+          };
+          if (context?.stage) context.stage(patch);
+          else set(patch);
           return completeLoad(context);
         }
       },
@@ -2534,7 +2558,8 @@ export const useStore = create<AppState>()(
         if (staleAfterRequest(context)) return STALE;
         if (error || !data) return;
 
-        set({ bodyMeasurements: data });
+        if (context?.stage) context.stage({ bodyMeasurements: data });
+        else set({ bodyMeasurements: data });
         return completeLoad(context);
       },
 
@@ -2595,7 +2620,9 @@ export const useStore = create<AppState>()(
           if (historyError || !history) return context ? REQUEST_FAILED : undefined;
           if (staleAfterRequest(context)) return STALE;
 
-          set({ personalRecords: deriveLegacyPersonalRecords(history) });
+          const personalRecords = deriveLegacyPersonalRecords(history);
+          if (context?.stage) context.stage({ personalRecords });
+          else set({ personalRecords });
           return completeLoad(context);
         }
 
@@ -2604,7 +2631,8 @@ export const useStore = create<AppState>()(
           data.forEach((r) => {
             records[r.exercise_name] = { weight: r.weight, reps: r.reps, date: r.date };
           });
-          set({ personalRecords: records });
+          if (context?.stage) context.stage({ personalRecords: records });
+          else set({ personalRecords: records });
           return completeLoad(context);
         }
       },
