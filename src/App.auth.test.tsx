@@ -217,33 +217,53 @@ describe('authenticated initial readiness', () => {
     }
   });
 
-  it('restarts a pending same-user bootstrap after a real sign-in and ignores the old run', async () => {
-    harness.store.persistedUserId = 'u1';
-    const oldPending = deferred<LoadResult>();
-    harness.store.loadPersonalRecords
-      .mockReturnValueOnce(oldPending.promise)
-      .mockResolvedValueOnce(loadOk);
+  it.each([
+    ['real sign-in', 'SIGNED_IN'],
+    ['successful token refresh', 'TOKEN_REFRESHED'],
+  ] as const)(
+    'restarts a pending same-user bootstrap after %s and ignores the old run',
+    async (_, event) => {
+      harness.store.persistedUserId = 'u1';
+      const oldPending = deferred<LoadResult>();
+      harness.store.loadPersonalRecords
+        .mockReturnValueOnce(oldPending.promise)
+        .mockResolvedValueOnce(loadOk);
 
+      renderProtectedRoute();
+
+      await waitFor(() => expect(harness.store.loadPersonalRecords).toHaveBeenCalledTimes(1));
+      const oldContext = harness.store.loadPersonalRecords.mock.calls[0][0];
+
+      act(() => harness.authCallback?.(event, sessionFor('u1')));
+
+      await waitFor(() => expect(harness.store.loadPersonalRecords).toHaveBeenCalledTimes(2));
+      expect(await screen.findByText('Protected Home')).toBeInTheDocument();
+      const newContext = harness.store.loadPersonalRecords.mock.calls[1][0];
+      expect(oldContext.isCurrent()).toBe(false);
+      expect(newContext.isCurrent()).toBe(true);
+
+      await act(async () => {
+        oldPending.resolve(requestFailed);
+        await Promise.resolve();
+      });
+
+      expect(screen.getByText('Protected Home')).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      for (const name of loaderNames) {
+        expect(harness.store[name]).toHaveBeenCalledTimes(2);
+      }
+    }
+  );
+
+  it('recovers a failed initial bootstrap after a same-user token refresh', async () => {
+    harness.store.loadFolders.mockResolvedValueOnce(requestFailed);
     renderProtectedRoute();
 
-    await waitFor(() => expect(harness.store.loadPersonalRecords).toHaveBeenCalledTimes(1));
-    const oldContext = harness.store.loadPersonalRecords.mock.calls[0][0];
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudieron cargar tus datos');
 
-    act(() => harness.authCallback?.('SIGNED_IN', sessionFor('u1')));
+    act(() => harness.authCallback?.('TOKEN_REFRESHED', sessionFor('u1')));
 
-    await waitFor(() => expect(harness.store.loadPersonalRecords).toHaveBeenCalledTimes(2));
     expect(await screen.findByText('Protected Home')).toBeInTheDocument();
-    const newContext = harness.store.loadPersonalRecords.mock.calls[1][0];
-    expect(oldContext.isCurrent()).toBe(false);
-    expect(newContext.isCurrent()).toBe(true);
-
-    await act(async () => {
-      oldPending.resolve(requestFailed);
-      await Promise.resolve();
-    });
-
-    expect(screen.getByText('Protected Home')).toBeInTheDocument();
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     for (const name of loaderNames) {
       expect(harness.store[name]).toHaveBeenCalledTimes(2);
     }
@@ -365,6 +385,32 @@ describe('authenticated initial readiness', () => {
         await waitFor(() => expect(harness.store[name]).toHaveBeenCalledTimes(2));
       }
       visibility.mockRestore();
+    });
+
+    it('refreshes ready user data after token renewal without hiding protected content', async () => {
+      const pendingRecords = deferred<LoadResult>();
+      harness.store.loadPersonalRecords
+        .mockResolvedValueOnce(loadOk)
+        .mockReturnValueOnce(pendingRecords.promise);
+      renderProtectedRoute();
+      expect(await screen.findByText('Protected Home')).toBeInTheDocument();
+
+      act(() => harness.authCallback?.('TOKEN_REFRESHED', sessionFor('u1')));
+
+      await waitFor(() => {
+        for (const name of loaderNames) {
+          expect(harness.store[name]).toHaveBeenCalledTimes(2);
+        }
+      });
+      expect(screen.getByText('Protected Home')).toBeInTheDocument();
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+      await act(async () => pendingRecords.resolve(requestFailed));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'No se pudieron actualizar tus datos'
+      );
+      expect(screen.getByText('Protected Home')).toBeInTheDocument();
     });
 
     it('ignores hidden visibility and lifecycle signals while signed out', async () => {

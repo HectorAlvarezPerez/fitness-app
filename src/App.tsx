@@ -240,7 +240,9 @@ export const AppRoutes: React.FC = () => {
         return;
       }
 
-      void startBootstrap(userId, 'initial', forceRestart);
+      const isCurrentReadyUser =
+        currentUserIdRef.current === userId && bootstrapStatusRef.current === 'ready';
+      void startBootstrap(userId, isCurrentReadyUser ? 'refresh' : 'initial', forceRestart);
     },
     [startBootstrap, transitionToSignedOut]
   );
@@ -378,7 +380,8 @@ export const AppRoutes: React.FC = () => {
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'INITIAL_SESSION') return;
       authSignalRef.current += 1;
-      handleSessionUser(session?.user?.id ?? null, event === 'SIGNED_IN');
+      const shouldRestart = event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED';
+      handleSessionUser(session?.user?.id ?? null, shouldRestart);
     });
 
     return () => {
