@@ -496,8 +496,140 @@ describe('training plan session fields', () => {
     expect(await screen.findByTestId('exercise-prescription-cardio')).toHaveTextContent(
       'duración 0:30-0:45'
     );
-    expect(screen.getByLabelText('Duración')).toHaveValue(2700);
+    expect(screen.getByLabelText('Duración')).toHaveValue('45');
+    expect(await screen.findByLabelText('Duración de serie')).toHaveValue('45');
+    expect(screen.getAllByText('min')).toHaveLength(2);
     expect(screen.getByText('Datos de cardio')).toBeInTheDocument();
+  });
+
+  it('stores cardio minutes as seconds from both duration inputs', async () => {
+    h.store.current.activeWorkout = activeWorkout({
+      exercises: [
+        {
+          ...exercise('cardio'),
+          name: 'Correr en Cinta',
+          activityType: 'cardio',
+          trackingType: 'time',
+          sets: [{ id: 'cardio-set', reps: 2700, weight: 0, completed: false }],
+        },
+      ],
+      currentExerciseId: 'cardio',
+    });
+
+    render(<WorkoutSession />);
+
+    fireEvent.change(await screen.findByLabelText('Duración'), { target: { value: '30.5' } });
+    expect(h.store.current.updateWorkoutExerciseSets).toHaveBeenCalledWith(
+      'cardio',
+      expect.arrayContaining([
+        expect.objectContaining({
+          reps: 1830,
+          cardioMetrics: expect.objectContaining({ durationSeconds: 1830 }),
+        }),
+      ])
+    );
+
+    fireEvent.change(await screen.findByLabelText('Duración de serie'), {
+      target: { value: '20.5' },
+    });
+    expect(h.store.current.updateWorkoutExerciseSets).toHaveBeenLastCalledWith(
+      'cardio',
+      expect.arrayContaining([
+        expect.objectContaining({
+          reps: 1230,
+          cardioMetrics: expect.objectContaining({ durationSeconds: 1230 }),
+        }),
+      ])
+    );
+  });
+
+  it('does not use a reps-based cardio set as fallback duration or overwrite its reps', async () => {
+    h.store.current.activeWorkout = activeWorkout({
+      exercises: [
+        {
+          ...exercise('cardio-reps'),
+          name: 'Remo',
+          activityType: 'cardio',
+          trackingType: 'reps',
+          sets: [{ id: 'cardio-reps-set', reps: 8, weight: 20, completed: false }],
+        },
+      ],
+      currentExerciseId: 'cardio-reps',
+    });
+
+    render(<WorkoutSession />);
+
+    const durationInput = await screen.findByLabelText('Duración');
+    expect(durationInput).toHaveValue('');
+    expect(screen.getByText(/Resumen: —/)).toBeInTheDocument();
+    fireEvent.change(durationInput, { target: { value: '30' } });
+
+    expect(h.store.current.updateWorkoutExerciseSets).toHaveBeenCalledWith(
+      'cardio-reps',
+      expect.arrayContaining([
+        expect.objectContaining({
+          reps: 8,
+          cardioMetrics: expect.objectContaining({ durationSeconds: 1800 }),
+        }),
+      ])
+    );
+  });
+
+  it('keeps cardio set duration and metrics aligned at the 24-hour limit', async () => {
+    h.store.current.activeWorkout = activeWorkout({
+      exercises: [
+        {
+          ...exercise('cardio'),
+          name: 'Correr en Cinta',
+          activityType: 'cardio',
+          trackingType: 'time',
+          sets: [{ id: 'cardio-set', reps: 2700, weight: 0, completed: false }],
+        },
+      ],
+      currentExerciseId: 'cardio',
+    });
+
+    render(<WorkoutSession />);
+
+    fireEvent.change(await screen.findByLabelText('Duración de serie'), {
+      target: { value: '1500' },
+    });
+
+    expect(h.store.current.updateWorkoutExerciseSets).toHaveBeenCalledWith(
+      'cardio',
+      expect.arrayContaining([
+        expect.objectContaining({
+          reps: 86400,
+          cardioMetrics: expect.objectContaining({ durationSeconds: 86400 }),
+        }),
+      ])
+    );
+  });
+
+  it('keeps explicit strength time-based sets in seconds', async () => {
+    h.store.current.activeWorkout = activeWorkout({
+      exercises: [
+        {
+          ...exercise('plank'),
+          name: 'Plancha',
+          primaryMuscle: 'Core',
+          activityType: 'strength',
+          trackingType: 'time',
+          sets: [{ id: 'plank-set', reps: 45, weight: 0, completed: false }],
+        },
+      ],
+      currentExerciseId: 'plank',
+    });
+
+    render(<WorkoutSession />);
+
+    const durationInput = await screen.findByLabelText('Duración en segundos');
+    expect(durationInput).toHaveValue('45');
+    fireEvent.change(durationInput, { target: { value: '60' } });
+    expect(h.store.current.updateWorkoutExerciseSets).toHaveBeenCalledWith(
+      'plank',
+      expect.arrayContaining([expect.objectContaining({ reps: 60 })])
+    );
   });
 
   it('keeps RIR guidance in exercise notes instead of adding a per-set input', async () => {

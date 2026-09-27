@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  cardioDurationMinutesToSeconds,
+  cardioDurationSecondsToMinutes,
   formatCardioDuration,
   formatPace,
   getActivityTypeFromLibraryExercise,
@@ -11,6 +13,18 @@ import {
 } from './trainingMetrics';
 
 describe('trainingMetrics', () => {
+  it('converts cardio durations for minute inputs without changing stored seconds', () => {
+    expect(cardioDurationSecondsToMinutes(2700)).toBe(45);
+    expect(cardioDurationSecondsToMinutes(1)).toBe(0.017);
+    expect(cardioDurationMinutesToSeconds(30)).toBe(1800);
+    expect(cardioDurationMinutesToSeconds(30.5)).toBe(1830);
+    expect(cardioDurationMinutesToSeconds(1500)).toBe(24 * 60 * 60);
+    expect(cardioDurationMinutesToSeconds(cardioDurationSecondsToMinutes(1))).toBe(1);
+    expect(cardioDurationMinutesToSeconds(cardioDurationSecondsToMinutes(2700))).toBe(2700);
+    expect(cardioDurationMinutesToSeconds(undefined)).toBeUndefined();
+    expect(cardioDurationMinutesToSeconds(-1)).toBeUndefined();
+  });
+
   it('sanitizes cardio inputs and clamps unsafe values', () => {
     expect(
       sanitizeCardioMetrics({

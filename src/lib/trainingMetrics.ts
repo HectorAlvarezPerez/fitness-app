@@ -68,6 +68,17 @@ const clamp = (value: unknown, min: number, max: number) => {
 
 const positiveOrZero = (value: unknown, max: number) => clamp(value, 0, max);
 
+export const cardioDurationSecondsToMinutes = (seconds: number | undefined) => {
+  if (!finite(seconds) || seconds < 0) return undefined;
+  // Three decimal places are finer than the stored one-second resolution.
+  return Number((seconds / 60).toFixed(3));
+};
+
+export const cardioDurationMinutesToSeconds = (minutes: number | undefined) => {
+  if (!finite(minutes) || minutes < 0) return undefined;
+  return Math.min(Math.round(minutes * 60), 24 * 60 * 60);
+};
+
 export const sanitizeCardioMetrics = (value: unknown): CardioMetrics | undefined => {
   if (!value || typeof value !== 'object') return undefined;
   const raw = value as UnknownRecord;

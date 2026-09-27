@@ -3,7 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import ExerciseLibrarySheet from '../components/ExerciseLibrarySheet';
 import { createId } from '../lib/id';
-import { getActivityTypeFromLibraryExercise } from '../lib/trainingMetrics';
+import { parseLocaleDecimal } from '../lib/numberUtils';
+import {
+  cardioDurationMinutesToSeconds,
+  cardioDurationSecondsToMinutes,
+  getActivityTypeFromLibraryExercise,
+  isCardioExercise,
+} from '../lib/trainingMetrics';
 import {
   DndContext,
   closestCenter,
@@ -522,6 +528,13 @@ function SortableExerciseItem({
   }, [exercise.id, exercise.reps, exercise.sets, exercise.weight, updateExercise]);
 
   const sets = Array.isArray(exercise.sets) ? exercise.sets : [];
+  const isCardioTime =
+    exercise.trackingType === 'time' &&
+    isCardioExercise({
+      activityType: exercise.activityType,
+      trackingType: exercise.trackingType,
+      primaryMuscle: exercise.muscleGroup,
+    });
 
   const [weightDrafts, setWeightDrafts] = useState<Record<string, string>>({});
   const [activeWeightId, setActiveWeightId] = useState<string | null>(null);
@@ -747,7 +760,11 @@ function SortableExerciseItem({
             <span className="text-xs font-bold text-slate-300">Peso (kg)</span>
           )}
           <span className="text-xs font-bold text-slate-300">
-            {exercise.trackingType === 'time' ? 'Duración (seg)' : 'Reps'}
+            {exercise.trackingType === 'time'
+              ? isCardioTime
+                ? 'Duración (min)'
+                : 'Duración (seg)'
+              : 'Reps'}
           </span>
           <span></span>
         </div>
@@ -768,6 +785,7 @@ function SortableExerciseItem({
                 index={index}
                 totalSets={sets.length}
                 trackingType={exercise.trackingType || 'reps'}
+                isCardio={isCardioTime}
                 weightDrafts={weightDrafts}
                 setWeightDrafts={setWeightDrafts}
                 activeWeightId={activeWeightId}
@@ -800,6 +818,7 @@ function SortableSetRow({
   index,
   totalSets,
   trackingType,
+  isCardio,
   weightDrafts,
   setWeightDrafts,
   activeWeightId,
@@ -823,6 +842,19 @@ function SortableSetRow({
   };
 
   const weightDraft = weightDrafts[set.id] ?? (set.weight ? String(set.weight) : '');
+  const cardioTime = trackingType === 'time' && isCardio;
+  const [durationDraft, setDurationDraft] = useState(() => {
+    const minutes = cardioDurationSecondsToMinutes(set.reps);
+    return minutes === undefined ? '' : String(minutes);
+  });
+  const [isDurationFocused, setIsDurationFocused] = useState(false);
+
+  useEffect(() => {
+    if (cardioTime && !isDurationFocused) {
+      const minutes = cardioDurationSecondsToMinutes(set.reps);
+      setDurationDraft(minutes === undefined ? '' : String(minutes));
+    }
+  }, [cardioTime, isDurationFocused, set.reps]);
 
   return (
     <div ref={setNodeRef} style={style} className="flex flex-col gap-1">
@@ -933,15 +965,37 @@ function SortableSetRow({
         {/* Reps or Duration input */}
         <input
           type="text"
-          inputMode="numeric"
-          value={set.reps ? String(set.reps) : ''}
+          inputMode={cardioTime ? 'decimal' : 'numeric'}
+          aria-label={
+            trackingType === 'time'
+              ? cardioTime
+                ? 'Duración de cardio'
+                : 'Duración en segundos'
+              : undefined
+          }
+          value={cardioTime ? durationDraft : set.reps ? String(set.reps) : ''}
+          onFocus={() => cardioTime && setIsDurationFocused(true)}
+          onBlur={() => cardioTime && setIsDurationFocused(false)}
           onChange={(e) => {
             const raw = e.target.value;
+            if (cardioTime) {
+              if (!/^\d*([.,]\d*)?$/.test(raw)) return;
+              setDurationDraft(raw);
+              if (raw === '') {
+                updateSet(index, 'reps', 0);
+                return;
+              }
+              const minutes = parseLocaleDecimal(raw);
+              if (minutes !== null && minutes >= 0) {
+                updateSet(index, 'reps', cardioDurationMinutesToSeconds(minutes) ?? 0);
+              }
+              return;
+            }
             if (!/^[0-9]*$/.test(raw)) return;
             updateSet(index, 'reps', raw === '' ? 0 : parseInt(raw, 10));
           }}
           className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-center text-sm font-bold text-white"
-          placeholder={trackingType === 'time' ? 'Seg' : 'Reps'}
+          placeholder={cardioTime ? 'Min' : trackingType === 'time' ? 'Seg' : 'Reps'}
         />
         <div className="flex gap-0.5">
           <button

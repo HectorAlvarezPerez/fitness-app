@@ -12,6 +12,8 @@ import { buildLastPerformanceMap } from '../lib/workoutUtils';
 import { parseLocaleDecimal } from '../lib/numberUtils';
 import { createId } from '../lib/id';
 import {
+  cardioDurationMinutesToSeconds,
+  cardioDurationSecondsToMinutes,
   formatCardioDuration,
   formatPace,
   isCardioExercise,
@@ -51,7 +53,7 @@ const CARDIO_INPUTS: Array<{
   unit: string;
   step?: string;
 }> = [
-  { key: 'durationSeconds', label: 'Duración', unit: 'seg' },
+  { key: 'durationSeconds', label: 'Duración', unit: 'min' },
   { key: 'distanceKm', label: 'Distancia', unit: 'km', step: '0.01' },
   { key: 'paceSecondsPerKm', label: 'Ritmo', unit: 'seg/km' },
   { key: 'averageHeartRateBpm', label: 'FC media', unit: 'ppm' },
@@ -60,6 +62,50 @@ const CARDIO_INPUTS: Array<{
   { key: 'calories', label: 'Calorías', unit: 'kcal' },
   { key: 'rpe', label: 'RPE', unit: '0-10', step: '0.5' },
 ];
+
+const CardioDurationInput: React.FC<{
+  seconds: number | undefined;
+  onChange: (seconds: number | undefined) => void;
+  label: string;
+  className: string;
+}> = ({ seconds, onChange, label, className }) => {
+  const [draft, setDraft] = useState(() => {
+    const minutes = cardioDurationSecondsToMinutes(seconds);
+    return minutes === undefined ? '' : String(minutes);
+  });
+  const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    if (isFocused) return;
+    const minutes = cardioDurationSecondsToMinutes(seconds);
+    setDraft(minutes === undefined ? '' : String(minutes));
+  }, [seconds, isFocused]);
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      aria-label={label}
+      value={draft}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      onChange={(event) => {
+        const raw = event.target.value;
+        if (!/^\d*([.,]\d*)?$/.test(raw)) return;
+        setDraft(raw);
+        if (raw === '') {
+          onChange(undefined);
+          return;
+        }
+        const minutes = parseLocaleDecimal(raw);
+        if (minutes !== null && minutes >= 0) {
+          onChange(cardioDurationMinutesToSeconds(minutes));
+        }
+      }}
+      className={className}
+    />
+  );
+};
 
 const formatPrescription = (
   prescription?: {
@@ -427,9 +473,25 @@ const WorkoutSession: React.FC = () => {
     const exercise = activeWorkout.exercises.find((ex) => ex && ex.exerciseId === exerciseId);
     if (!exercise) return;
 
-    const updatedSets = exercise.sets.map((set, idx) =>
-      idx === setIndex ? { ...set, [field]: value } : set
-    );
+    const isCardioTime =
+      exercise.trackingType === 'time' &&
+      isCardioExercise({
+        activityType: exercise.activityType,
+        trackingType: exercise.trackingType,
+        primaryMuscle: exercise.primaryMuscle,
+      });
+    const updatedSets = exercise.sets.map((set, idx) => {
+      if (idx !== setIndex) return set;
+      const syncCardioDuration = field === 'reps' && isCardioTime;
+      const cardioMetrics = syncCardioDuration
+        ? sanitizeCardioMetrics({ ...set.cardioMetrics, durationSeconds: value })
+        : undefined;
+      return {
+        ...set,
+        [field]: syncCardioDuration ? (cardioMetrics?.durationSeconds ?? 0) : value,
+        ...(syncCardioDuration ? { cardioMetrics } : {}),
+      };
+    });
 
     void updateWorkoutExerciseSets(exerciseId, updatedSets);
     void setActiveWorkoutPosition(exerciseId, setIndex);
@@ -456,7 +518,9 @@ const WorkoutSession: React.FC = () => {
       return {
         ...set,
         ...(metrics ? { cardioMetrics: metrics } : { cardioMetrics: undefined }),
-        ...(field === 'durationSeconds' ? { reps: value ?? 0 } : {}),
+        ...(field === 'durationSeconds' && exercise.trackingType === 'time'
+          ? { reps: metrics?.durationSeconds ?? 0 }
+          : {}),
       };
     });
     void updateWorkoutExerciseSets(exerciseId, updatedSets);
@@ -986,30 +1050,47 @@ const WorkoutSession: React.FC = () => {
                             const cardioSet = getWorkingSets(exercise)[0] || exercise.sets[0];
                             const metrics = cardioSet?.cardioMetrics;
                             const fallbackDuration =
-                              key === 'durationSeconds' ? cardioSet?.reps : undefined;
-                            const value = metrics?.[key] ?? fallbackDuration ?? '';
+                              key === 'durationSeconds' && exercise.trackingType === 'time'
+                                ? cardioSet?.reps
+                                : undefined;
+                            const value = metrics?.[key] ?? fallbackDuration;
+                            const seconds =
+                              key === 'durationSeconds' && typeof value === 'number'
+                                ? value
+                                : undefined;
                             return (
                               <label key={key} className="flex min-w-0 flex-col gap-1">
                                 <span className="text-[10px] font-bold uppercase text-slate-400">
                                   {label}
                                 </span>
                                 <div className="flex items-center gap-1">
-                                  <input
-                                    type="number"
-                                    aria-label={label}
-                                    min={0}
-                                    max={key === 'rpe' ? 10 : undefined}
-                                    step={step || '1'}
-                                    value={value}
-                                    onChange={(event) => {
-                                      const raw = event.target.value;
-                                      const parsed = raw === '' ? undefined : Number(raw);
-                                      if (parsed === undefined || Number.isFinite(parsed)) {
-                                        updateCardioMetric(exercise.exerciseId, key, parsed);
+                                  {key === 'durationSeconds' ? (
+                                    <CardioDurationInput
+                                      seconds={seconds}
+                                      onChange={(nextSeconds) =>
+                                        updateCardioMetric(exercise.exerciseId, key, nextSeconds)
                                       }
-                                    }}
-                                    className="w-full min-w-0 rounded-lg border border-white/10 bg-[#07131d] px-2 py-1.5 text-center text-sm font-bold text-white"
-                                  />
+                                      label={label}
+                                      className="w-full min-w-0 rounded-lg border border-white/10 bg-[#07131d] px-2 py-1.5 text-center text-sm font-bold text-white"
+                                    />
+                                  ) : (
+                                    <input
+                                      type="number"
+                                      aria-label={label}
+                                      min={0}
+                                      max={key === 'rpe' ? 10 : undefined}
+                                      step={step || '1'}
+                                      value={value ?? ''}
+                                      onChange={(event) => {
+                                        const raw = event.target.value;
+                                        const parsed = raw === '' ? undefined : Number(raw);
+                                        if (parsed === undefined || Number.isFinite(parsed)) {
+                                          updateCardioMetric(exercise.exerciseId, key, parsed);
+                                        }
+                                      }}
+                                      className="w-full min-w-0 rounded-lg border border-white/10 bg-[#07131d] px-2 py-1.5 text-center text-sm font-bold text-white"
+                                    />
+                                  )}
                                   <span className="shrink-0 text-[10px] text-slate-500">
                                     {unit}
                                   </span>
@@ -1021,7 +1102,9 @@ const WorkoutSession: React.FC = () => {
                         {(() => {
                           const cardioSet = getWorkingSets(exercise)[0] || exercise.sets[0];
                           const metrics = cardioSet?.cardioMetrics;
-                          const duration = metrics?.durationSeconds ?? cardioSet?.reps;
+                          const duration =
+                            metrics?.durationSeconds ??
+                            (exercise.trackingType === 'time' ? cardioSet?.reps : undefined);
                           const pace =
                             metrics?.paceSecondsPerKm ??
                             (duration && metrics?.distanceKm
@@ -1073,6 +1156,11 @@ const WorkoutSession: React.FC = () => {
                                   activeWorkout.currentSetIndex === setIndex
                                 }
                                 trackingType={exercise.trackingType || 'reps'}
+                                isCardio={isCardioExercise({
+                                  activityType: exercise.activityType,
+                                  trackingType: exercise.trackingType,
+                                  primaryMuscle: exercise.primaryMuscle,
+                                })}
                                 toggleSetComplete={toggleSetComplete}
                                 updateSetValue={updateSetValue}
                                 updateDropsetValue={updateDropsetValue}
@@ -1293,6 +1381,7 @@ const SortableWorkoutSetRow: React.FC<{
   totalSets: number;
   isCurrentSet: boolean;
   trackingType: 'reps' | 'time';
+  isCardio: boolean;
   toggleSetComplete: (exerciseId: string, setIndex: number) => void;
   updateSetValue: (
     exerciseId: string,
@@ -1317,6 +1406,7 @@ const SortableWorkoutSetRow: React.FC<{
   totalSets,
   isCurrentSet,
   trackingType,
+  isCardio,
   toggleSetComplete,
   updateSetValue,
   updateDropsetValue,
@@ -1336,12 +1426,25 @@ const SortableWorkoutSetRow: React.FC<{
   };
   const [weightDraft, setWeightDraft] = useState(set.weight ? String(set.weight) : '');
   const [isWeightFocused, setIsWeightFocused] = useState(false);
+  const cardioTime = trackingType === 'time' && isCardio;
+  const [durationDraft, setDurationDraft] = useState(() => {
+    const minutes = cardioDurationSecondsToMinutes(set.reps);
+    return minutes === undefined ? '' : String(minutes);
+  });
+  const [isDurationFocused, setIsDurationFocused] = useState(false);
 
   useEffect(() => {
     if (!isWeightFocused) {
       setWeightDraft(set.weight ? String(set.weight) : '');
     }
   }, [set.weight, isWeightFocused]);
+
+  useEffect(() => {
+    if (cardioTime && !isDurationFocused) {
+      const minutes = cardioDurationSecondsToMinutes(set.reps);
+      setDurationDraft(minutes === undefined ? '' : String(minutes));
+    }
+  }, [cardioTime, isDurationFocused, set.reps]);
 
   return (
     <div
@@ -1463,18 +1566,51 @@ const SortableWorkoutSetRow: React.FC<{
           <div className="flex items-center gap-1">
             <input
               type="text"
-              inputMode="numeric"
-              value={set.reps ? String(set.reps) : ''}
-              placeholder={lastSet?.reps != null ? String(lastSet.reps) : undefined}
+              inputMode={cardioTime ? 'decimal' : 'numeric'}
+              aria-label={
+                trackingType === 'time'
+                  ? cardioTime
+                    ? 'Duración de serie'
+                    : 'Duración en segundos'
+                  : undefined
+              }
+              value={cardioTime ? durationDraft : set.reps ? String(set.reps) : ''}
+              placeholder={
+                lastSet?.reps != null
+                  ? cardioTime
+                    ? String(cardioDurationSecondsToMinutes(lastSet.reps) ?? '')
+                    : String(lastSet.reps)
+                  : undefined
+              }
+              onFocus={() => cardioTime && setIsDurationFocused(true)}
+              onBlur={() => cardioTime && setIsDurationFocused(false)}
               onChange={(e) => {
                 const raw = e.target.value;
+                if (cardioTime) {
+                  if (!/^\d*([.,]\d*)?$/.test(raw)) return;
+                  setDurationDraft(raw);
+                  if (raw === '') {
+                    updateSetValue(exerciseId, setIndex, 'reps', 0);
+                    return;
+                  }
+                  const minutes = parseLocaleDecimal(raw);
+                  if (minutes !== null && minutes >= 0) {
+                    updateSetValue(
+                      exerciseId,
+                      setIndex,
+                      'reps',
+                      cardioDurationMinutesToSeconds(minutes) ?? 0
+                    );
+                  }
+                  return;
+                }
                 if (!/^[0-9]*$/.test(raw)) return;
                 updateSetValue(exerciseId, setIndex, 'reps', raw === '' ? 0 : parseInt(raw, 10));
               }}
               className="w-full min-w-[52px] rounded-xl border border-white/10 bg-[#07131d] px-2 py-1.5 text-center text-sm font-bold text-white sm:w-14"
             />
             <span className="text-xs text-slate-500">
-              {trackingType === 'time' ? 'seg' : 'reps'}
+              {trackingType === 'time' ? (isCardio ? 'min' : 'seg') : 'reps'}
             </span>
           </div>
         </div>
