@@ -27,6 +27,7 @@ import { deleteUserDataCache, readUserDataCache, writeUserDataCache } from './li
 import { useStore, type CachedUserData, type LoadResult } from './store/useStore';
 
 type BootstrapStatus = 'resolving' | 'signed-out' | 'checking' | 'error' | 'ready';
+type RetryState = 'idle' | 'retrying' | 'failed';
 
 type BootstrapRun = {
   userId: string;
@@ -53,9 +54,10 @@ const isLoadFailure = (
 const AuthenticatedRouteGate: React.FC<{
   status: BootstrapStatus;
   refreshError: boolean;
+  retryState: RetryState;
   onRetry: () => void;
   onRefreshRetry: () => void;
-}> = ({ status, refreshError, onRetry, onRefreshRetry }) => {
+}> = ({ status, refreshError, retryState, onRetry, onRefreshRetry }) => {
   if (status === 'signed-out') {
     return <Navigate to="/" replace />;
   }
@@ -89,13 +91,30 @@ const AuthenticatedRouteGate: React.FC<{
         <div role="alert" className="max-w-md text-center">
           <h1 className="text-2xl font-semibold">No se pudieron cargar tus datos</h1>
           <p className="mt-3 text-sm text-slate-400">Comprueba tu conexión e inténtalo de nuevo.</p>
+          {retryState === 'failed' && (
+            <p className="mt-3 text-sm text-amber-200">
+              Sigue sin conectar con el servidor. Prueba de nuevo en unos segundos o recarga la app.
+            </p>
+          )}
           <button
             type="button"
             onClick={onRetry}
-            className="mt-6 rounded-full bg-primary px-6 py-3 text-sm font-semibold"
+            disabled={retryState === 'retrying'}
+            className="mt-6 rounded-full bg-primary px-6 py-3 text-sm font-semibold disabled:opacity-60"
           >
-            Reintentar
+            {retryState === 'retrying' ? 'Reintentando…' : 'Reintentar'}
           </button>
+          {retryState === 'failed' && (
+            <div>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="mt-3 rounded-full border border-slate-500 px-6 py-3 text-sm font-semibold"
+              >
+                Recargar la app
+              </button>
+            </div>
+          )}
         </div>
       </main>
     );
@@ -126,6 +145,7 @@ export const AppRoutes: React.FC = () => {
   const resetUserScopedState = useStore((state) => state.resetUserScopedState);
   const [bootstrapStatus, setBootstrapStatus] = React.useState<BootstrapStatus>('resolving');
   const [refreshError, setRefreshError] = React.useState(false);
+  const [retryState, setRetryState] = React.useState<RetryState>('idle');
   const bootstrapStatusRef = React.useRef<BootstrapStatus>('resolving');
   const currentUserIdRef = React.useRef<string | null>(null);
   const generationRef = React.useRef(0);
@@ -145,6 +165,10 @@ export const AppRoutes: React.FC = () => {
     if (!mountedRef.current) return;
     setRefreshError(hasError);
   }, []);
+
+  React.useEffect(() => {
+    if (bootstrapStatus === 'ready' || bootstrapStatus === 'signed-out') setRetryState('idle');
+  }, [bootstrapStatus]);
 
   const transitionToSignedOut = React.useCallback(() => {
     const signedOutUserId = currentUserIdRef.current ?? useStore.getState().persistedUserId;
@@ -343,6 +367,7 @@ export const AppRoutes: React.FC = () => {
 
     const retryGeneration = ++generationRef.current;
     inFlightRef.current = null;
+    if (mountedRef.current) setRetryState('retrying');
 
     try {
       const { data, error } = await supabase.auth.getSession();
@@ -355,10 +380,15 @@ export const AppRoutes: React.FC = () => {
       } else if (failedUserId && sessionUserId !== failedUserId) {
         return;
       } else {
-        void startBootstrap(sessionUserId);
+        await startBootstrap(sessionUserId);
       }
     } catch {
       // The existing initial error remains visible when retry cannot resolve a session.
+    } finally {
+      // Tell the user the retry ran and failed instead of leaving the error screen unchanged.
+      if (mountedRef.current) {
+        setRetryState(bootstrapStatusRef.current === 'error' ? 'failed' : 'idle');
+      }
     }
   }, [startBootstrap, transitionToSignedOut]);
 
@@ -533,6 +563,7 @@ export const AppRoutes: React.FC = () => {
             <AuthenticatedRouteGate
               status={bootstrapStatus}
               refreshError={refreshError}
+              retryState={retryState}
               onRetry={retryInitialBootstrap}
               onRefreshRetry={retryLifecycleRefresh}
             />

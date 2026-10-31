@@ -618,6 +618,49 @@ describe('authenticated initial readiness', () => {
     }
   });
 
+  it('should tell the user the retry failed and offer a reload when session lookup keeps failing', async () => {
+    const sessionError = { data: { session: null }, error: new Error('session lookup failed') };
+    harness.getSession.mockResolvedValue(sessionError);
+
+    renderProtectedRoute();
+    fireEvent.click(await screen.findByRole('button', { name: 'Reintentar' }));
+
+    expect(await screen.findByText(/Sigue sin conectar con el servidor/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Recargar la app' })).toBeInTheDocument();
+    expect(harness.getSession).toHaveBeenCalledTimes(2);
+  });
+
+  it('should disable the retry button while the retry is in flight', async () => {
+    const retrySession = deferred<{ data: { session: Session | null }; error: Error | null }>();
+    harness.getSession
+      .mockResolvedValueOnce({ data: { session: null }, error: new Error('session lookup failed') })
+      .mockReturnValueOnce(retrySession.promise);
+
+    renderProtectedRoute();
+    fireEvent.click(await screen.findByRole('button', { name: 'Reintentar' }));
+
+    expect(await screen.findByRole('button', { name: 'Reintentando…' })).toBeDisabled();
+    act(() => retrySession.resolve({ data: { session: null }, error: new Error('still down') }));
+    expect(await screen.findByText(/Sigue sin conectar con el servidor/)).toBeInTheDocument();
+  });
+
+  it('should hide the failed-retry notice when a later retry succeeds', async () => {
+    harness.getSession
+      .mockResolvedValueOnce({ data: { session: null }, error: new Error('down') })
+      .mockResolvedValueOnce({ data: { session: null }, error: new Error('still down') });
+
+    renderProtectedRoute();
+    fireEvent.click(await screen.findByRole('button', { name: 'Reintentar' }));
+    expect(await screen.findByText(/Sigue sin conectar con el servidor/)).toBeInTheDocument();
+
+    harness.getSession.mockResolvedValue(authResponse(sessionFor('u1')));
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+
+    expect(await screen.findByText('Protected Home')).toBeInTheDocument();
+    expect(screen.queryByText(/Sigue sin conectar con el servidor/)).not.toBeInTheDocument();
+  });
+
   it('starts a new generation when same-session retry succeeds', async () => {
     harness.store.loadUserData.mockResolvedValueOnce(requestFailed).mockResolvedValueOnce(loadOk);
     renderProtectedRoute();
