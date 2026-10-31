@@ -1,0 +1,478 @@
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useStore } from '../store/useStore';
+import { isPartialWorkout } from '../lib/workoutUtils';
+import {
+  formatCardioDuration,
+  formatPace,
+  getCardioMetricsFromSet,
+  getCardioProgressPoints,
+  isCardioExercise,
+} from '../lib/trainingMetrics';
+import ConfirmDialog from '../components/ConfirmDialog';
+
+const WorkoutHistory: React.FC = () => {
+  const {
+    workoutHistory,
+    loadWorkoutHistory,
+    savedRoutines,
+    loadRoutines,
+    deleteWorkoutSession,
+    deleteWorkoutSessions,
+  } = useStore();
+  const [expandedWorkouts, setExpandedWorkouts] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadWorkoutHistory();
+    loadRoutines();
+  }, [loadWorkoutHistory, loadRoutines]);
+
+  const toggleWorkout = (id: string) => {
+    if (isSelectionMode) {
+      handleSelect(id);
+      return;
+    }
+    setExpandedWorkouts((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) newSet.delete(id);
+      else newSet.add(id);
+      return newSet;
+    });
+  };
+
+  const toggleSelectionMode = () => {
+    setIsSelectionMode(!isSelectionMode);
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.size === 0) return;
+    setBulkDeleteOpen(true);
+  };
+
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Hoy';
+    if (diffDays === 1) return 'Ayer';
+    if (diffDays < 7) return `Hace ${diffDays} días`;
+
+    return date.toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'short',
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+    });
+  };
+
+  const formatFullDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('es-ES', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  // Helper to get current routine name or fallback to saved name
+  const getRoutineName = (workout: any) => {
+    if (workout.routine_id) {
+      const currentRoutine = savedRoutines.find((r) => r.id === workout.routine_id);
+      if (currentRoutine) {
+        return currentRoutine.name;
+      }
+    }
+    return workout.routine_name; // Fallback to saved name if routine doesn't exist
+  };
+
+  return (
+    <div className="h-full w-full overflow-y-auto">
+      <div className="mobile-page flex max-w-4xl flex-col gap-5 pb-28">
+        {/* Header */}
+        <header className="mobile-hero">
+          <div>
+            <p className="mobile-kicker">Workout archive</p>
+            <h1 className="mobile-title">Historial</h1>
+            <p className="mobile-subtitle">{workoutHistory.length} entrenamientos completados</p>
+          </div>
+          <div className="mt-4 flex items-center gap-2">
+            {isSelectionMode ? (
+              <>
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={selectedIds.size === 0}
+                  className="rounded-full bg-red-500/10 px-4 py-2 text-sm font-bold text-red-300 disabled:opacity-50"
+                >
+                  Eliminar ({selectedIds.size})
+                </button>
+                <button
+                  onClick={toggleSelectionMode}
+                  className="rounded-full border border-[rgba(73,133,214,0.16)] bg-[rgba(16,30,47,0.78)] px-4 py-2 text-sm font-bold text-slate-300"
+                >
+                  Cancelar
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={toggleSelectionMode}
+                className="rounded-full border border-[rgba(73,133,214,0.16)] bg-[rgba(16,30,47,0.78)] px-4 py-2 text-sm font-bold text-slate-300"
+              >
+                Seleccionar
+              </button>
+            )}
+          </div>
+        </header>
+
+        {/* Workout List */}
+        {workoutHistory.length === 0 ? (
+          <div className="mobile-card flex flex-col items-center justify-center px-5 py-16 text-center">
+            <div className="mb-6 flex size-24 items-center justify-center rounded-full border border-[rgba(73,133,214,0.16)] bg-[rgba(47,140,255,0.08)]">
+              <span className="material-symbols-outlined text-5xl text-[#4ea0ff]">history</span>
+            </div>
+            <h3 className="mb-2 text-2xl font-bold text-white">Sin entrenamientos aún</h3>
+            <p className="mb-6 text-slate-400">Completa tu primer entrenamiento para verlo aquí</p>
+            <Link
+              to="/routine"
+              className="rounded-[1.1rem] bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] px-6 py-4 font-bold text-white shadow-lg shadow-[#2f8cff]/25"
+            >
+              Ir a Rutinas
+            </Link>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {workoutHistory.map((workout) => {
+              const exerciseCount = Array.isArray(workout.exercises_completed)
+                ? workout.exercises_completed.length
+                : 0;
+              const isExpanded = expandedWorkouts.has(workout.id);
+              const isPartial = isPartialWorkout(workout);
+              const isSelected = selectedIds.has(workout.id);
+              const cardioPoints = getCardioProgressPoints([workout]);
+              const cardioDistance = cardioPoints.reduce(
+                (total, point) => total + (point.distanceKm || 0),
+                0
+              );
+              const hasCardio = cardioPoints.length > 0;
+
+              return (
+                <div
+                  key={workout.id}
+                  className={`mobile-card relative overflow-hidden transition-all ${
+                    isSelected
+                      ? 'border-[#2f8cff] ring-1 ring-[#2f8cff] bg-[rgba(47,140,255,0.08)]'
+                      : 'hover:border-[rgba(73,133,214,0.3)]'
+                  }`}
+                >
+                  {/* Selection Checkbox Overlay */}
+                  {isSelectionMode && (
+                    <div className="absolute top-5 right-5 z-20 pointer-events-none">
+                      <div
+                        className={`flex h-6 w-6 items-center justify-center rounded-full border-2 transition-colors ${
+                          isSelected ? 'bg-primary border-primary' : 'border-white/15 bg-[#07131d]'
+                        }`}
+                      >
+                        {isSelected && (
+                          <span className="material-symbols-outlined text-white text-[16px]">
+                            check
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Summary Section - Always Visible */}
+                  <div
+                    className="p-5 cursor-pointer relative"
+                    onClick={() => toggleWorkout(workout.id)}
+                  >
+                    <div className="flex items-start justify-between mb-3 pr-8">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                              isPartial
+                                ? 'bg-amber-400/12 text-amber-200'
+                                : 'bg-emerald-400/12 text-emerald-200'
+                            }`}
+                          >
+                            {isPartial ? 'PARCIAL' : 'COMPLETADO'}
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            {formatDate(workout.completed_at)}
+                          </span>
+                        </div>
+                        <h3 className="text-lg font-bold text-white">{getRoutineName(workout)}</h3>
+                      </div>
+
+                      {/* Standard Actions (only when NOT in selection mode) */}
+                      {!isSelectionMode && (
+                        <div className="flex items-center gap-2 absolute top-5 right-5">
+                          {/* Delete Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent toggle when clicking delete
+                              setDeleteTargetId(workout.id);
+                            }}
+                            className="group rounded-lg p-2 transition-colors hover:bg-red-500/10"
+                          >
+                            <span className="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-red-300">
+                              delete
+                            </span>
+                          </button>
+                          {/* Expand Button */}
+                          <button className="rounded-lg p-2 transition-colors hover:bg-white/10">
+                            <span
+                              className={`material-symbols-outlined text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                            >
+                              expand_more
+                            </span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="rounded-2xl border border-white/10 bg-[#07131d] p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="material-symbols-outlined text-primary text-[16px]">
+                            timer
+                          </span>
+                          <span className="text-xs text-slate-400">Duración</span>
+                        </div>
+                        <p className="font-bold text-white">
+                          {formatDuration(workout.duration_minutes)}
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-[#07131d] p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="material-symbols-outlined text-primary text-[16px]">
+                            fitness_center
+                          </span>
+                          <span className="text-xs text-slate-400">Ejercicios</span>
+                        </div>
+                        <p className="font-bold text-white">{exerciseCount}</p>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-[#07131d] p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="material-symbols-outlined text-primary text-[16px]">
+                            {hasCardio ? 'route' : 'scale'}
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            {hasCardio ? 'Distancia' : 'Volumen'}
+                          </span>
+                        </div>
+                        <p className="font-bold text-white">
+                          {hasCardio
+                            ? `${cardioDistance.toFixed(2)} km`
+                            : `${(workout.total_volume / 1000).toFixed(1)}k kg`}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Expanded Details */}
+                  {isExpanded && !isSelectionMode && (
+                    <div className="border-t border-white/10 bg-[#07131d] p-5">
+                      {/* Date/Time Info */}
+                      <div className="mb-4 border-b border-white/10 pb-4">
+                        <div className="flex items-center gap-2 text-sm text-slate-400">
+                          <span className="material-symbols-outlined text-[18px]">
+                            calendar_today
+                          </span>
+                          <span className="capitalize">
+                            {formatFullDateTime(workout.completed_at)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Exercise List */}
+                      <div className="space-y-4">
+                        <h4 className="mb-3 text-sm font-bold uppercase text-slate-400">
+                          Ejercicios realizados
+                        </h4>
+                        {Array.isArray(workout.exercises_completed) &&
+                          workout.exercises_completed.map((exercise: any, idx: number) => (
+                            <div
+                              key={idx}
+                              className="rounded-[1.35rem] border border-white/10 bg-white/5 p-4"
+                            >
+                              <div className="flex items-center gap-2 mb-3">
+                                <span className="material-symbols-outlined text-primary">
+                                  {isCardioExercise(exercise) ? 'directions_run' : 'fitness_center'}
+                                </span>
+                                <h5 className="font-bold text-white">{exercise.name}</h5>
+                              </div>
+
+                              {isCardioExercise(exercise) && (
+                                <p className="mb-3 text-xs text-cyan-100">
+                                  Registra duración, distancia, ritmo, frecuencia cardiaca,
+                                  cadencia, calorías y RPE desde la sesión para ver su evolución.
+                                </p>
+                              )}
+
+                              {/* Sets Table */}
+                              <div className="space-y-2">
+                                {Array.isArray(exercise.sets) &&
+                                  exercise.sets.map((set: any, setIdx: number) => (
+                                    <div
+                                      key={setIdx}
+                                      className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#07131d] p-2 text-sm"
+                                    >
+                                      <span className="w-16 font-bold text-slate-400">
+                                        Serie {setIdx + 1}
+                                      </span>
+                                      {isCardioExercise(exercise) ? (
+                                        (() => {
+                                          const metrics = getCardioMetricsFromSet(set);
+                                          const pace =
+                                            metrics?.paceSecondsPerKm ??
+                                            (metrics?.durationSeconds && metrics.distanceKm
+                                              ? metrics.durationSeconds / metrics.distanceKm
+                                              : undefined);
+                                          return (
+                                            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                                              <span className="font-bold text-cyan-100">
+                                                {formatCardioDuration(metrics?.durationSeconds)}
+                                              </span>
+                                              {metrics?.distanceKm !== undefined && (
+                                                <span className="text-slate-300">
+                                                  {metrics.distanceKm.toFixed(2)} km
+                                                </span>
+                                              )}
+                                              {pace !== undefined && (
+                                                <span className="text-slate-300">
+                                                  {formatPace(pace)}
+                                                </span>
+                                              )}
+                                              {metrics?.averageHeartRateBpm !== undefined && (
+                                                <span className="text-slate-300">
+                                                  FC {metrics.averageHeartRateBpm} ppm
+                                                </span>
+                                              )}
+                                              {metrics?.maxHeartRateBpm !== undefined && (
+                                                <span className="text-slate-300">
+                                                  FC máx {metrics.maxHeartRateBpm} ppm
+                                                </span>
+                                              )}
+                                              {metrics?.cadenceRpm !== undefined && (
+                                                <span className="text-slate-300">
+                                                  {metrics.cadenceRpm} rpm
+                                                </span>
+                                              )}
+                                              {metrics?.calories !== undefined && (
+                                                <span className="text-slate-300">
+                                                  {metrics.calories} kcal
+                                                </span>
+                                              )}
+                                              {metrics?.rpe !== undefined && (
+                                                <span className="text-slate-300">
+                                                  RPE {metrics.rpe}
+                                                </span>
+                                              )}
+                                            </div>
+                                          );
+                                        })()
+                                      ) : (
+                                        <div className="flex items-center gap-4 flex-1">
+                                          <div className="flex items-center gap-1">
+                                            <span className="font-bold text-primary">
+                                              {set.weight}
+                                            </span>
+                                            <span className="text-xs text-slate-500">kg</span>
+                                          </div>
+                                          <span className="text-slate-500">×</span>
+                                          <div className="flex items-center gap-1">
+                                            <span className="font-bold text-primary">
+                                              {set.reps}
+                                            </span>
+                                            <span className="text-xs text-slate-500">reps</span>
+                                          </div>
+                                          {set.rir !== undefined && (
+                                            <span className="text-xs text-slate-400">
+                                              RIR {set.rir}
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
+                                      {set.completed && (
+                                        <span className="material-symbols-outlined text-[18px] text-emerald-300">
+                                          check_circle
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <ConfirmDialog
+          isOpen={bulkDeleteOpen}
+          title="Eliminar entrenamientos"
+          description={`¿Estás seguro de que deseas eliminar ${selectedIds.size} entrenamiento(s)?`}
+          confirmLabel="Eliminar"
+          variant="danger"
+          onCancel={() => setBulkDeleteOpen(false)}
+          onConfirm={() => {
+            deleteWorkoutSessions(Array.from(selectedIds));
+            setSelectedIds(new Set());
+            setIsSelectionMode(false);
+            setBulkDeleteOpen(false);
+          }}
+        />
+
+        <ConfirmDialog
+          isOpen={!!deleteTargetId}
+          title="Eliminar entrenamiento"
+          description="¿Eliminar este entrenamiento del historial?"
+          confirmLabel="Eliminar"
+          variant="danger"
+          onCancel={() => setDeleteTargetId(null)}
+          onConfirm={() => {
+            if (!deleteTargetId) return;
+            deleteWorkoutSession(deleteTargetId);
+            setDeleteTargetId(null);
+          }}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default WorkoutHistory;
