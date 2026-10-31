@@ -8,6 +8,8 @@ services:
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
         VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
         VITE_VAPID_PUBLIC_KEY: ${VITE_VAPID_PUBLIC_KEY:-}
+        # Set to false in .env to hide "Crear cuenta" (also disable signups in Supabase)
+        VITE_ALLOW_SIGNUP: ${VITE_ALLOW_SIGNUP:-true}
     image: fitness-local-app:latest
     container_name: fitness-local-app
     restart: unless-stopped

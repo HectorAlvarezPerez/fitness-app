@@ -4,6 +4,9 @@ import { supabase } from '../lib/supabaseClient';
 import logoUrl from '../assets/logo-fitness.png';
 import { useStore } from '../store/useStore';
 
+// Build with VITE_ALLOW_SIGNUP=false to hide account creation (the backend must also block it).
+const SIGNUP_ENABLED = import.meta.env.VITE_ALLOW_SIGNUP !== 'false';
+
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const resetUserScopedState = useStore((state) => state.resetUserScopedState);
@@ -77,16 +80,18 @@ const LandingPage: React.FC = () => {
       <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 pb-8 pt-24 md:px-6">
         <section className="rounded-[36px] border border-white/10 bg-[#0c1d2b]/88 p-5 shadow-[0_30px_80px_rgba(0,0,0,0.32)] backdrop-blur-xl md:p-7">
           <div className="mb-6 flex rounded-full border border-white/10 bg-white/5 p-1">
-            <button
-              onClick={() => setAuthMode('register')}
-              className={`flex-1 rounded-full py-3 text-sm font-semibold transition-all ${
-                authMode === 'register'
-                  ? 'bg-white text-slate-950'
-                  : 'text-slate-300 hover:text-white'
-              }`}
-            >
-              Crear cuenta
-            </button>
+            {SIGNUP_ENABLED && (
+              <button
+                onClick={() => setAuthMode('register')}
+                className={`flex-1 rounded-full py-3 text-sm font-semibold transition-all ${
+                  authMode === 'register'
+                    ? 'bg-white text-slate-950'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                Crear cuenta
+              </button>
+            )}
             <button
               onClick={() => setAuthMode('login')}
               className={`flex-1 rounded-full py-3 text-sm font-semibold transition-all ${
