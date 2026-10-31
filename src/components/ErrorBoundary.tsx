@@ -1,4 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Button } from './ui/button';
 
 interface Props {
   children: ReactNode;
@@ -24,6 +25,10 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   private handleReset = () => {
+    if (window.location.pathname === '/preview.html') {
+      window.location.reload();
+      return;
+    }
     localStorage.clear();
     window.location.href = '/';
   };
@@ -31,25 +36,31 @@ class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="flex h-screen w-full flex-col items-center justify-center bg-[#0F1214] p-8 text-white font-display">
+        <div className="flex min-h-screen w-full flex-col items-center justify-center bg-white p-6 text-slate-900">
           <div className="max-w-md text-center">
-            <div className="mb-6 flex justify-center text-primary">
-              <span className="material-symbols-outlined text-6xl">warning</span>
+            <div className="mb-5 flex justify-center text-amber-700">
+              <span className="material-symbols-outlined text-5xl">warning</span>
             </div>
-            <h1 className="mb-4 text-2xl font-bold">Algo salió mal</h1>
-            <p className="mb-8 text-slate-400">
+            <h1 className="mb-3 text-2xl font-bold">Algo salió mal</h1>
+            <p className="mb-6 text-slate-600">
               La aplicación ha encontrado un error inesperado. Si el problema persiste, intenta
-              reiniciar la aplicación.
+              cargar la vista de nuevo.
             </p>
-            <div className="bg-red-900/30 p-4 rounded-xl mb-8 border border-red-500/30 text-left overflow-auto max-h-40">
-              <code className="text-xs text-red-200">{this.state.error?.message}</code>
-            </div>
-            <button
+            {this.state.error && (
+              <div className="mb-6 max-h-48 overflow-auto rounded-lg border border-red-200 bg-red-50 p-3 text-left">
+                <code className="whitespace-pre-wrap text-xs text-red-800">
+                  {import.meta.env.DEV
+                    ? this.state.error.stack || this.state.error.message
+                    : this.state.error.message}
+                </code>
+              </div>
+            )}
+            <Button
+              type="button"
               onClick={this.handleReset}
-              className="rounded-full bg-primary px-6 py-3 font-bold text-white transition-hover hover:bg-primary/80"
             >
-              Reiniciar App (Borrar datos)
-            </button>
+              {window.location.pathname === '/preview.html' ? 'Recargar vista' : 'Reiniciar App'}
+            </Button>
           </div>
         </div>
       );

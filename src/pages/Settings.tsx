@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabaseClient';
 import { useStore } from '../store/useStore';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { enableRestPush, disableRestPush, isPushSupported } from '../lib/push';
+import { Input } from '../components/ui/input';
+import { Button } from '../components/ui/button';
 
 const Settings: React.FC = () => {
   const navigate = useNavigate();
@@ -61,10 +63,10 @@ const Settings: React.FC = () => {
             className="size-16 rounded-full border-2 border-[#2f8cff]"
           />
           <div>
-            <p className="text-lg font-bold text-white">
+            <p className="text-lg font-bold text-slate-900">
               {userData?.user_metadata?.full_name || userData?.email?.split('@')[0] || 'Usuario'}
             </p>
-            <p className="text-sm text-slate-400">{userData?.email || 'Modo Invitado'}</p>
+            <p className="text-sm text-slate-500">{userData?.email || 'Modo Invitado'}</p>
           </div>
         </section>
 
@@ -73,12 +75,16 @@ const Settings: React.FC = () => {
           <div className="mt-4 space-y-4">
             <div className="mobile-card-soft flex items-center justify-between p-4">
               <div>
-                <p className="font-semibold text-white">Notificaciones de descanso</p>
-                <p className="mt-1 text-sm text-slate-400">
+                <p className="font-semibold text-slate-900">Notificaciones de descanso</p>
+                <p className="mt-1 text-sm text-slate-500">
                   Aviso al terminar el descanso, incluso con la pantalla bloqueada
                 </p>
               </div>
-              <button
+              <Button variant="ghost"
+                type="button"
+                role="switch"
+                aria-label="Notificaciones de descanso"
+                aria-checked={notificationsEnabled}
                 onClick={async () => {
                   const next = !notificationsEnabled;
                   localStorage.setItem('fitness-rest-timer-notifications', next ? 'on' : 'off');
@@ -89,78 +95,78 @@ const Settings: React.FC = () => {
                     await disableRestPush();
                   }
                 }}
-                className={`relative h-7 w-12 rounded-full transition-colors ${
-                  notificationsEnabled ? 'bg-[#2f8cff]' : 'bg-slate-700'
+                className={`relative flex h-11 w-14 shrink-0 items-center rounded-full px-1 transition-colors ${
+                  notificationsEnabled ? 'bg-primary' : 'bg-slate-300'
                 }`}
               >
                 <span
-                  className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
-                    notificationsEnabled ? 'translate-x-5' : 'translate-x-0.5'
+                  className={`h-9 w-9 rounded-full bg-white shadow transition-transform ${
+                    notificationsEnabled ? 'translate-x-3' : 'translate-x-0'
                   }`}
                 />
-              </button>
+              </Button>
             </div>
           </div>
         </section>
 
         <section className="mobile-card p-5">
           <p className="mobile-kicker">Seguridad</p>
-          <h2 className="mt-2 text-xl font-bold text-white">Cambio de contraseña</h2>
+          <h2 className="mt-2 text-xl font-bold text-slate-900">Cambio de contraseña</h2>
 
           <form onSubmit={handleChangePassword} className="mt-4 space-y-4">
-            <input
+            <Input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="Nueva contraseña"
-              className="w-full rounded-2xl border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-[#2f8cff]"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-500 focus:border-[#2f8cff]"
             />
-            <input
+            <Input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Confirmar contraseña"
-              className="w-full rounded-2xl border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-[#2f8cff]"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-500 focus:border-[#2f8cff]"
             />
 
             {passwordMessage && (
               <div
                 className={`rounded-2xl px-4 py-3 text-sm ${
                   passwordMessage.type === 'success'
-                    ? 'bg-green-500/10 text-green-200'
-                    : 'bg-red-500/10 text-red-200'
+                    ? 'bg-green-50 text-green-700'
+                    : 'bg-red-50 text-red-700'
                 }`}
               >
                 {passwordMessage.text}
               </div>
             )}
 
-            <button
+            <Button
               type="submit"
               disabled={isChangingPassword || !newPassword || !confirmPassword}
-              className="flex w-full items-center justify-center gap-2 rounded-[1.1rem] bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#2f8cff]/25 disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-[1.1rem] bg-primary px-5 py-3 text-sm font-bold text-white shadow-sm shadow-primary/10 disabled:opacity-50"
             >
               {isChangingPassword && (
                 <span className="material-symbols-outlined animate-spin text-[18px]">sync</span>
               )}
               Actualizar contraseña
-            </button>
+            </Button>
           </form>
         </section>
 
-        <button
+        <Button variant="ghost"
           onClick={() => setLogoutConfirmOpen(true)}
-          className="mobile-card w-full border-red-500/25 p-4 font-bold text-red-400"
+          className="mobile-card w-full border-red-200 p-4 font-bold text-red-600"
         >
           Cerrar sesión
-        </button>
+        </Button>
 
-        <button
+        <Button variant="ghost"
           onClick={() => navigate('/guide')}
-          className="mobile-card-soft w-full p-4 text-sm font-semibold text-slate-300"
+          className="mobile-card-soft w-full p-4 text-sm font-semibold text-slate-600"
         >
           Abrir guía de ayuda
-        </button>
+        </Button>
 
         <ConfirmDialog
           isOpen={logoutConfirmOpen}

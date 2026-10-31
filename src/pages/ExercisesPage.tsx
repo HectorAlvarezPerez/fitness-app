@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { ExerciseLibraryItem } from '../store/useStore';
+import { Input } from '../components/ui/input';
+import { Button } from '../components/ui/button';
+import { NativeSelect } from '../components/ui/native-select';
 
 type ExerciseRecord = ExerciseLibraryItem & {
   user_id?: string | null;
@@ -109,15 +112,11 @@ const ExercisesPage: React.FC = () => {
     <div className="h-full w-full overflow-y-auto">
       <div className="mobile-page max-w-4xl space-y-4">
         <section className="mobile-hero">
-          <p className="mobile-kicker">Exercise library</p>
           <h1 className="mobile-title">Ejercicios</h1>
-          <p className="mobile-subtitle">
-            Una biblioteca más limpia para buscar, filtrar y editar sin perder ninguna capacidad.
-          </p>
         </section>
 
         {successMessage && (
-          <div className="mobile-card border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-200">
+          <div className="mobile-card border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
             {successMessage}
           </div>
         )}
@@ -127,17 +126,17 @@ const ExercisesPage: React.FC = () => {
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
               search
             </span>
-            <input
+            <Input
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              className="w-full rounded-2xl border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] px-11 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-[#2f8cff]"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-11 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-500 focus:border-[#2f8cff]"
               placeholder="Buscar ejercicios..."
               type="text"
             />
           </div>
 
           <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-            <button
+            <Button variant="ghost"
               type="button"
               onClick={() => setSelectedMuscle('')}
               className={`mobile-pill whitespace-nowrap px-5 py-2 text-sm font-semibold ${
@@ -145,9 +144,9 @@ const ExercisesPage: React.FC = () => {
               }`}
             >
               Todos
-            </button>
+            </Button>
             {muscleOptions.map((muscle) => (
-              <button
+              <Button variant="ghost"
                 key={muscle}
                 type="button"
                 onClick={() => setSelectedMuscle(muscle)}
@@ -156,7 +155,7 @@ const ExercisesPage: React.FC = () => {
                 }`}
               >
                 {muscle}
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -166,10 +165,11 @@ const ExercisesPage: React.FC = () => {
                 <span className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-slate-500">
                   Equipo
                 </span>
-                <select
+                <NativeSelect
+                  containerClassName="w-full"
                   value={selectedEquipment}
                   onChange={(event) => setSelectedEquipment(event.target.value)}
-                  className="w-full rounded-2xl border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] px-4 py-3 text-sm text-white outline-none focus:border-[#2f8cff]"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-[#2f8cff]"
                 >
                   <option value="">Todos</option>
                   {equipmentOptions.map((equipment) => (
@@ -177,12 +177,12 @@ const ExercisesPage: React.FC = () => {
                       {equipment}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               </label>
 
               <Link
                 to="/exercises/new"
-                className="mt-auto flex items-center justify-center gap-2 rounded-[1.1rem] bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#2f8cff]/25"
+                className="mt-auto flex items-center justify-center gap-2 rounded-[1.1rem] bg-primary px-5 py-3 text-sm font-bold text-white shadow-sm shadow-primary/10"
               >
                 <span className="material-symbols-outlined text-[18px]">add</span>
                 Nuevo ejercicio
@@ -192,22 +192,22 @@ const ExercisesPage: React.FC = () => {
         </section>
 
         {isLoading && (
-          <div className="mobile-card p-8 text-center text-slate-400">Cargando ejercicios...</div>
+          <div className="mobile-card p-8 text-center text-slate-500">Cargando ejercicios...</div>
         )}
 
         {!isLoading && error && (
-          <div className="mobile-card border-red-500/20 bg-red-500/10 p-6 text-red-200">
+          <div className="mobile-card border-red-200 bg-red-50 p-6 text-red-700">
             {error}
           </div>
         )}
 
         {!isLoading && !error && filteredExercises.length === 0 && (
           <div className="mobile-card p-10 text-center">
-            <div className="mx-auto mb-5 flex size-20 items-center justify-center rounded-full border border-[rgba(73,133,214,0.16)] bg-[rgba(47,140,255,0.08)]">
+            <div className="mx-auto mb-5 flex size-20 items-center justify-center rounded-full border border-slate-200 bg-[rgba(47,140,255,0.08)]">
               <span className="material-symbols-outlined text-4xl text-[#4ea0ff]">search_off</span>
             </div>
-            <p className="text-xl font-bold text-white">No hay ejercicios para mostrar.</p>
-            <p className="mt-2 text-sm text-slate-400">
+            <p className="text-xl font-bold text-slate-900">No hay ejercicios para mostrar.</p>
+            <p className="mt-2 text-sm text-slate-500">
               Crea un ejercicio nuevo o ajusta los filtros.
             </p>
           </div>
@@ -220,7 +220,7 @@ const ExercisesPage: React.FC = () => {
               const hasImage = Boolean(exercise.image_url);
 
               return (
-                <button
+                <Button variant="ghost"
                   key={exercise.id}
                   onClick={() => navigate(`/exercises/${exercise.id}/edit`)}
                   className="mobile-list-row w-full p-3 text-left transition-all hover:border-[rgba(73,133,214,0.3)]"
@@ -239,11 +239,11 @@ const ExercisesPage: React.FC = () => {
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-lg font-semibold text-white">{exercise.name}</p>
+                      <p className="truncate text-lg font-semibold text-slate-900">{exercise.name}</p>
                       <p className="mt-1 truncate text-[0.7rem] font-bold uppercase tracking-[0.16em] text-slate-500">
                         {exercise.primary_muscle || 'Sin músculo principal'}
                       </p>
-                      <p className="mt-1 truncate text-xs text-slate-400">
+                      <p className="mt-1 truncate text-xs text-slate-500">
                         {summarySecondary ? `${summarySecondary} • ` : ''}
                         {exercise.equipment || 'Sin equipo'}
                       </p>
@@ -251,7 +251,7 @@ const ExercisesPage: React.FC = () => {
 
                     <span className="material-symbols-outlined text-slate-500">chevron_right</span>
                   </div>
-                </button>
+                </Button>
               );
             })}
           </section>

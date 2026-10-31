@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
+import { Input } from './ui/input';
+import { NativeSelect, NativeSelectOption } from './ui/native-select';
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from './ui/sheet';
+import { Button } from './ui/button';
 
 interface ExerciseLibrarySheetProps {
   isOpen: boolean;
@@ -170,21 +174,12 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
   };
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className={`fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
-          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-        onClick={onClose}
-      />
-
-      {/* Sheet */}
-      <div
+    <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent
         ref={sheetRef}
-        className={`fixed inset-x-0 z-[60] bg-[#0f1214] rounded-t-[28px] flex flex-col overflow-hidden transition-transform duration-300 ease-out ${
-          isOpen ? 'translate-y-0' : 'translate-y-full'
-        }`}
+        side="bottom"
+        onOverlayClick={onClose}
+        className="z-[60] max-h-none gap-0 overflow-hidden rounded-t-[28px] border-slate-200 bg-white p-0 text-slate-900 shadow-sm"
         style={{
           bottom: `${keyboardInset}px`,
           height: sheetHeight ? `${sheetHeight}px` : '85dvh',
@@ -192,7 +187,9 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
           transition: isDragging ? 'none' : 'transform 0.3s ease-out',
         }}
       >
-        <div className="shrink-0 bg-[#0f1214]">
+        <SheetTitle className="sr-only">Biblioteca de ejercicios</SheetTitle>
+        <SheetDescription className="sr-only">Busca y añade ejercicios a la sesión.</SheetDescription>
+        <div className="shrink-0 bg-white">
           {/* Drag handle */}
           <div
             className="flex justify-center pt-3 pb-2 touch-none"
@@ -200,7 +197,7 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
           >
-            <div className="w-12 h-1.5 bg-white/25 rounded-full" />
+            <div className="h-1.5 w-12 rounded-full bg-slate-300" />
           </div>
 
           {/* Header */}
@@ -210,17 +207,17 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
                 <span className="material-symbols-outlined text-primary text-[24px]">
                   library_books
                 </span>
-                <h2 className="text-xl font-bold text-white">Biblioteca</h2>
+                <h2 className="text-xl font-bold text-slate-900">Biblioteca</h2>
               </div>
-              <button
+              <Button variant="ghost"
                 type="button"
                 aria-label="Cerrar biblioteca de ejercicios"
                 onClick={onClose}
                 onTouchEnd={handleCloseTouchEnd}
-                className="p-2 rounded-full hover:bg-white/5 transition-colors"
+                className="flex size-11 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100"
               >
                 <span className="material-symbols-outlined text-slate-400">close</span>
-              </button>
+              </Button>
             </div>
 
             {/* Search */}
@@ -228,10 +225,10 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
               <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-[20px]">
                 search
               </span>
-              <input
+              <Input
                 value={exerciseSearchQuery}
                 onChange={(e) => setExerciseSearchQuery(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-base sm:text-sm text-white focus:outline-none focus:border-primary/50 focus:bg-white/10 placeholder:text-slate-500 transition-all"
+                className="h-11 w-full rounded-xl border-slate-200 pl-11 pr-4 text-base text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 sm:text-sm"
                 placeholder="Buscar ejercicio..."
                 type="text"
               />
@@ -239,43 +236,37 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
 
             {/* Filters - Horizontal scroll */}
             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
-              <select
-                className="shrink-0 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-base sm:text-sm text-white focus:outline-none focus:border-primary/50 appearance-none pr-8 bg-no-repeat bg-right"
-                style={{
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`,
-                  backgroundSize: '1.5rem',
-                }}
+              <NativeSelect
+                containerClassName="shrink-0"
+                className="min-w-28 rounded-lg border-slate-200 bg-white py-2 pl-3 pr-8 text-base text-slate-900 sm:text-sm"
                 value={selectedMuscleFilter || ''}
                 onChange={(e) => setMuscleFilter(e.target.value || null)}
               >
-                <option value="">Músculo</option>
+                <NativeSelectOption value="">Músculo</NativeSelectOption>
                 {muscleGroups.map((muscle) => (
-                  <option key={muscle} value={muscle}>
+                  <NativeSelectOption key={muscle} value={muscle}>
                     {muscle}
-                  </option>
+                  </NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
 
-              <select
-                className="shrink-0 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-base sm:text-sm text-white focus:outline-none focus:border-primary/50 appearance-none pr-8 bg-no-repeat bg-right"
-                style={{
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`,
-                  backgroundSize: '1.5rem',
-                }}
+              <NativeSelect
+                containerClassName="shrink-0"
+                className="min-w-28 rounded-lg border-slate-200 bg-white py-2 pl-3 pr-8 text-base text-slate-900 sm:text-sm"
                 value={selectedEquipmentFilter || ''}
                 onChange={(e) => setEquipmentFilter(e.target.value || null)}
               >
-                <option value="">Equipo</option>
+                <NativeSelectOption value="">Equipo</NativeSelectOption>
                 {equipmentTypes.map((eq) => (
-                  <option key={eq} value={eq}>
+                  <NativeSelectOption key={eq} value={eq}>
                     {eq}
-                  </option>
+                  </NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
 
               {/* Clear filters button */}
               {(selectedMuscleFilter || selectedEquipmentFilter) && (
-                <button
+                <Button variant="ghost"
                   onClick={() => {
                     setMuscleFilter(null);
                     setEquipmentFilter(null);
@@ -284,7 +275,7 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
                 >
                   <span className="material-symbols-outlined text-[16px]">close</span>
                   Limpiar
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -295,7 +286,7 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
           {filteredLibrary.length === 0 ? (
             exerciseLibrary.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <span className="mb-3 size-8 animate-spin rounded-full border-2 border-white/15 border-t-primary" />
+                <span className="mb-3 size-8 animate-spin rounded-full border-2 border-slate-200 border-t-primary" />
                 <p className="text-sm text-slate-400">Cargando ejercicios…</p>
               </div>
             ) : (
@@ -309,19 +300,19 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
           ) : (
             <div className="grid gap-2">
               {filteredLibrary.map((ex) => (
-                <button
+                <Button variant="ghost"
                   key={ex.id}
                   onClick={() => handleAddAndFeedback(ex)}
-                  className="group flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] active:bg-white/[0.08] border border-white/5 active:border-primary/30 transition-all text-left"
+                  className="group flex min-h-16 items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition-colors hover:bg-slate-50 active:border-blue-300 active:bg-blue-50"
                 >
                   {/* Exercise icon/avatar */}
-                  <div className="size-12 rounded-xl bg-gradient-to-br from-primary/20 to-orange-500/10 border border-primary/10 flex items-center justify-center shrink-0">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-blue-100 bg-blue-50">
                     <span className="text-primary font-bold text-lg">{ex.name[0]}</span>
                   </div>
 
                   {/* Exercise info */}
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-white font-semibold text-sm truncate group-active:text-primary transition-colors">
+                    <h4 className="truncate text-sm font-semibold text-slate-900 transition-colors group-active:text-primary">
                       {ex.name}
                     </h4>
                     <div className="flex items-center gap-2 mt-0.5">
@@ -338,7 +329,7 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
                         check
                       </span>
                       {addedCounts[ex.id] > 1 && (
-                        <span className="text-xs font-bold text-white">{addedCounts[ex.id]}</span>
+                      <span className="text-xs font-bold text-white">{addedCounts[ex.id]}</span>
                       )}
                     </div>
                   ) : (
@@ -348,13 +339,13 @@ const ExerciseLibrarySheet: React.FC<ExerciseLibrarySheetProps> = ({
                       </span>
                     </div>
                   )}
-                </button>
+                </Button>
               ))}
             </div>
           )}
         </div>
-      </div>
-    </>
+      </SheetContent>
+    </Sheet>
   );
 };
 

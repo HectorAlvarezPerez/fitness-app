@@ -2,7 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { ExerciseLibraryItem } from '../store/useStore';
+import { Input } from '../components/ui/input';
+import { Button } from '../components/ui/button';
 import { buildExercisePayload, canEditExercise, validateExerciseName } from '../lib/exerciseUtils';
+import { NativeSelect } from '../components/ui/native-select';
+import { Textarea } from '../components/ui/textarea';
 
 type ExerciseRecord = ExerciseLibraryItem & {
   user_id?: string | null;
@@ -221,7 +225,7 @@ const ExerciseEditorPage: React.FC = () => {
     return (
       <div className="h-full w-full overflow-y-auto">
         <div className="mobile-page">
-          <div className="mobile-card max-w-3xl mx-auto p-8 text-center text-slate-400">
+          <div className="mobile-card max-w-3xl mx-auto p-8 text-center text-slate-500">
             Cargando...
           </div>
         </div>
@@ -234,33 +238,29 @@ const ExerciseEditorPage: React.FC = () => {
       <div className="mobile-page max-w-3xl space-y-6">
         <header className="mobile-hero">
           <div>
-            <p className="mobile-kicker">Exercise editor</p>
             <h1 className="mobile-title">{isEditMode ? 'Editar ejercicio' : 'Nuevo ejercicio'}</h1>
-            <p className="mobile-subtitle">
-              Se actualiza solo el metadata del ejercicio; el historial de sesiones no se modifica.
-            </p>
           </div>
         </header>
 
         {!isEditable && (
-          <div className="mobile-card border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+          <div className="mobile-card border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
             Este ejercicio no es editable con tu cuenta actual.
           </div>
         )}
 
         {error && (
-          <div className="mobile-card border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          <div className="mobile-card border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}
 
         <section className="mobile-card p-4 md:p-5 space-y-5">
           <label className="space-y-1 block">
-            <span className="text-xs font-bold uppercase tracking-wide text-slate-400">Nombre</span>
-            <input
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Nombre</span>
+            <Input
               value={form.name}
               onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-              className="w-full rounded-xl border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] px-3 py-2.5 text-sm text-white outline-none focus:border-[#2f8cff]"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#2f8cff]"
               placeholder="Ejemplo: Press de banca inclinado"
               type="text"
               maxLength={120}
@@ -270,15 +270,16 @@ const ExerciseEditorPage: React.FC = () => {
 
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-1 block">
-              <span className="text-xs font-bold uppercase tracking-wide text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
                 Músculo principal
               </span>
-              <select
+              <NativeSelect
+                containerClassName="w-full"
                 value={form.primary_muscle}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, primary_muscle: event.target.value }))
                 }
-                className="w-full rounded-xl border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] px-3 py-2.5 text-sm text-white outline-none focus:border-[#2f8cff]"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#2f8cff]"
                 disabled={!isEditable || isSaving}
               >
                 {MUSCLE_OPTIONS.map((muscle) => (
@@ -286,19 +287,20 @@ const ExerciseEditorPage: React.FC = () => {
                     {muscle}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </label>
 
             <label className="space-y-1 block">
-              <span className="text-xs font-bold uppercase tracking-wide text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
                 Equipo
               </span>
-              <select
+              <NativeSelect
+                containerClassName="w-full"
                 value={form.equipment}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, equipment: event.target.value }))
                 }
-                className="w-full rounded-xl border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] px-3 py-2.5 text-sm text-white outline-none focus:border-[#2f8cff]"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#2f8cff]"
                 disabled={!isEditable || isSaving}
               >
                 {EQUIPMENT_OPTIONS.map((equipment) => (
@@ -306,19 +308,20 @@ const ExerciseEditorPage: React.FC = () => {
                     {equipment}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </label>
 
             <label className="space-y-1 block">
-              <span className="text-xs font-bold uppercase tracking-wide text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
                 Categoría
               </span>
-              <select
+              <NativeSelect
+                containerClassName="w-full"
                 value={form.category}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, category: event.target.value }))
                 }
-                className="w-full rounded-xl border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] px-3 py-2.5 text-sm text-white outline-none focus:border-[#2f8cff]"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#2f8cff]"
                 disabled={!isEditable || isSaving}
               >
                 {CATEGORY_OPTIONS.map((category) => (
@@ -326,14 +329,15 @@ const ExerciseEditorPage: React.FC = () => {
                     {category}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </label>
 
             <label className="space-y-1 block">
-              <span className="text-xs font-bold uppercase tracking-wide text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
                 Tracking
               </span>
-              <select
+              <NativeSelect
+                containerClassName="w-full"
                 value={form.tracking_type}
                 onChange={(event) =>
                   setForm((current) => ({
@@ -341,73 +345,76 @@ const ExerciseEditorPage: React.FC = () => {
                     tracking_type: event.target.value as 'reps' | 'time',
                   }))
                 }
-                className="w-full rounded-xl border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] px-3 py-2.5 text-sm text-white outline-none focus:border-[#2f8cff]"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#2f8cff]"
                 disabled={!isEditable || isSaving}
               >
                 <option value="reps">Reps</option>
                 <option value="time">Time</option>
-              </select>
+              </NativeSelect>
             </label>
           </div>
 
           <div className="space-y-2">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
               Músculos secundarios
             </p>
             <div className="flex flex-wrap gap-2">
               {MUSCLE_OPTIONS.filter((muscle) => muscle !== form.primary_muscle).map((muscle) => {
                 const selected = form.secondary_muscles.includes(muscle);
                 return (
-                  <button
+                  <Button variant="ghost"
                     key={muscle}
                     type="button"
+                    aria-pressed={selected}
                     onClick={() => handleToggleSecondaryMuscle(muscle)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
+                    className={`min-h-11 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
                       selected
                         ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-[rgba(73,133,214,0.16)] text-slate-400 hover:border-[#2f8cff]'
+                        : 'border-slate-200 text-slate-500 hover:border-[#2f8cff]'
                     }`}
                     disabled={!isEditable || isSaving}
                   >
                     {muscle}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
           </div>
 
           <label className="space-y-1 block">
-            <span className="text-xs font-bold uppercase tracking-wide text-slate-400">
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
               Notas / instrucciones
             </span>
-            <textarea
+            <Textarea
               value={form.instructions}
               onChange={(event) =>
                 setForm((current) => ({ ...current, instructions: event.target.value }))
               }
-              className="w-full min-h-28 rounded-xl border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.72)] px-3 py-2.5 text-sm text-white outline-none focus:border-[#2f8cff]"
+              className="w-full min-h-28 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#2f8cff]"
               placeholder="Técnica, configuración, notas útiles..."
               disabled={!isEditable || isSaving}
             />
           </label>
 
           <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-            <button
+            <Button
+              variant="outline"
               type="button"
               onClick={() => navigate('/exercises')}
-              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-slate-300"
+              className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-bold text-slate-600"
               disabled={isSaving}
             >
               Cancelar
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="default"
               type="button"
               onClick={handleSave}
               className="rounded-full bg-primary px-5 py-2 text-sm font-bold text-white disabled:opacity-60"
               disabled={!isEditable || isSaving}
             >
               {isSaving ? 'Guardando...' : 'Guardar'}
-            </button>
+            </Button>
           </div>
         </section>
       </div>

@@ -30,6 +30,7 @@ import {
   TouchSensor,
   useSensor,
   useSensors,
+  type DragEndEvent,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -39,6 +40,17 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '../components/ui/sheet';
 
 export const getWorkoutContentReservation = (hasRestTimer: boolean) => ({
   mobileBaseRem: hasRestTimer ? (19 as const) : (9 as const),
@@ -46,6 +58,23 @@ export const getWorkoutContentReservation = (hasRestTimer: boolean) => ({
   includesSafeAreaInset: true as const,
   includesKeyboardInset: true as const,
 });
+
+const SortableWorkoutExercise: React.FC<{
+  exercise: ActiveWorkoutExercise;
+  children: (handle: ReturnType<typeof useSortable>) => React.ReactNode;
+}> = ({ exercise, children }) => {
+  const sortable = useSortable({ id: exercise.exerciseId });
+  return (
+    <div
+      ref={sortable.setNodeRef}
+      style={{ transform: CSS.Transform.toString(sortable.transform), transition: sortable.transition }}
+      data-exercise-card={exercise.exerciseId}
+      className={`mobile-card overflow-hidden shadow-sm ${exercise.supersetId ? 'border-l-4 border-l-violet-500' : ''} ${sortable.isDragging ? 'relative z-20' : ''}`}
+    >
+      {children(sortable)}
+    </div>
+  );
+};
 
 const CARDIO_INPUTS: Array<{
   key: CardioMetricKey;
@@ -82,7 +111,7 @@ const CardioDurationInput: React.FC<{
   }, [seconds, isFocused]);
 
   return (
-    <input
+    <Input
       type="text"
       inputMode="decimal"
       aria-label={label}
@@ -144,49 +173,24 @@ const RoutineUpdatePrompt: React.FC<{
   onAccept: () => void;
   onDecline: () => void;
 }> = ({ onAccept, onDecline }) => (
-  <div
-    className="fixed inset-0 z-[80] flex items-center justify-center bg-[rgba(2,8,15,0.72)] p-4 backdrop-blur-sm"
-    onClick={onDecline}
-  >
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="routine-update-title"
-      className="relative w-full max-w-md rounded-3xl border border-[rgba(73,133,214,0.16)] bg-[#0b1724] p-6 shadow-2xl"
-      onClick={(event) => event.stopPropagation()}
-    >
-      <button
-        type="button"
-        aria-label="Cerrar actualización de rutina"
-        onClick={onDecline}
-        className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-white/5 hover:text-white"
-      >
-        <span className="material-symbols-outlined">close</span>
-      </button>
-      <h2 id="routine-update-title" className="pr-10 text-xl font-bold text-white">
-        Actualizar rutina original
-      </h2>
-      <p className="mt-2 text-sm leading-6 text-slate-400">
-        ¿Quieres copiar la configuración final de ejercicios a esta rutina?
-      </p>
-      <div className="mt-6 flex gap-3">
-        <button
-          type="button"
-          onClick={onDecline}
-          className="flex-1 rounded-2xl border border-white/10 px-4 py-3 font-semibold text-slate-300"
-        >
+  <Dialog open onOpenChange={(open) => !open && onDecline()}>
+    <DialogContent className="max-w-md p-6" closeLabel="Cerrar actualización de rutina">
+      <DialogHeader>
+        <DialogTitle>Actualizar rutina original</DialogTitle>
+        <DialogDescription>
+          ¿Quieres copiar la configuración final de ejercicios a esta rutina?
+        </DialogDescription>
+      </DialogHeader>
+      <div className="mt-2 flex gap-3">
+        <Button type="button" variant="outline" onClick={onDecline} className="flex-1">
           No, mantener
-        </button>
-        <button
-          type="button"
-          onClick={onAccept}
-          className="flex-1 rounded-2xl bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] px-4 py-3 font-bold text-white"
-        >
+        </Button>
+        <Button type="button" onClick={onAccept} className="flex-1">
           Sí, actualizar
-        </button>
+        </Button>
       </div>
-    </div>
-  </div>
+    </DialogContent>
+  </Dialog>
 );
 
 const WorkoutSession: React.FC = () => {
@@ -250,6 +254,11 @@ const WorkoutSession: React.FC = () => {
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
+  );
+  const exerciseSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
   useEffect(() => {
@@ -641,16 +650,16 @@ const WorkoutSession: React.FC = () => {
       <div className="flex h-full w-full items-center justify-center p-4">
         <div className="mobile-card flex max-w-md flex-col items-center gap-4 text-center">
           <div className="flex size-16 items-center justify-center rounded-full bg-red-500/12">
-            <span className="material-symbols-outlined text-3xl text-red-300">error</span>
+            <span className="material-symbols-outlined text-3xl text-red-600">error</span>
           </div>
-          <h2 className="text-xl font-semibold text-white">Error</h2>
-          <p className="text-slate-400">{initializationError}</p>
-          <button
+          <h2 className="text-xl font-semibold text-slate-900">Error</h2>
+          <p className="text-slate-600">{initializationError}</p>
+          <Button variant="ghost"
             onClick={() => navigate('/routine')}
             className="rounded-full bg-primary px-6 py-3 font-semibold text-white"
           >
             Volver a Rutinas
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -666,7 +675,7 @@ const WorkoutSession: React.FC = () => {
                 progress_activity
               </span>
             </div>
-            <p className="text-slate-400">Cargando entrenamiento...</p>
+            <p className="text-slate-600">Cargando entrenamiento...</p>
           </div>
         </div>
         {routineUpdatePrompt}
@@ -754,12 +763,11 @@ const WorkoutSession: React.FC = () => {
     setIsLibraryOpen(false);
   };
 
-  const moveExercise = (exerciseIndex: number, direction: -1 | 1) => {
-    const targetIndex = exerciseIndex + direction;
-    const activeExercise = safeExercises[exerciseIndex];
-    const targetExercise = safeExercises[targetIndex];
-    if (!activeExercise || !targetExercise) return;
-    void reorderActiveWorkoutExercises(activeExercise.exerciseId, targetExercise.exerciseId);
+  const handleExerciseDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    if (!safeExercises.some((exercise) => exercise.exerciseId === active.id) ||
+        !safeExercises.some((exercise) => exercise.exerciseId === over.id)) return;
+    void reorderActiveWorkoutExercises(String(active.id), String(over.id));
   };
 
   const contentReservation = getWorkoutContentReservation(Boolean(activeWorkout.restTimer));
@@ -769,7 +777,7 @@ const WorkoutSession: React.FC = () => {
       : 'pb-[calc(9rem+env(safe-area-inset-bottom)+var(--keyboard-inset,0px))]';
 
   return (
-    <div className="h-full w-full flex overflow-hidden bg-[linear-gradient(180deg,#08111d_0%,#06101a_40%,#040b13_100%)]">
+    <div className="h-full w-full flex overflow-hidden bg-slate-50">
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto mobile-scroll">
         <div
@@ -777,11 +785,11 @@ const WorkoutSession: React.FC = () => {
           className={`flex flex-col max-w-3xl mx-auto ${contentBottomPaddingClass}`}
         >
           {/* Header (Mobile Only for Sidebar items) */}
-          <div className="sticky top-0 z-10 border-b border-[rgba(73,133,214,0.12)] bg-[rgba(6,14,24,0.92)] p-4 backdrop-blur-xl lg:p-6">
+          <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 p-4 backdrop-blur-xl lg:p-6">
             <div className="flex items-center justify-between mb-3">
               <Link
                 to="/routine"
-                className="inline-flex items-center gap-1 text-sm text-slate-400 transition-colors hover:text-white"
+                className="inline-flex items-center gap-1 text-sm text-slate-600 transition-colors hover:text-slate-900"
               >
                 <span className="material-symbols-outlined text-[18px]">arrow_back</span>
                 Rutinas
@@ -798,9 +806,9 @@ const WorkoutSession: React.FC = () => {
             </div>
 
             <div className="flex items-start justify-between gap-3">
-              <h1 className="text-2xl md:text-3xl font-black mb-2">{activeWorkout.routineName}</h1>
+              <h1 className="text-2xl md:text-3xl font-black mb-2 text-slate-900">{activeWorkout.routineName}</h1>
               {activeWorkout.overrideDate && (
-                <div className="mb-2 flex items-center gap-2 rounded-full border border-amber-400/20 bg-amber-400/12 px-3 py-1.5 text-sm font-medium text-amber-200">
+                <div className="mb-2 flex items-center gap-2 rounded-full border border-amber-400/20 bg-amber-400/12 px-3 py-1.5 text-sm font-medium text-amber-800">
                   <span className="material-symbols-outlined text-base">calendar_month</span>
                   Registrando entrenamiento del{' '}
                   {new Date(activeWorkout.overrideDate + 'T12:00:00').toLocaleDateString('es-ES', {
@@ -810,24 +818,26 @@ const WorkoutSession: React.FC = () => {
                   })}
                 </div>
               )}
-              <button
+              <Button variant="default"
+                type="button"
+                aria-label="Añadir ejercicio"
                 onClick={() => setIsLibraryOpen(true)}
-                className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[rgba(47,140,255,0.14)] px-3 py-2 font-bold text-[#4ea0ff] transition-all"
+                className="shrink-0 rounded-full px-3"
               >
                 <span className="material-symbols-outlined text-[18px]">add</span>
                 <span className="hidden sm:inline">Añadir</span>
-              </button>
+              </Button>
             </div>
 
             {/* Mobile Progress Bar */}
             <div className="lg:hidden flex items-center gap-3">
-              <div className="h-2 flex-1 rounded-full bg-[rgba(73,133,214,0.12)]">
+              <div className="h-2 flex-1 rounded-full bg-slate-100">
                 <div
-                  className="bg-gradient-to-r from-primary to-orange-600 h-2 rounded-full transition-all duration-300"
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <span className="text-sm font-bold text-slate-400 whitespace-nowrap">
+              <span className="text-sm font-bold text-slate-600 whitespace-nowrap">
                 {completedSets}/{totalSets}
               </span>
             </div>
@@ -836,7 +846,7 @@ const WorkoutSession: React.FC = () => {
           {/* Exercises */}
           <div className="p-4 lg:p-6 flex flex-col gap-4">
             {safeExercises.length === 0 && (
-              <div className="mobile-card border-dashed p-6 text-center text-slate-400">
+              <div className="mobile-card border-dashed p-6 text-center text-slate-600">
                 <div className="flex flex-col items-center gap-3">
                   <span className="material-symbols-outlined text-3xl text-primary">
                     playlist_add
@@ -845,29 +855,31 @@ const WorkoutSession: React.FC = () => {
                     <p className="font-semibold">Rutina libre vacía</p>
                     <p className="text-sm">Añade ejercicios para empezar tu sesión.</p>
                   </div>
-                  <button
+                  <Button variant="default"
+                    type="button"
                     onClick={() => setIsLibraryOpen(true)}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] px-4 py-3.5 font-bold text-white transition-all active:scale-[0.99]"
+                    className="w-full rounded-2xl px-4 py-3.5 active:scale-[0.99]"
                   >
                     <span className="material-symbols-outlined text-[20px]">add</span>
                     Añadir ejercicio
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
 
+            <DndContext sensors={exerciseSensors} collisionDetection={closestCenter} onDragEnd={handleExerciseDragEnd}>
+              <SortableContext items={safeExercises.map((exercise) => exercise.exerciseId)} strategy={verticalListSortingStrategy}>
             {safeExercises.map((exercise, exIndex) => (
-              <div
+              <SortableWorkoutExercise
                 key={exercise.exerciseId}
-                data-exercise-card={exercise.exerciseId}
-                className={`mobile-card overflow-hidden shadow-sm ${
-                  exercise.supersetId ? 'border-l-4 border-l-violet-500' : ''
-                }`}
+                exercise={exercise}
               >
+                {({ attributes, listeners, isDragging }) => <>
                 {/* Exercise Header */}
                 <div
-                  className="cursor-pointer px-4 py-3 transition-colors hover:bg-[rgba(47,140,255,0.05)]"
+                  className="cursor-pointer px-4 py-3 transition-colors hover:bg-blue-50"
                   onClick={() => {
+                    if (isDragging) return;
                     const nextExpanded =
                       expandedExercise === exercise.exerciseId ? null : exercise.exerciseId;
                     setExpandedExercise(nextExpanded);
@@ -885,61 +897,43 @@ const WorkoutSession: React.FC = () => {
                         </span>
                         {exercise.supersetId && supersetBadges[exercise.supersetId] && (
                           <span
-                            className="rounded bg-violet-500/20 px-1.5 py-0.5 text-xs font-bold text-violet-300"
+                            className="rounded bg-violet-500/20 px-1.5 py-0.5 text-xs font-bold text-violet-700"
                             title="Superserie"
                           >
                             SS {supersetBadges[exercise.supersetId]}
                           </span>
                         )}
                       </div>
-                      <h3 className="text-lg font-bold">{exercise.name}</h3>
-                      <p className="mt-1 text-sm text-slate-400">
+                      <h3 className="text-lg font-bold text-slate-900">{exercise.name}</h3>
+                      <p className="mt-1 text-sm text-slate-600">
                         {getWorkingSets(exercise).filter((s) => s.completed).length}/
                         {getWorkingSets(exercise).length} series completadas
                       </p>
                     </div>
                     <div className="flex items-center self-end sm:self-auto">
-                      <button
-                        type="button"
-                        disabled={exIndex === 0}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          moveExercise(exIndex, -1);
-                        }}
-                        aria-label={`Mover ${exercise.name} arriba`}
-                        title="Mover ejercicio arriba"
-                        className="flex size-10 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                      <Button variant="ghost" type="button" size="icon"
+                        {...attributes} {...listeners}
+                        onClick={(event) => event.stopPropagation()}
+                        aria-label={`Arrastrar ${exercise.name}`}
+                        title={`Arrastrar ${exercise.name}`}
+                        className="flex size-11 touch-none cursor-grab items-center justify-center rounded-lg text-slate-500 active:cursor-grabbing"
                       >
-                        <span className="material-symbols-outlined text-[20px]">arrow_upward</span>
-                      </button>
-                      <button
+                        <span className="material-symbols-outlined text-[20px]">drag_indicator</span>
+                      </Button>
+                      <Button variant="ghost"
                         type="button"
-                        disabled={exIndex === safeExercises.length - 1}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          moveExercise(exIndex, 1);
-                        }}
-                        aria-label={`Mover ${exercise.name} abajo`}
-                        title="Mover ejercicio abajo"
-                        className="flex size-10 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
-                      >
-                        <span className="material-symbols-outlined text-[20px]">
-                          arrow_downward
-                        </span>
-                      </button>
-                      <button
-                        type="button"
+                        size="icon"
                         onClick={(event) => {
                           event.stopPropagation();
                           void removeActiveWorkoutExercise(exercise.exerciseId);
                         }}
                         aria-label={`Eliminar ${exercise.name}`}
                         title="Eliminar ejercicio"
-                        className="flex size-10 items-center justify-center rounded-lg text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300"
+                        className="flex size-11 items-center justify-center rounded-lg text-red-600 transition-colors hover:bg-red-500/10 hover:text-red-600"
                       >
                         <span className="material-symbols-outlined text-[20px]">delete</span>
-                      </button>
-                      <button
+                      </Button>
+                      <Button variant="ghost"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (exercise.supersetId) {
@@ -948,10 +942,12 @@ const WorkoutSession: React.FC = () => {
                             setSupersetPickerFor(exercise.exerciseId);
                           }
                         }}
-                        className={`p-2 transition-colors ${
+                        type="button"
+                        size="icon"
+                        className={`transition-colors ${
                           exercise.supersetId
                             ? 'text-violet-400'
-                            : 'text-slate-500 hover:text-white'
+                            : 'text-slate-500 hover:text-slate-900'
                         }`}
                         title={exercise.supersetId ? 'Quitar de superserie' : 'Añadir a superserie'}
                         aria-label={
@@ -961,26 +957,32 @@ const WorkoutSession: React.FC = () => {
                         <span className="material-symbols-outlined text-[20px]">
                           {exercise.supersetId ? 'link_off' : 'link'}
                         </span>
-                      </button>
-                      <button className="p-2">
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        type="button"
+                        size="icon"
+                        aria-label={`${expandedExercise === exercise.exerciseId ? 'Contraer' : 'Expandir'} ${exercise.name}`}
+                        aria-expanded={expandedExercise === exercise.exerciseId}
+                      >
                         <span className="material-symbols-outlined text-slate-500">
                           {expandedExercise === exercise.exerciseId ? 'expand_less' : 'expand_more'}
                         </span>
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
 
                 {/* Sets (collapsible) */}
                 {expandedExercise === exercise.exerciseId && (
-                  <div className="border-t border-[rgba(73,133,214,0.12)] bg-[rgba(10,20,34,0.72)] p-3">
+                  <div className="border-t border-slate-200 bg-slate-50 p-3">
                     {/* Notes Field */}
                     <div className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
                       <div className="relative">
                         <span className="material-symbols-outlined absolute left-3 top-3 text-gray-400 text-[18px]">
                           edit_note
                         </span>
-                        <textarea
+                        <Textarea
                           value={exercise.notes || ''}
                           onChange={(e) =>
                             void updateActiveWorkoutExerciseNotes(
@@ -990,14 +992,14 @@ const WorkoutSession: React.FC = () => {
                           }
                           placeholder="Notas del ejercicio..."
                           rows={2}
-                          className="w-full rounded-xl border border-[rgba(73,133,214,0.16)] bg-[rgba(7,16,27,0.86)] py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 transition-all resize-none focus:outline-none focus:border-[#2f8cff] focus:ring-1 focus:ring-[#2f8cff]"
+                          className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-500 transition-all resize-none focus:outline-none focus:border-[#2f8cff] focus:ring-1 focus:ring-[#2f8cff]"
                         />
                       </div>
                       <div className="relative w-full sm:w-24">
                         <span className="material-symbols-outlined absolute left-2 top-3 text-gray-400 text-[16px]">
                           timer
                         </span>
-                        <input
+                        <Input
                           type="number"
                           inputMode="numeric"
                           value={exercise.restSeconds}
@@ -1010,23 +1012,23 @@ const WorkoutSession: React.FC = () => {
                             )
                           }
                           title="Descanso del ejercicio (segundos)"
-                          className="w-full rounded-xl border border-[rgba(73,133,214,0.16)] bg-[rgba(7,16,27,0.86)] py-2.5 pl-8 pr-2 text-center text-sm text-white transition-all focus:outline-none focus:border-[#2f8cff] focus:ring-1 focus:ring-[#2f8cff]"
+                          className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-8 pr-2 text-center text-sm text-slate-900 transition-all focus:outline-none focus:border-[#2f8cff] focus:ring-1 focus:ring-[#2f8cff]"
                         />
                       </div>
                       {isFreeWorkout && (
-                        <button
+                        <Button variant="ghost"
                           onClick={() => setExpandedExercise(null)}
-                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-bold text-slate-300 transition-colors hover:border-primary hover:text-white"
+                          className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-bold text-slate-700 transition-colors hover:border-primary hover:text-slate-900"
                         >
                           Cerrar ejercicio
-                        </button>
+                        </Button>
                       )}
                     </div>
 
                     {formatPrescription(exercise.prescription, exercise.trackingType) && (
                       <div
                         data-testid={`exercise-prescription-${exercise.exerciseId}`}
-                        className="mb-4 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-xs text-blue-100"
+                        className="mb-4 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-xs text-blue-800"
                       >
                         <span className="font-bold text-primary">Objetivo:</span>{' '}
                         {formatPrescription(exercise.prescription, exercise.trackingType)}
@@ -1040,8 +1042,8 @@ const WorkoutSession: React.FC = () => {
                     }) && (
                       <div className="mb-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-3">
                         <div className="mb-2 flex items-center justify-between gap-2">
-                          <h4 className="text-sm font-bold text-cyan-100">Datos de cardio</h4>
-                          <span className="text-xs text-slate-400">
+                          <h4 className="text-sm font-bold text-cyan-800">Datos de cardio</h4>
+                          <span className="text-xs text-slate-600">
                             {exercise.cardioTargets?.modality || 'sesión'}
                           </span>
                         </div>
@@ -1060,7 +1062,7 @@ const WorkoutSession: React.FC = () => {
                                 : undefined;
                             return (
                               <label key={key} className="flex min-w-0 flex-col gap-1">
-                                <span className="text-[10px] font-bold uppercase text-slate-400">
+                                <span className="text-[10px] font-bold uppercase text-slate-600">
                                   {label}
                                 </span>
                                 <div className="flex items-center gap-1">
@@ -1071,10 +1073,10 @@ const WorkoutSession: React.FC = () => {
                                         updateCardioMetric(exercise.exerciseId, key, nextSeconds)
                                       }
                                       label={label}
-                                      className="w-full min-w-0 rounded-lg border border-white/10 bg-[#07131d] px-2 py-1.5 text-center text-sm font-bold text-white"
+                                      className="w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-sm font-bold text-slate-900"
                                     />
                                   ) : (
-                                    <input
+                                    <Input
                                       type="number"
                                       aria-label={label}
                                       min={0}
@@ -1088,7 +1090,7 @@ const WorkoutSession: React.FC = () => {
                                           updateCardioMetric(exercise.exerciseId, key, parsed);
                                         }
                                       }}
-                                      className="w-full min-w-0 rounded-lg border border-white/10 bg-[#07131d] px-2 py-1.5 text-center text-sm font-bold text-white"
+                                      className="w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-sm font-bold text-slate-900"
                                     />
                                   )}
                                   <span className="shrink-0 text-[10px] text-slate-500">
@@ -1111,7 +1113,7 @@ const WorkoutSession: React.FC = () => {
                               ? duration / metrics.distanceKm
                               : undefined);
                           return (
-                            <p className="mt-2 text-xs text-slate-400">
+                            <p className="mt-2 text-xs text-slate-600">
                               Resumen: {formatCardioDuration(duration)}
                               {metrics?.distanceKm ? ` · ${metrics.distanceKm.toFixed(2)} km` : ''}
                               {pace ? ` · ${formatPace(pace)}` : ''}
@@ -1174,25 +1176,28 @@ const WorkoutSession: React.FC = () => {
                       </DndContext>
 
                       {/* Add Set Button */}
-                      <button
+                      <Button variant="ghost"
                         onClick={() => addSet(exercise.exerciseId)}
-                        className="rounded-2xl border-2 border-dashed border-white/10 py-3 text-sm font-bold text-slate-400 transition-colors hover:border-primary hover:text-white active:scale-[0.99]"
+                        className="rounded-2xl border-2 border-dashed border-slate-200 py-3 text-sm font-bold text-slate-600 transition-colors hover:border-primary hover:text-slate-900 active:scale-[0.99]"
                       >
                         + Añadir Serie
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}
-              </div>
+                </>}
+              </SortableWorkoutExercise>
             ))}
+              </SortableContext>
+            </DndContext>
           </div>
 
           {/* Static Footer Container (Mobile Only) */}
-          <div className="lg:hidden fixed bottom-[var(--keyboard-inset,0px)] left-0 right-0 z-30 border-t border-[rgba(73,133,214,0.12)] bg-[rgba(6,14,24,0.94)] p-3 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xl">
+          <div className="lg:hidden fixed bottom-[var(--keyboard-inset,0px)] left-0 right-0 z-30 border-t border-slate-200 bg-white/95 p-3 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xl">
             <div className="w-full space-y-2">
               {/* Timer (if active) - Footer version */}
               {activeWorkout.restTimer && (
-                <div className="mb-3 border-b border-white/10 pb-3">
+                <div className="mb-3 border-b border-slate-200 pb-3">
                   <RestTimer
                     key={activeWorkout.restTimer.instanceId}
                     variant="footer"
@@ -1206,31 +1211,31 @@ const WorkoutSession: React.FC = () => {
               )}
 
               {/* Finish Button (primary, full-width, large touch target) */}
-              <button
+              <Button variant="ghost"
                 onClick={handleFinish}
-                className="w-full rounded-xl bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] py-4 text-base font-bold text-white shadow-md transition-all hover:shadow-lg active:scale-[0.99]"
+                className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 py-4 text-base font-bold text-white transition-all active:scale-[0.99]"
               >
                 {progress === 100 ? 'Finalizar' : 'Guardar progreso'}
-              </button>
+              </Button>
 
               {/* Cancel (de-emphasised to avoid accidental taps mid-workout) */}
-              <button
+              <Button variant="ghost"
                 onClick={() => setCancelConfirmOpen(true)}
-                className="w-full py-2 text-sm font-semibold text-red-400/80 transition-colors hover:text-red-400"
+                className="w-full py-2 text-sm font-semibold text-red-600 transition-colors hover:text-red-600"
               >
                 Cancelar entrenamiento
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       </div>
 
       {/* Sidebar (Desktop) */}
-      <aside className="hidden lg:flex h-full w-[360px] shrink-0 flex-col border-l border-[rgba(73,133,214,0.12)] bg-[rgba(6,14,24,0.92)] shadow-2xl z-20">
+      <aside className="hidden lg:flex h-full w-[360px] shrink-0 flex-col border-l border-slate-200 bg-white/95 shadow-sm z-20">
         <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
           {/* Timer Widget */}
           <div className="mobile-card p-6 shadow-sm">
-            <h3 className="mb-2 text-center text-xs font-bold uppercase text-slate-400">
+            <h3 className="mb-2 text-center text-xs font-bold uppercase text-slate-600">
               Tiempo Transcurrido
             </h3>
             <div className="flex justify-center">
@@ -1246,25 +1251,25 @@ const WorkoutSession: React.FC = () => {
           {/* Progress Widget */}
           <div className="mobile-card p-6 shadow-sm">
             <div className="flex justify-between items-center mb-2">
-              <h3 className="text-xs font-bold uppercase text-slate-400">Progreso</h3>
-              <span className="text-sm font-bold text-primary dark:text-white">
+              <h3 className="text-xs font-bold uppercase text-slate-600">Progreso</h3>
+              <span className="text-sm font-bold text-primary">
                 {Math.round(progress)}%
               </span>
             </div>
-            <div className="mb-2 h-3 rounded-full bg-[rgba(73,133,214,0.12)]">
+            <div className="mb-2 h-3 rounded-full bg-slate-100">
               <div
-                className="bg-gradient-to-r from-primary to-orange-600 h-3 rounded-full transition-all duration-300"
+                className="bg-blue-600 h-3 rounded-full transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="text-center text-sm text-slate-400">
+            <p className="text-center text-sm text-slate-600">
               {completedSets} de {totalSets} series completadas
             </p>
           </div>
 
           {/* Active Rest Timer Widget */}
           {activeWorkout.restTimer && (
-            <div className="mobile-card border-[rgba(47,140,255,0.2)] bg-[rgba(47,140,255,0.08)] p-6 shadow-sm">
+            <div className="mobile-card border-blue-100 bg-blue-50 p-6 shadow-sm">
               <RestTimer
                 key={activeWorkout.restTimer.instanceId}
                 variant="inline"
@@ -1278,21 +1283,21 @@ const WorkoutSession: React.FC = () => {
           )}
 
           <div className="mt-auto space-y-3">
-            <button
+            <Button variant="ghost"
               onClick={handleFinish}
-              className="w-full py-4 rounded-xl bg-gradient-to-r from-primary to-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+              className="w-full py-4 rounded-xl bg-blue-600 text-white font-bold text-lg transition-colors flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined">flag</span>
               {progress === 100 ? 'Finalizar' : 'Guardar progreso'}
-            </button>
+            </Button>
 
-            <button
+            <Button variant="ghost"
               onClick={() => setCancelConfirmOpen(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-400/25 bg-red-500/8 py-3 font-bold text-red-300 transition-all hover:bg-red-500/12"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-400/25 bg-red-500/8 py-3 font-bold text-red-600 transition-all hover:bg-red-500/12"
             >
               <span className="material-symbols-outlined">close</span>
               Cancelar
-            </button>
+            </Button>
           </div>
         </div>
       </aside>
@@ -1328,47 +1333,52 @@ const WorkoutSession: React.FC = () => {
       />
 
       {/* Superset partner picker (live workout) */}
-      {supersetPickerFor && (
-        <div
-          className="fixed inset-0 z-[70] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center"
-          onClick={() => setSupersetPickerFor(null)}
+      <Sheet
+        open={!!supersetPickerFor}
+        onOpenChange={(open) => {
+          if (!open) setSupersetPickerFor(null);
+        }}
+      >
+        <SheetContent
+          side="bottom"
+          className="z-[70] max-h-[85dvh] gap-4 overflow-y-auto rounded-t-3xl border-slate-200 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:left-1/2 sm:right-auto sm:w-[min(calc(100%-2rem),28rem)] sm:-translate-x-1/2 sm:rounded-3xl"
         >
-          <div
-            className="w-full max-w-md rounded-t-3xl border border-white/10 bg-[#0b1724] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:rounded-3xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="mb-1 text-lg font-bold text-white">Añadir a superserie</h3>
-            <p className="mb-4 text-sm text-slate-400">Elige el ejercicio con el que emparejarlo</p>
+            <SheetTitle className="text-lg font-bold">Añadir a superserie</SheetTitle>
+            <SheetDescription>Elige el ejercicio con el que emparejarlo.</SheetDescription>
             <div className="flex max-h-[50vh] flex-col gap-2 overflow-y-auto">
               {safeExercises
                 .filter((e) => e.exerciseId !== supersetPickerFor)
                 .map((e) => (
-                  <button
+                  <Button
+                    variant="outline"
                     key={e.exerciseId}
+                    type="button"
+                    aria-label={`Emparejar con ${e.name}`}
                     onClick={() => assignSupersetLive(e.exerciseId)}
-                    className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-white transition-colors hover:bg-white/10"
+                    className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-slate-900 transition-colors hover:bg-slate-100"
                   >
                     <span className="font-semibold">{e.name}</span>
                     {e.supersetId && supersetBadges[e.supersetId] && (
-                      <span className="rounded bg-violet-500/20 px-1.5 py-0.5 text-xs font-bold text-violet-300">
+                      <span className="rounded bg-violet-500/20 px-1.5 py-0.5 text-xs font-bold text-violet-700">
                         SS {supersetBadges[e.supersetId]}
                       </span>
                     )}
-                  </button>
+                  </Button>
                 ))}
               {safeExercises.filter((e) => e.exerciseId !== supersetPickerFor).length === 0 && (
                 <p className="text-sm text-slate-500">Añade otro ejercicio primero.</p>
               )}
             </div>
-            <button
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => setSupersetPickerFor(null)}
-              className="mt-4 w-full rounded-xl border border-white/10 py-2.5 text-sm font-semibold text-slate-300"
+              className="w-full text-sm font-semibold"
             >
               Cancelar
-            </button>
-          </div>
-        </div>
-      )}
+            </Button>
+        </SheetContent>
+      </Sheet>
       {routineUpdatePrompt}
     </div>
   );
@@ -1451,48 +1461,37 @@ const SortableWorkoutSetRow: React.FC<{
       ref={setNodeRef}
       data-set-anchor={`${exerciseId}-${setIndex}`}
       style={style}
-      className={`rounded-2xl border p-3 transition-all ${
+      className={`border-b py-1.5 transition-colors last:border-b-0 ${
         set.completed
-          ? 'border-green-500/60 bg-green-500/10'
+          ? 'border-emerald-200 bg-emerald-50/40'
           : isCurrentSet
-            ? 'border-amber-400 bg-amber-400/10'
+            ? 'border-blue-200 bg-blue-50/30'
             : set.isWarmup
-              ? 'border-teal-400/20 bg-teal-400/10 opacity-80'
-              : 'border-white/10 bg-white/5'
+              ? 'border-teal-100 bg-teal-50/20 opacity-80'
+              : 'border-slate-200/70'
       }`}
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-        <div className="flex items-center gap-2">
-          <button
-            {...attributes}
-            {...listeners}
-            className="flex items-center justify-center text-slate-500 transition-colors hover:text-white cursor-grab touch-none active:cursor-grabbing"
-            title="Arrastrar serie"
-            aria-label="Arrastrar serie"
-          >
-            <span className="material-symbols-outlined text-[18px]">drag_indicator</span>
-          </button>
-          {/* Checkbox */}
-          <button
-            onClick={() => toggleSetComplete(exerciseId, setIndex)}
-            aria-label={set.completed ? 'Marcar serie como no completada' : 'Completar serie'}
-            className={`flex size-11 shrink-0 items-center justify-center rounded-full border-2 transition-all active:scale-95 ${
-              set.completed ? 'border-green-500 bg-green-500' : 'border-white/15'
-            }`}
-          >
-            {set.completed && (
-              <span className="material-symbols-outlined text-white text-[24px]">check</span>
-            )}
-          </button>
+      <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          {...attributes}
+          {...listeners}
+          className="h-11 min-h-11 w-6 shrink-0 p-0 text-slate-500 transition-colors hover:text-slate-900 cursor-grab touch-none active:cursor-grabbing sm:w-9"
+          title="Arrastrar serie"
+          aria-label="Arrastrar serie"
+        >
+          <span className="material-symbols-outlined text-[18px]">drag_indicator</span>
+        </Button>
 
-          <span className="w-16 shrink-0 text-sm font-bold text-slate-400">
-            Serie {setIndex + 1}
+        <div className="flex min-w-0 shrink-0 items-center gap-0.5">
+          <span className="min-w-6 whitespace-nowrap text-center text-xs font-bold text-slate-600">
+            S{setIndex + 1}
           </span>
-
-          {/* Dropset/Warmup badge */}
           {set.dropsets && set.dropsets.length > 0 && (
             <span
-              className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-500 text-white"
+              className="rounded bg-orange-500 px-1 text-[9px] font-bold text-white"
               title={`Dropset con ${set.dropsets.length} sub-series`}
             >
               D+{set.dropsets.length}
@@ -1500,7 +1499,7 @@ const SortableWorkoutSetRow: React.FC<{
           )}
           {set.isWarmup && (
             <span
-              className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-500 text-white"
+              className="rounded bg-teal-600 px-1 text-[9px] font-bold text-white"
               title="Calentamiento"
             >
               W
@@ -1508,7 +1507,7 @@ const SortableWorkoutSetRow: React.FC<{
           )}
           {set.isFailure && (
             <span
-              className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500 text-white"
+              className="rounded bg-red-600 px-1 text-[9px] font-bold text-white"
               title="Al fallo"
             >
               F
@@ -1516,55 +1515,10 @@ const SortableWorkoutSetRow: React.FC<{
           )}
         </div>
 
-        <div
-          className={`grid ${trackingType === 'time' ? 'grid-cols-1' : 'grid-cols-2'} gap-2 sm:flex sm:items-center sm:gap-2 sm:flex-1`}
-        >
-          {/* Weight - hide for time-based exercises */}
-          {trackingType !== 'time' && (
-            <div className="flex items-center gap-1">
-              <input
-                type="text"
-                inputMode="decimal"
-                value={weightDraft}
-                placeholder={lastSet?.weight != null ? String(lastSet.weight) : undefined}
-                onFocus={() => setIsWeightFocused(true)}
-                onBlur={() => {
-                  setIsWeightFocused(false);
-                  if (!weightDraft.trim()) {
-                    updateSetValue(exerciseId, setIndex, 'weight', 0);
-                    setWeightDraft('');
-                    return;
-                  }
-                  const parsed = parseLocaleDecimal(weightDraft);
-                  if (parsed === null) {
-                    setWeightDraft(set.weight ? String(set.weight) : '');
-                    return;
-                  }
-                  updateSetValue(exerciseId, setIndex, 'weight', parsed);
-                  setWeightDraft(String(parsed));
-                }}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  if (!/^[0-9]*[.,]?[0-9]*$/.test(next)) return;
-                  setWeightDraft(next);
-                  if (!next.trim()) {
-                    updateSetValue(exerciseId, setIndex, 'weight', 0);
-                    return;
-                  }
-                  const parsed = parseLocaleDecimal(next);
-                  if (parsed !== null) {
-                    updateSetValue(exerciseId, setIndex, 'weight', parsed);
-                  }
-                }}
-                className="w-full min-w-[64px] rounded-xl border border-white/10 bg-[#07131d] px-2 py-1.5 text-center text-sm font-bold text-white sm:w-20"
-              />
-              <span className="text-xs text-slate-500">kg</span>
-            </div>
-          )}
-
-          {/* Reps or Duration */}
-          <div className="flex items-center gap-1">
-            <input
+        <div className="flex min-w-0 flex-1 items-center gap-1">
+          {/* Repetitions or duration */}
+          <div className="relative min-w-[46px] flex-1">
+            <Input
               type="text"
               inputMode={cardioTime ? 'decimal' : 'numeric'}
               aria-label={
@@ -1572,7 +1526,7 @@ const SortableWorkoutSetRow: React.FC<{
                   ? cardioTime
                     ? 'Duración de serie'
                     : 'Duración en segundos'
-                  : undefined
+                  : `Repeticiones, serie ${setIndex + 1}`
               }
               value={cardioTime ? durationDraft : set.reps ? String(set.reps) : ''}
               placeholder={
@@ -1607,38 +1561,101 @@ const SortableWorkoutSetRow: React.FC<{
                 if (!/^[0-9]*$/.test(raw)) return;
                 updateSetValue(exerciseId, setIndex, 'reps', raw === '' ? 0 : parseInt(raw, 10));
               }}
-              className="w-full min-w-[52px] rounded-xl border border-white/10 bg-[#07131d] px-2 py-1.5 text-center text-sm font-bold text-white sm:w-14"
+              className="h-11 w-full min-w-0 rounded-none border-0 bg-transparent pl-1.5 pr-4 text-left text-sm font-semibold text-slate-900 shadow-none outline-none placeholder:text-slate-400 focus:border-b-2 focus:border-blue-600 focus:outline-none focus:ring-0 focus-visible:border-b-2 focus-visible:border-blue-600 focus-visible:ring-0 focus-visible:ring-offset-0"
             />
-            <span className="text-xs text-slate-500">
-              {trackingType === 'time' ? (isCardio ? 'min' : 'seg') : 'reps'}
+            <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 px-0.5 text-[8px] text-slate-500">
+              {trackingType === 'time' ? (isCardio ? 'min' : 'seg') : 'rep'}
             </span>
           </div>
+
+          {/* Weight - hidden for time-based exercises */}
+          {trackingType !== 'time' && (
+            <div className="relative min-w-[46px] flex-1 border-l border-slate-200/70 pl-1">
+              <Input
+                type="text"
+                inputMode="decimal"
+                aria-label={`Peso en kg, serie ${setIndex + 1}`}
+                value={weightDraft}
+                placeholder={lastSet?.weight != null ? String(lastSet.weight) : undefined}
+                onFocus={() => setIsWeightFocused(true)}
+                onBlur={() => {
+                  setIsWeightFocused(false);
+                  if (!weightDraft.trim()) {
+                    updateSetValue(exerciseId, setIndex, 'weight', 0);
+                    setWeightDraft('');
+                    return;
+                  }
+                  const parsed = parseLocaleDecimal(weightDraft);
+                  if (parsed === null) {
+                    setWeightDraft(set.weight ? String(set.weight) : '');
+                    return;
+                  }
+                  updateSetValue(exerciseId, setIndex, 'weight', parsed);
+                  setWeightDraft(String(parsed));
+                }}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  if (!/^[0-9]*[.,]?[0-9]*$/.test(next)) return;
+                  setWeightDraft(next);
+                  if (!next.trim()) {
+                    updateSetValue(exerciseId, setIndex, 'weight', 0);
+                    return;
+                  }
+                  const parsed = parseLocaleDecimal(next);
+                  if (parsed !== null) {
+                    updateSetValue(exerciseId, setIndex, 'weight', parsed);
+                  }
+                }}
+                className="h-11 w-full min-w-0 rounded-none border-0 bg-transparent pl-1.5 pr-4 text-left text-sm font-semibold text-slate-900 shadow-none outline-none placeholder:text-slate-400 focus:border-b-2 focus:border-blue-600 focus:outline-none focus:ring-0 focus-visible:border-b-2 focus-visible:border-blue-600 focus-visible:ring-0 focus-visible:ring-offset-0"
+              />
+              <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 px-0.5 text-[9px] text-slate-500">
+                kg
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Delete Set */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => toggleSetComplete(exerciseId, setIndex)}
+          aria-label={set.completed ? 'Marcar serie como no completada' : 'Completar serie'}
+          className={`size-7 min-h-7 min-w-7 shrink-0 rounded-[6px] p-0 transition-all active:scale-95 ${
+            set.completed ? 'border border-green-500 bg-green-500' : 'border border-slate-300'
+          }`}
+        >
+          {set.completed && (
+            <span className="material-symbols-outlined text-white text-[18px]">check</span>
+          )}
+        </Button>
+
         {totalSets > 1 && (
-          <button
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
             onClick={() => removeSet(exerciseId, setIndex)}
             aria-label="Eliminar serie"
-            className="flex size-10 shrink-0 items-center justify-center self-start rounded-lg transition-colors hover:bg-red-500/10 active:scale-95 sm:ml-auto sm:self-center"
+            className="h-11 min-h-11 w-6 shrink-0 rounded-lg p-0 text-red-600 transition-colors hover:bg-red-50 active:scale-95 sm:w-9"
           >
-            <span className="material-symbols-outlined text-red-500 text-[20px]">close</span>
-          </button>
+            <span className="material-symbols-outlined text-[18px]">close</span>
+          </Button>
         )}
       </div>
 
       {lastSet && (lastSet.weight != null || lastSet.reps != null) ? (
-        <button
+        <Button variant="ghost"
           type="button"
           onClick={() => {
             if (lastSet.weight != null)
               updateSetValue(exerciseId, setIndex, 'weight', lastSet.weight);
             if (lastSet.reps != null) updateSetValue(exerciseId, setIndex, 'reps', lastSet.reps);
           }}
-          className="mt-1 ml-10 text-left text-xs text-slate-400 transition-colors hover:text-primary active:text-primary"
+          className="mt-1 ml-10 text-left text-xs text-slate-600 transition-colors hover:text-primary active:text-primary"
         >
           {lastLabel} · usar
-        </button>
+        </Button>
       ) : (
         <p className="mt-1 ml-10 text-xs text-slate-500">{lastLabel}</p>
       )}
@@ -1649,16 +1666,16 @@ const SortableWorkoutSetRow: React.FC<{
           {set.dropsets.map((dropset: any, dIndex: number) => (
             <div
               key={`${setIndex}-${dIndex}`}
-              className="flex items-center gap-2 rounded-r-xl border-l-2 border-orange-400 bg-orange-400/10 p-2 pl-4"
+              className="flex min-w-0 items-center gap-2 border-b border-l-2 border-orange-200 bg-orange-50/40 py-1 pl-2 last:border-b-0"
             >
-              <span className="text-xs font-bold text-orange-600 dark:text-orange-400 w-8">
+              <span className="text-xs font-bold text-orange-700 w-8">
                 {setIndex + 1}.{dIndex + 1}
               </span>
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-500 text-white">
                 D
               </span>
               <div className="flex items-center gap-1">
-                <input
+                <Input
                   type="text"
                   inputMode="decimal"
                   value={dropset.weight}
@@ -1671,12 +1688,12 @@ const SortableWorkoutSetRow: React.FC<{
                       parseFloat(e.target.value) || 0
                     )
                   }
-                  className="w-12 rounded-lg border border-orange-400/20 bg-[#07131d] px-2 py-1 text-center text-sm font-bold text-white"
+                  className="h-11 min-h-11 w-12 rounded-none border-0 border-b border-transparent bg-transparent px-1 py-1 text-center text-sm font-semibold text-slate-900 shadow-none outline-none focus:border-b-2 focus:border-orange-600 focus:ring-0 focus-visible:border-b-2 focus-visible:border-orange-600 focus-visible:ring-0 focus-visible:ring-offset-0"
                 />
                 <span className="text-xs text-slate-500">kg</span>
               </div>
               <div className="flex items-center gap-1">
-                <input
+                <Input
                   type="text"
                   inputMode="numeric"
                   value={dropset.reps}
@@ -1689,7 +1706,7 @@ const SortableWorkoutSetRow: React.FC<{
                       parseInt(e.target.value) || 0
                     )
                   }
-                  className="w-12 rounded-lg border border-orange-400/20 bg-[#07131d] px-2 py-1 text-center text-sm font-bold text-white"
+                  className="h-11 min-h-11 w-12 rounded-none border-0 border-b border-transparent bg-transparent px-1 py-1 text-center text-sm font-semibold text-slate-900 shadow-none outline-none focus:border-b-2 focus:border-orange-600 focus:ring-0 focus-visible:border-b-2 focus-visible:border-orange-600 focus-visible:ring-0 focus-visible:ring-offset-0"
                 />
                 <span className="text-xs text-slate-500">reps</span>
               </div>

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import ConfirmDialog from './ConfirmDialog';
 import { getActiveWorkoutPath } from '../lib/activeWorkout';
+import { Button } from './ui/button';
+import { Flag, Pause, Play } from 'lucide-react';
 
 export const ActiveWorkoutFooter: React.FC = () => {
   const { activeWorkout, pauseWorkout, resumeWorkout, finishWorkout } = useStore();
@@ -70,44 +72,56 @@ export const ActiveWorkoutFooter: React.FC = () => {
   return (
     <div className="fixed bottom-[calc(96px+env(safe-area-inset-bottom)+var(--keyboard-inset,0px))] left-0 right-0 z-30 md:bottom-0">
       <div className="mx-auto max-w-md px-3 md:max-w-4xl md:px-4">
-        <div className="rounded-[1.55rem] border border-[rgba(73,133,214,0.16)] bg-[rgba(7,16,27,0.94)] shadow-[0_18px_40px_rgba(2,8,15,0.45)] backdrop-blur-xl">
-          <div className="flex items-center gap-3 px-4 py-3">
-            <button
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center gap-2 px-3 py-2.5">
+            <Button variant="ghost"
+              type="button"
+              aria-label={`Abrir entrenamiento ${activeWorkout.routineName}`}
               onClick={() => navigate(getActiveWorkoutPath(activeWorkout.routineId))}
               className="flex min-w-0 flex-1 items-center gap-3 text-left"
             >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[rgba(47,140,255,0.14)] text-[#4ea0ff]">
-                <span className="material-symbols-outlined text-[22px]">fitness_center</span>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                <span className="material-symbols-outlined text-[21px]">fitness_center</span>
               </div>
               <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-white">{activeWorkout.routineName}</p>
-                <p className="truncate text-xs text-slate-400">
+                <p className="truncate text-sm font-semibold text-slate-900">{activeWorkout.routineName}</p>
+                <p className="truncate text-xs text-slate-500">
                   {currentExercise ? currentExercise.name : 'Sin ejercicios'}
                 </p>
               </div>
-            </button>
+            </Button>
 
-            <div className="rounded-full bg-[rgba(47,140,255,0.12)] px-3 py-2 text-sm font-bold tabular-nums text-[#4ea0ff]">
+            <div className="rounded-md bg-blue-50 px-2.5 py-2 text-sm font-semibold tabular-nums text-blue-700">
               {formatTime(elapsedSeconds)}
             </div>
 
             <div className="flex items-center gap-2">
-              <button
+              <Button
+                type="button"
                 onClick={() => setFinishConfirmOpen(true)}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10 text-red-300"
+                variant="ghost"
+                size="icon"
+                className="size-11 min-h-11 text-red-600 hover:bg-red-50"
                 title={isPartial ? 'Guardar progreso' : 'Finalizar entrenamiento'}
+                aria-label={isPartial ? 'Guardar progreso' : 'Finalizar entrenamiento'}
               >
-                <span className="material-symbols-outlined text-[20px]">flag</span>
-              </button>
+                <Flag className="size-4" aria-hidden="true" />
+              </Button>
 
-              <button
+              <Button
+                type="button"
                 onClick={activeWorkout.isPaused ? resumeWorkout : pauseWorkout}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(47,140,255,0.14)] text-[#4ea0ff]"
+                variant="outline"
+                size="icon"
+                className="size-11 min-h-11 text-blue-700"
+                aria-label={activeWorkout.isPaused ? 'Reanudar entrenamiento' : 'Pausar entrenamiento'}
               >
-                <span className="material-symbols-outlined text-[20px]">
-                  {activeWorkout.isPaused ? 'play_arrow' : 'pause'}
-                </span>
-              </button>
+                {activeWorkout.isPaused ? (
+                  <Play className="size-4" aria-hidden="true" />
+                ) : (
+                  <Pause className="size-4" aria-hidden="true" />
+                )}
+              </Button>
             </div>
           </div>
         </div>

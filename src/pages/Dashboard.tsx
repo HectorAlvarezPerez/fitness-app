@@ -33,7 +33,7 @@ const Dashboard: React.FC = () => {
   if (!stats) {
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <p className="text-slate-400">Cargando estadísticas...</p>
+        <p className="text-slate-500">Cargando estadísticas...</p>
       </div>
     );
   }
@@ -42,25 +42,21 @@ const Dashboard: React.FC = () => {
     <div className="h-full w-full overflow-y-auto">
       <div className="mobile-page max-w-4xl space-y-4">
         <section className="mobile-hero">
-          <p className="mobile-kicker">Insights</p>
           <h1 className="mobile-title">Estadísticas</h1>
-          <p className="mobile-subtitle">
-            Un panel más compacto para entender rápido carga, consistencia y distribución muscular.
-          </p>
         </section>
 
         {workoutHistory.length === 0 && (
           <div className="mobile-card flex flex-col items-center gap-3 p-6 text-center">
             <span className="material-symbols-outlined text-4xl text-[#4ea0ff]">monitoring</span>
             <div>
-              <p className="font-semibold text-white">Aún no hay datos</p>
-              <p className="text-sm text-slate-400">
+              <p className="font-semibold text-slate-900">Aún no hay datos</p>
+              <p className="text-sm text-slate-500">
                 Completa tu primer entreno y aquí verás volumen, sesiones y distribución muscular.
               </p>
             </div>
             <Link
               to="/routine"
-              className="rounded-xl bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] px-5 py-2.5 text-sm font-bold text-white"
+              className="rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white"
             >
               Empezar a entrenar
             </Link>
@@ -83,8 +79,7 @@ const Dashboard: React.FC = () => {
         <div className="mobile-card p-4">
           <div className="mb-3 flex items-center justify-between">
             <div>
-              <p className="mobile-kicker">Distribution</p>
-              <h3 className="mt-2 text-xl font-bold text-white">Grupos musculares</h3>
+              <h3 className="mt-2 text-xl font-bold text-slate-900">Grupos musculares</h3>
             </div>
             <Link to="/history" className="text-sm font-semibold text-[#4ea0ff]">
               Ver historial

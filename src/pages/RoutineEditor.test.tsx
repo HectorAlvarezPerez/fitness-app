@@ -115,6 +115,7 @@ describe('RoutineEditor cardio durations', () => {
     h.store.current = createStoreState(makeExercise());
     render(<RoutineEditor />);
 
+    expect(screen.getByRole('button', { name: 'Arrastrar Correr en Cinta' })).toBeEnabled();
     expect(screen.getByText('Duración (min)')).toBeInTheDocument();
     const durationInput = screen.getByLabelText('Duración de cardio');
     expect(durationInput).toHaveValue('45');

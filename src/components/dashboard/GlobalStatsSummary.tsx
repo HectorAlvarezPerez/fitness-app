@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useStore } from '../../store/useStore';
+import { NativeSelect } from '../ui/native-select';
 
 type TimeRange = 'week' | 'month' | '3months' | 'year';
 
@@ -56,44 +57,39 @@ const GlobalStatsSummary: React.FC = () => {
 
   return (
     <div className="mobile-card">
-      <div className="mb-6 flex flex-col gap-4 border-b border-white/10 pb-5 md:flex-row md:items-center md:justify-between">
+      <div className="mb-6 flex flex-col gap-4 border-b border-slate-200 pb-5 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
-            Dashboard
-          </p>
-          <h3 className="mt-1 text-lg font-semibold text-white">Resumen global</h3>
+          <h3 className="mt-1 text-lg font-semibold text-slate-900">Resumen global</h3>
         </div>
         <div className="relative self-stretch md:self-auto">
-          <select
+          <NativeSelect
+            containerClassName="w-full md:w-auto"
             value={range}
             onChange={(e) => setRange(e.target.value as TimeRange)}
-            className="w-full appearance-none rounded-full border border-white/10 bg-white/5 py-2.5 pl-4 pr-10 text-sm font-medium text-slate-200 outline-none transition-colors focus:border-primary md:w-auto"
+            className="w-full min-h-11 appearance-none rounded-full border border-slate-200 bg-slate-50 py-2.5 pl-4 pr-10 text-sm font-medium text-slate-700 outline-none transition-colors focus:border-primary md:w-auto"
           >
             <option value="week">Última semana</option>
             <option value="month">Último mes</option>
             <option value="3months">Últimos 3 meses</option>
             <option value="year">Último año</option>
-          </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
-            <span className="material-symbols-outlined text-[20px]">expand_more</span>
-          </div>
+          </NativeSelect>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Volumen total</p>
-          <p className="mt-2 text-3xl font-semibold text-white">{stats.volume}</p>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Volumen total</p>
+          <p className="mt-2 text-3xl font-semibold text-slate-900">{stats.volume}</p>
         </div>
 
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Sesiones</p>
-          <p className="mt-2 text-3xl font-semibold text-white">{stats.sessions}</p>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Sesiones</p>
+          <p className="mt-2 text-3xl font-semibold text-slate-900">{stats.sessions}</p>
         </div>
 
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Tiempo total</p>
-          <p className="mt-2 text-3xl font-semibold text-white">{stats.time}</p>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Tiempo total</p>
+          <p className="mt-2 text-3xl font-semibold text-slate-900">{stats.time}</p>
         </div>
       </div>
     </div>

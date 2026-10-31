@@ -156,11 +156,11 @@ const MusclePath: React.FC<{
 
 export const BodyHeatmap: React.FC<BodyHeatmapProps> = ({ muscleData }) => {
   return (
-    <div className="flex justify-center gap-12 py-8">
+    <div className="grid w-full min-w-0 max-w-full grid-cols-2 justify-items-center gap-3 py-4">
       {/* Front View */}
-      <div className="flex flex-col items-center">
-        <h3 className="text-xs font-bold mb-4 text-slate-400 uppercase tracking-widest">Frente</h3>
-        <svg width="150" height="250" viewBox="60 30 80 160" className="drop-shadow-xl">
+      <div className="flex w-full min-w-0 flex-col items-center">
+        <h3 className="text-xs font-bold mb-4 text-slate-600 uppercase tracking-widest">Frente</h3>
+        <svg width="150" height="250" viewBox="60 30 80 160" className="h-auto w-full max-w-full drop-shadow-xl">
           {/* Render all paths */}
           {Object.entries(MUSCLE_PATHS.front).map(([key, data]) => (
             <MusclePath
@@ -175,9 +175,9 @@ export const BodyHeatmap: React.FC<BodyHeatmapProps> = ({ muscleData }) => {
       </div>
 
       {/* Back View */}
-      <div className="flex flex-col items-center">
-        <h3 className="text-xs font-bold mb-4 text-slate-400 uppercase tracking-widest">Espalda</h3>
-        <svg width="150" height="250" viewBox="60 30 80 160" className="drop-shadow-xl">
+      <div className="flex w-full min-w-0 flex-col items-center">
+        <h3 className="text-xs font-bold mb-4 text-slate-600 uppercase tracking-widest">Espalda</h3>
+        <svg width="150" height="250" viewBox="60 30 80 160" className="h-auto w-full max-w-full drop-shadow-xl">
           {/* Head for back view */}
           <path
             d="M 100,50 C 108,50 108,35 100,35 C 92,35 92,50 100,50 Z"

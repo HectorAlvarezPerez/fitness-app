@@ -1,0 +1,11 @@
+node_modules
+dist
+.git
+.env
+.env.*
+*.log
+preview.html
+vite.preview.config.ts
+src/preview.tsx
+src/preview.css
+src/preview

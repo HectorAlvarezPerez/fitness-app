@@ -1,8 +1,23 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useStore, Routine, RoutineFolder } from '../store/useStore';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { getActiveWorkoutPath } from '../lib/activeWorkout';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
 
 const FOLDER_COLORS = [
   '#3b82f6', // Blue
@@ -14,6 +29,23 @@ const FOLDER_COLORS = [
   '#06b6d4', // Cyan
   '#f97316', // Orange
 ];
+
+const SortableFolder: React.FC<{
+  folder: RoutineFolder;
+  disabled: boolean;
+  children: (handle: ReturnType<typeof useSortable>) => React.ReactNode;
+}> = ({ folder, disabled, children }) => {
+  const sortable = useSortable({ id: folder.id, disabled });
+  return (
+    <div
+      ref={sortable.setNodeRef}
+      style={{ transform: CSS.Transform.toString(sortable.transform), transition: sortable.transition }}
+      className={`space-y-3 ${sortable.isDragging ? 'relative z-20' : ''}`}
+    >
+      {children(sortable)}
+    </div>
+  );
+};
 
 const RoutinesList: React.FC = () => {
   const navigate = useNavigate();
@@ -57,6 +89,11 @@ const RoutinesList: React.FC = () => {
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const knownFolderIdsRef = useRef<Set<string>>(new Set());
   const reorderInFlightRef = useRef(false);
+  const folderSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   useEffect(() => {
     loadRoutines();
@@ -139,18 +176,14 @@ const RoutinesList: React.FC = () => {
     }
   };
 
-  const handleMoveFolder = async (folderId: string, direction: -1 | 1) => {
+  const handleFolderDragEnd = async ({ active, over }: DragEndEvent) => {
     if (reorderInFlightRef.current) return;
+    if (!over || active.id === over.id) return;
 
-    const currentIndex = routineFolders.findIndex((folder) => folder.id === folderId);
-    const targetIndex = currentIndex + direction;
+    const currentIndex = routineFolders.findIndex((folder) => folder.id === active.id);
+    const targetIndex = routineFolders.findIndex((folder) => folder.id === over.id);
     if (currentIndex < 0 || targetIndex < 0 || targetIndex >= routineFolders.length) return;
-
-    const reorderedIds = routineFolders.map((folder) => folder.id);
-    [reorderedIds[currentIndex], reorderedIds[targetIndex]] = [
-      reorderedIds[targetIndex],
-      reorderedIds[currentIndex],
-    ];
+    const reorderedIds = arrayMove(routineFolders.map((folder) => folder.id), currentIndex, targetIndex);
 
     reorderInFlightRef.current = true;
     setIsReorderingFolders(true);
@@ -228,23 +261,26 @@ const RoutinesList: React.FC = () => {
   const renderRoutineCard = (routine: Routine) => (
     <div
       key={routine.id}
-      className="group relative rounded-[1.4rem] border border-white/10 bg-white/5 p-4 transition-all hover:border-primary/40 hover:bg-white/[0.08]"
+      className="group relative rounded-[1.4rem] border border-slate-200 bg-slate-50 p-4 transition-all hover:border-primary/40 hover:bg-slate-100"
       onContextMenu={(e) => handleContextMenu(e, 'routine', routine.id)}
     >
       <div className="flex items-start justify-between mb-3">
-        <h3 className="text-base font-bold pr-8 line-clamp-1">{routine.name}</h3>
+        <h3 className="text-base font-bold pr-8 line-clamp-1 text-slate-900">{routine.name}</h3>
         <div className="flex gap-1">
-          <button
+          <Button variant="ghost"
+            type="button"
+            size="icon"
+            aria-label={`Más opciones de ${routine.name}`}
             onClick={(e) => handleContextMenu(e, 'routine', routine.id)}
-            className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+            className="rounded-lg text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
             title="Más opciones"
           >
             <span className="material-symbols-outlined text-[18px]">more_vert</span>
-          </button>
+          </Button>
         </div>
       </div>
 
-      <div className="mb-4 flex items-center gap-3 text-sm text-slate-400">
+      <div className="mb-4 flex items-center gap-3 text-sm text-slate-600">
         <div className="flex items-center gap-1">
           <span className="material-symbols-outlined text-[16px]">fitness_center</span>
           <span>{routine.exercises?.length || 0} ejercicios</span>
@@ -260,26 +296,28 @@ const RoutinesList: React.FC = () => {
         </div>
       </div>
 
-      <button
+      <Button variant="default"
+        type="button"
         onClick={() => handleStartWorkout(routine)}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] py-3 font-bold text-white shadow-md transition-all hover:shadow-lg active:scale-[0.99]"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 py-3 font-bold text-white shadow-sm transition-all hover:shadow-sm active:scale-[0.99]"
       >
         <span className="material-symbols-outlined text-[20px]">play_arrow</span>
         Iniciar
-      </button>
+      </Button>
     </div>
   );
 
-  const renderFolderCard = (folder: RoutineFolder, folderIndex: number) => {
+  const renderFolderCard = (folder: RoutineFolder) => {
     const folderRoutines = getRoutinesInFolder(folder.id);
     const isExpanded = expandedFolders.has(folder.id);
     const isEditing = editingFolderId === folder.id;
 
     return (
-      <div key={folder.id} className="space-y-3">
+      <SortableFolder key={folder.id} folder={folder} disabled={isReorderingFolders}>
+        {({ attributes, listeners, isDragging }) => <>
         <div
-          className="flex cursor-pointer items-center gap-3 rounded-[1.35rem] border border-white/10 bg-white/5 p-3 transition-all hover:border-primary/30 hover:bg-white/[0.08]"
-          onClick={() => toggleFolder(folder.id)}
+          className="flex cursor-pointer items-center gap-3 rounded-[1.35rem] border border-slate-200 bg-slate-50 p-3 transition-all hover:border-primary/30 hover:bg-slate-100"
+          onClick={() => { if (!isDragging) toggleFolder(folder.id); }}
           onContextMenu={(e) => handleContextMenu(e, 'folder', folder.id)}
         >
           <div
@@ -292,7 +330,7 @@ const RoutinesList: React.FC = () => {
           </div>
 
           {isEditing ? (
-            <input
+            <Input
               type="text"
               value={editFolderName}
               onChange={(e) => setEditFolderName(e.target.value)}
@@ -303,55 +341,41 @@ const RoutinesList: React.FC = () => {
               onBlur={() => handleUpdateFolderName(folder.id)}
               onClick={(e) => e.stopPropagation()}
               autoFocus
-              className="flex-1 rounded-xl border border-primary bg-[#07131d] px-3 py-2 text-white outline-none"
+              className="flex-1 rounded-xl border border-primary bg-white px-3 py-2 text-slate-900 outline-none"
             />
           ) : (
-            <div className="flex-1">
-              <h3 className="font-bold text-white">{folder.name}</h3>
-              <p className="text-sm text-slate-400">{folderRoutines.length} rutinas</p>
+            <div className="min-w-0 flex-1">
+              <h3 className="break-words font-bold text-slate-900">{folder.name}</h3>
+              <p className="text-sm text-slate-600">{folderRoutines.length} rutinas</p>
             </div>
           )}
 
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleMoveFolder(folder.id, -1);
-              }}
-              disabled={isReorderingFolders || folderIndex === 0}
-              className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
-              title={`Mover ${folder.name} arriba`}
-              aria-label={`Mover ${folder.name} arriba`}
+          <div className="flex shrink-0 items-center gap-1">
+            <Button variant="ghost" type="button" size="icon"
+              {...attributes} {...listeners}
+              onClick={(event) => event.stopPropagation()}
+              disabled={isReorderingFolders}
+              className="flex size-11 touch-none cursor-grab items-center justify-center rounded-lg text-slate-600 active:cursor-grabbing"
+              title={`Arrastrar ${folder.name}`}
+              aria-label={`Arrastrar ${folder.name}`}
             >
-              <span className="material-symbols-outlined text-[18px]">arrow_upward</span>
-            </button>
-            <button
+              <span className="material-symbols-outlined text-[20px]">drag_indicator</span>
+            </Button>
+            <Button variant="ghost"
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleMoveFolder(folder.id, 1);
-              }}
-              disabled={isReorderingFolders || folderIndex === routineFolders.length - 1}
-              className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
-              title={`Mover ${folder.name} abajo`}
-              aria-label={`Mover ${folder.name} abajo`}
-            >
-              <span className="material-symbols-outlined text-[18px]">arrow_downward</span>
-            </button>
-            <button
+              size="icon"
+              aria-label={`Opciones de ${folder.name}`}
               onClick={(e) => {
                 e.stopPropagation();
                 handleContextMenu(e, 'folder', folder.id);
               }}
-              className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+              className="rounded-lg text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
               title="Opciones de carpeta"
-              aria-label="Opciones de carpeta"
             >
               <span className="material-symbols-outlined text-[18px]">more_vert</span>
-            </button>
+            </Button>
             <span
-              className="material-symbols-outlined text-slate-400 transition-transform"
+              className="material-symbols-outlined text-slate-600 transition-transform"
               style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
             >
               expand_more
@@ -363,7 +387,7 @@ const RoutinesList: React.FC = () => {
         {isExpanded && (
           <div className="pl-4 space-y-3">
             {folderRoutines.length === 0 ? (
-              <div className="py-6 text-center text-sm text-slate-400">
+              <div className="py-6 text-center text-sm text-slate-600">
                 <span className="material-symbols-outlined text-2xl mb-2 block opacity-50">
                   inbox
                 </span>
@@ -376,49 +400,50 @@ const RoutinesList: React.FC = () => {
             )}
           </div>
         )}
-      </div>
+        </>}
+      </SortableFolder>
     );
   };
 
   return (
     <div className="h-full w-full overflow-y-auto">
-      <div className="mobile-page flex max-w-6xl flex-col gap-6 pb-28">
+      <div className="mobile-page flex max-w-6xl flex-col gap-6">
         <header className="mobile-hero">
           <div>
-            <p className="mobile-kicker">Workout hub</p>
+
             <h1 className="mobile-title">Mis Rutinas</h1>
-            <p className="mobile-subtitle">Organiza y ejecuta tus entrenamientos</p>
+
           </div>
           <div className="mt-4 flex flex-col gap-2">
             <Link
               to="/routine/new"
-              className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] px-4 py-3 text-sm font-bold text-white shadow-md"
+              className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-3 text-sm font-bold text-white shadow-sm"
             >
               <span className="material-symbols-outlined text-[20px]">add</span>
               <span>Nueva rutina</span>
             </Link>
             <div className="grid grid-cols-2 gap-2">
-              <button
+              <Button variant="ghost"
                 onClick={handleStartEmptyWorkout}
-                className="mobile-card flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-bold text-[#4ea0ff]"
+                className="mobile-card flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-bold text-blue-700"
               >
                 <span className="material-symbols-outlined text-[20px]">play_arrow</span>
                 <span>Entreno libre</span>
-              </button>
-              <button
+              </Button>
+              <Button variant="ghost"
                 onClick={() => setIsCreatingFolder(true)}
-                className="mobile-card flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-semibold text-white"
+                className="mobile-card flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-semibold text-blue-700"
               >
                 <span className="material-symbols-outlined text-[20px]">create_new_folder</span>
                 <span>Carpeta</span>
-              </button>
+              </Button>
             </div>
-            <button
+            <Button variant="ghost"
               type="button"
               onClick={() => void handleInstallTrainingPlan()}
               aria-label="Importar plan atlético"
               disabled={isInstallingTrainingPlan}
-              className="mobile-card mt-2 flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-60"
+              className="mobile-card mt-2 flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-semibold text-blue-700 disabled:cursor-wait disabled:opacity-60"
             >
               <span className="material-symbols-outlined text-[20px]">
                 {isInstallingTrainingPlan ? 'progress_activity' : 'playlist_add'}
@@ -426,14 +451,14 @@ const RoutinesList: React.FC = () => {
               <span>
                 {isInstallingTrainingPlan ? 'Importando plan...' : 'Importar plan atlético'}
               </span>
-            </button>
+            </Button>
           </div>
         </header>
 
         {trainingPlanMessage && (
           <div
             role="status"
-            className="rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-blue-100"
+            className="rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-blue-800"
           >
             {trainingPlanMessage}
           </div>
@@ -442,7 +467,7 @@ const RoutinesList: React.FC = () => {
         {folderOrderError && (
           <div
             role="alert"
-            className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+            className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-700"
           >
             {folderOrderError}
           </div>
@@ -451,7 +476,7 @@ const RoutinesList: React.FC = () => {
         {activeWorkout && (
           <Link
             to={getActiveWorkoutPath(activeWorkout.routineId)}
-            className="mobile-card flex items-center justify-between gap-3 px-4 py-4 font-bold text-[#4ea0ff] transition-colors"
+            className="mobile-card flex items-center justify-between gap-3 px-4 py-4 font-bold text-blue-700 transition-colors"
           >
             <span className="inline-flex items-center gap-2">
               <span className="material-symbols-outlined">play_circle</span>
@@ -463,11 +488,11 @@ const RoutinesList: React.FC = () => {
 
         {/* New Folder Input */}
         {isCreatingFolder && (
-          <div className="animate-in slide-in-from-top-4 flex flex-col gap-3 rounded-[1.35rem] border border-primary/40 bg-[#102235] p-4 shadow-lg duration-300 fade-in sm:flex-row sm:items-center">
+          <div className="animate-in slide-in-from-top-4 flex flex-col gap-3 rounded-[1.35rem] border border-primary/40 bg-white p-4 shadow-sm duration-300 fade-in sm:flex-row sm:items-center">
             <div className="size-10 rounded-lg bg-blue-500 flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-white text-[20px]">folder</span>
             </div>
-            <input
+            <Input
               type="text"
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
@@ -477,49 +502,52 @@ const RoutinesList: React.FC = () => {
               }}
               placeholder="Nombre de la carpeta..."
               autoFocus
-              className="w-full min-w-0 rounded-xl border border-white/10 bg-[#07131d] px-3 py-2 text-white placeholder:text-slate-500 outline-none focus:border-primary sm:flex-1"
+              className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-500 outline-none focus:border-primary sm:flex-1"
             />
             <div className="flex w-full gap-2 sm:w-auto">
-              <button
+              <Button variant="default"
+                type="button"
                 onClick={handleCreateFolder}
                 className="flex-1 rounded-xl bg-primary px-4 py-2 font-bold text-white transition-all hover:bg-primary/90 sm:flex-none"
               >
                 Crear
-              </button>
-              <button
+              </Button>
+              <Button variant="outline"
+                type="button"
                 onClick={() => setIsCreatingFolder(false)}
-                className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2 font-semibold text-slate-300 transition-all hover:bg-white/10 sm:flex-none"
+                className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 font-semibold text-slate-700 transition-all hover:bg-slate-100 sm:flex-none"
               >
                 Cancelar
-              </button>
+              </Button>
             </div>
           </div>
         )}
 
         {/* Move to folder modal */}
-        {movingRoutine && (
-          <div
-            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-            onClick={() => setMovingRoutine(null)}
-          >
-            <div
-              className="animate-in zoom-in w-full max-w-md rounded-[1.7rem] border border-white/10 bg-[#0f2231] p-6 shadow-xl duration-300 fade-in"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h2 className="mb-4 text-xl font-bold text-white">Mover rutina a...</h2>
-              <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                <button
+        <Dialog
+          open={!!movingRoutine}
+          onOpenChange={(open) => {
+            if (!open) setMovingRoutine(null);
+          }}
+        >
+          <DialogContent className="max-w-md p-6">
+            <DialogHeader>
+              <DialogTitle>Mover rutina a...</DialogTitle>
+              <DialogDescription>Elige dónde quieres guardar esta rutina.</DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[min(50dvh,300px)] space-y-2 overflow-y-auto">
+                <Button variant="ghost"
                   onClick={() => handleMoveToFolder(null)}
-                  className="flex w-full items-center gap-3 rounded-xl p-3 text-left text-slate-200 transition-colors hover:bg-white/10"
+                  className="flex w-full items-center gap-3 rounded-xl p-3 text-left text-slate-800 transition-colors hover:bg-slate-100"
                 >
-                  <span className="material-symbols-outlined text-slate-400">home</span>
+                  <span className="material-symbols-outlined text-slate-600">home</span>
                   <span>Sin carpeta</span>
-                </button>
+                </Button>
                 {routineFolders.map((folder) => (
-                  <button
+                  <Button variant="ghost"
                     key={folder.id}
                     onClick={() => handleMoveToFolder(folder.id)}
-                    className="flex w-full items-center gap-3 rounded-xl p-3 text-left text-slate-200 transition-colors hover:bg-white/10"
+                    className="flex w-full items-center gap-3 rounded-xl p-3 text-left text-slate-800 transition-colors hover:bg-slate-100"
                   >
                     <div
                       className="size-8 rounded-lg flex items-center justify-center"
@@ -530,24 +558,20 @@ const RoutinesList: React.FC = () => {
                       </span>
                     </div>
                     <span>{folder.name}</span>
-                  </button>
+                  </Button>
                 ))}
-              </div>
-              <button
-                onClick={() => setMovingRoutine(null)}
-                className="mt-4 w-full rounded-xl border border-white/10 bg-white/5 py-2.5 font-semibold text-slate-300 transition-all hover:bg-white/10"
-              >
-                Cancelar
-              </button>
             </div>
-          </div>
-        )}
+            <Button variant="outline" onClick={() => setMovingRoutine(null)} className="w-full">
+              Cancelar
+            </Button>
+          </DialogContent>
+        </Dialog>
 
         {/* Context Menu */}
         {contextMenu && (
           <div
             ref={contextMenuRef}
-            className="animate-in fade-in zoom-in fixed z-50 min-w-[180px] rounded-2xl border border-white/10 bg-[#0f2231] py-2 shadow-xl duration-150 origin-top-left"
+            className="animate-in fade-in zoom-in fixed z-50 min-w-[180px] rounded-2xl border border-slate-200 bg-white py-2 shadow-sm duration-150 origin-top-left"
             style={{
               top: contextMenu.y,
               left: contextMenu.x > window.innerWidth / 2 ? 'auto' : contextMenu.x,
@@ -560,43 +584,43 @@ const RoutinesList: React.FC = () => {
               <>
                 <Link
                   to={`/routine/edit/${contextMenu.id}`}
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-slate-200 transition-colors hover:bg-white/10"
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-slate-800 transition-colors hover:bg-slate-100"
                   onClick={() => setContextMenu(null)}
                 >
                   <span className="material-symbols-outlined text-[18px]">edit</span>
                   Editar
                 </Link>
-                <button
+                <Button variant="ghost"
                   onClick={() => handleDuplicateRoutine(contextMenu.id)}
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-slate-200 transition-colors hover:bg-white/10"
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-slate-800 transition-colors hover:bg-slate-100"
                 >
                   <span className="material-symbols-outlined text-[18px]">content_copy</span>
                   Duplicar
-                </button>
-                <button
+                </Button>
+                <Button variant="ghost"
                   onClick={() => handleMoveRoutine(contextMenu.id)}
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-slate-200 transition-colors hover:bg-white/10"
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-slate-800 transition-colors hover:bg-slate-100"
                 >
                   <span className="material-symbols-outlined text-[18px]">drive_file_move</span>
                   Mover a carpeta
-                </button>
-                <hr className="my-2 border-white/10" />
-                <button
+                </Button>
+                <hr className="my-2 border-slate-200" />
+                <Button variant="ghost"
                   onClick={() => {
                     const routine = savedRoutines.find((r) => r.id === contextMenu.id);
                     if (routine) handleDeleteRoutine(routine);
                     setContextMenu(null);
                   }}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-red-300 transition-colors hover:bg-red-500/10"
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-red-700 transition-colors hover:bg-red-500/10"
                 >
                   <span className="material-symbols-outlined text-[18px]">delete</span>
                   Eliminar
-                </button>
+                </Button>
               </>
             )}
             {contextMenu.type === 'folder' && (
               <>
-                <button
+                <Button variant="ghost"
                   onClick={() => {
                     const folder = routineFolders.find((f) => f.id === contextMenu.id);
                     if (folder) {
@@ -605,22 +629,22 @@ const RoutinesList: React.FC = () => {
                     }
                     setContextMenu(null);
                   }}
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-slate-200 transition-colors hover:bg-white/10"
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-slate-800 transition-colors hover:bg-slate-100"
                 >
                   <span className="material-symbols-outlined text-[18px]">edit</span>
                   Renombrar
-                </button>
-                <hr className="my-2 border-white/10" />
-                <button
+                </Button>
+                <hr className="my-2 border-slate-200" />
+                <Button variant="ghost"
                   onClick={() => {
                     handleDeleteFolder(contextMenu.id);
                     setContextMenu(null);
                   }}
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-red-300 transition-colors hover:bg-red-500/10"
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-red-700 transition-colors hover:bg-red-500/10"
                 >
                   <span className="material-symbols-outlined text-[18px]">delete</span>
                   Eliminar carpeta
-                </button>
+                </Button>
               </>
             )}
           </div>
@@ -643,65 +667,61 @@ const RoutinesList: React.FC = () => {
         />
 
         {/* Delete Folder Modal */}
-        {deleteFolderTarget && (
-          <div
-            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-            onClick={() => setDeleteFolderTarget(null)}
-          >
-            <div
-              className="animate-in zoom-in w-full max-w-md rounded-[1.7rem] border border-white/10 bg-[#0f2231] p-6 shadow-xl duration-300 fade-in"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center gap-3 mb-4">
+        <Dialog
+          open={!!deleteFolderTarget}
+          onOpenChange={(open) => {
+            if (!open) setDeleteFolderTarget(null);
+          }}
+        >
+          <DialogContent className="max-w-md p-6">
+            <DialogHeader className="flex-row items-start gap-3">
                 <div className="flex size-10 items-center justify-center rounded-full bg-red-500/12">
-                  <span className="material-symbols-outlined text-red-300">delete</span>
+                  <span className="material-symbols-outlined text-red-700">delete</span>
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white">Eliminar carpeta</h2>
-                  <p className="text-sm text-slate-400">Esta acción no se puede deshacer.</p>
+                  <DialogTitle>Eliminar carpeta</DialogTitle>
+                  <DialogDescription className="mt-2">Esta acción no se puede deshacer.</DialogDescription>
                 </div>
-              </div>
+            </DialogHeader>
 
-              <div className="mb-5 rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-slate-300">
-                Se eliminará <span className="font-bold">{deleteFolderTarget.name}</span>. Las
-                rutinas dentro se moverán a <span className="font-bold">Sin carpeta</span>.
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setDeleteFolderTarget(null)}
-                  className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 font-semibold text-slate-300 transition-all hover:bg-white/10"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={async () => {
-                    await deleteFolder(deleteFolderTarget.id);
-                    setDeleteFolderTarget(null);
-                  }}
-                  className="flex-1 py-2.5 rounded-lg bg-red-600 text-white font-bold hover:bg-red-700 transition-all"
-                >
-                  Eliminar
-                </button>
-              </div>
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-slate-700">
+              Se eliminará <span className="font-bold">{deleteFolderTarget?.name}</span>. Las
+              rutinas dentro se moverán a <span className="font-bold">Sin carpeta</span>.
             </div>
-          </div>
-        )}
+
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setDeleteFolderTarget(null)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1"
+                onClick={async () => {
+                  if (!deleteFolderTarget) return;
+                  await deleteFolder(deleteFolderTarget.id);
+                  setDeleteFolderTarget(null);
+                }}
+              >
+                Eliminar
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {savedRoutines.length === 0 && routineFolders.length === 0 ? (
           <div className="mobile-card flex flex-col items-center justify-center px-5 py-16 text-center">
-            <div className="mb-6 flex size-24 items-center justify-center rounded-full border border-[rgba(73,133,214,0.16)] bg-[rgba(47,140,255,0.08)]">
-              <span className="material-symbols-outlined text-5xl text-[#4ea0ff]">
+            <div className="mb-6 flex size-24 items-center justify-center rounded-full border border-blue-100 bg-blue-50">
+              <span className="material-symbols-outlined text-5xl text-blue-700">
                 fitness_center
               </span>
             </div>
-            <h3 className="mb-2 text-2xl font-bold text-white">No tienes rutinas aún</h3>
-            <p className="mb-6 max-w-xs text-slate-400">
+            <h3 className="mb-2 text-2xl font-bold text-slate-900">No tienes rutinas aún</h3>
+            <p className="mb-6 max-w-xs text-slate-600">
               Crea tu primera rutina para empezar a entrenar
             </p>
             <Link
               to="/routine/new"
-              className="rounded-[1.1rem] bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] px-6 py-4 font-bold text-white shadow-lg shadow-[#2f8cff]/25"
+              className="rounded-[1.1rem] bg-blue-600 hover:bg-blue-700 px-6 py-4 font-bold text-white shadow-sm shadow-[#2f8cff]/25"
             >
               Crear Primera Rutina
             </Link>
@@ -709,13 +729,17 @@ const RoutinesList: React.FC = () => {
         ) : (
           <div className="space-y-4">
             {/* Folders */}
-            {routineFolders.map(renderFolderCard)}
+            <DndContext sensors={folderSensors} collisionDetection={closestCenter} onDragEnd={handleFolderDragEnd}>
+              <SortableContext items={routineFolders.map((folder) => folder.id)} strategy={verticalListSortingStrategy}>
+                {routineFolders.map(renderFolderCard)}
+              </SortableContext>
+            </DndContext>
 
             {/* Routines without folder */}
             {routinesWithoutFolder.length > 0 && (
               <div className="space-y-3">
                 {routineFolders.length > 0 && (
-                  <h2 className="flex items-center gap-2 text-lg font-bold text-slate-400">
+                  <h2 className="flex items-center gap-2 text-lg font-bold text-slate-600">
                     <span className="material-symbols-outlined text-[20px]">folder_off</span>
                     Sin carpeta
                   </h2>

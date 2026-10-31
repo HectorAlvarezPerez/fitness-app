@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabaseClient';
@@ -6,7 +6,16 @@ import { ActiveWorkoutFooter } from './ActiveWorkoutFooter';
 import PRNotification from './PRNotification';
 import MobileNav from './MobileNav';
 import logoUrl from '../assets/logo-fitness.png';
-import { applyTheme, initTheme, ThemeMode } from '../lib/theme';
+import { initTheme } from '../lib/theme';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
+import { Button } from './ui/button';
 
 const getPageMeta = (pathname: string) => {
   if (pathname.includes('/home')) {
@@ -30,16 +39,19 @@ const getPageMeta = (pathname: string) => {
   if (pathname.includes('/progress')) {
     return { title: 'Progreso', subtitle: 'Medidas, evolución y cuerpo' };
   }
-  if (pathname.includes('/pr')) {
+  if (pathname.includes('/profile-data')) {
+    return { title: 'Perfil', subtitle: 'Tus datos y objetivos actuales' };
+  }
+  if (pathname === '/pr' || pathname.startsWith('/pr/')) {
     return { title: 'PRs', subtitle: 'Tus mejores marcas' };
   }
-  if (pathname.includes('/exercises/new')) {
+  if (pathname === '/exercises/new') {
     return { title: 'Nuevo Ejercicio', subtitle: 'Añade un movimiento a tu biblioteca' };
   }
-  if (pathname.includes('/exercises') && pathname.includes('/edit')) {
+  if (pathname.startsWith('/exercises/') && pathname.endsWith('/edit')) {
     return { title: 'Editar Ejercicio', subtitle: 'Actualiza datos e instrucciones' };
   }
-  if (pathname.includes('/exercises')) {
+  if (pathname === '/exercises' || pathname.startsWith('/exercises/')) {
     return { title: 'Ejercicios', subtitle: 'Biblioteca personal y base común' };
   }
   if (pathname.includes('/history')) {
@@ -47,9 +59,6 @@ const getPageMeta = (pathname: string) => {
   }
   if (pathname.includes('/settings')) {
     return { title: 'Configuración', subtitle: 'Cuenta, notificaciones y seguridad' };
-  }
-  if (pathname.includes('/profile-data')) {
-    return { title: 'Perfil', subtitle: 'Tus datos y objetivos actuales' };
   }
   if (pathname.includes('/guide')) {
     return { title: 'Guía', subtitle: 'Cómo sacar más partido a la app' };
@@ -60,9 +69,8 @@ const getPageMeta = (pathname: string) => {
 const MainLayout: React.FC = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { loadActiveWorkout } = useStore();
+  const { activeWorkout, loadActiveWorkout } = useStore();
   const [keyboardInset, setKeyboardInset] = useState(0);
-  const [theme, setTheme] = useState<ThemeMode>('dark');
   const isKeyboardOpen = keyboardInset > 0;
   const pageMeta = getPageMeta(pathname);
 
@@ -71,15 +79,8 @@ const MainLayout: React.FC = () => {
   }, [loadActiveWorkout]);
 
   useEffect(() => {
-    const resolvedTheme = initTheme();
-    setTheme(resolvedTheme);
+    initTheme();
   }, []);
-
-  const toggleTheme = () => {
-    const nextTheme: ThemeMode = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    applyTheme(nextTheme);
-  };
 
   useEffect(() => {
     const updateKeyboardInset = () => {
@@ -148,32 +149,28 @@ const MainLayout: React.FC = () => {
     pathname.includes('/routine/edit') ||
     pathname.includes('/exercises/new') ||
     (pathname.includes('/exercises/') && pathname.includes('/edit'));
-  const mainPadding = hideBottomNav
-    ? 'pb-0'
-    : 'pb-[calc(92px+env(safe-area-inset-bottom)+var(--keyboard-inset,0px))] md:pb-0';
-
   return (
-    <div className="flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-background-dark text-slate-100 font-display">
+    <div className="flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-white text-slate-900 font-display">
       <PRNotification />
 
-      <header className="hidden shrink-0 items-center justify-between border-b border-[rgba(73,133,214,0.18)] bg-[rgba(11,21,33,0.9)] px-8 py-4 backdrop-blur-md md:flex">
+      <header className="hidden shrink-0 items-center justify-between border-b border-slate-200 bg-white px-8 py-4 md:flex">
         <NavLink to="/home" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#2f8cff] to-[#1e6de5] text-white shadow-lg shadow-[#2f8cff]/20">
+          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-blue-50">
             <img src={logoUrl} alt="Fitness App" className="h-full w-full object-contain" />
           </div>
-          <span className="text-xl font-bold tracking-tight">Fitness App</span>
+          <span className="text-xl font-bold tracking-tight text-slate-900">Fitness App</span>
         </NavLink>
 
-        <nav className="flex items-center gap-2 rounded-full border border-[rgba(73,133,214,0.14)] bg-[rgba(16,31,50,0.78)] p-1">
+        <nav className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
           {navItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               className={(navData) =>
-                `flex items-center gap-2 rounded-full px-5 py-2 text-sm font-bold transition-all ${
+                `flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
                   navData.isActive
-                    ? 'bg-[rgba(47,140,255,0.14)] text-[#4ea0ff] shadow-sm'
-                    : 'text-slate-400 hover:text-slate-100'
+                    ? 'bg-white text-blue-700 shadow-sm'
+                    : 'text-slate-600 hover:bg-white hover:text-slate-900'
                 }`
               }
             >
@@ -184,20 +181,11 @@ const MainLayout: React.FC = () => {
         </nav>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={toggleTheme}
-            className="flex size-10 items-center justify-center rounded-full border border-[rgba(73,133,214,0.16)] bg-[rgba(17,31,48,0.86)] transition-colors"
-            aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-          >
-            <span className="material-symbols-outlined text-[22px] text-slate-100">
-              {theme === 'dark' ? 'light_mode' : 'dark_mode'}
-            </span>
-          </button>
           <ProfileDropdown />
         </div>
       </header>
 
-      <header className="shrink-0 border-b border-[rgba(73,133,214,0.12)] bg-[rgba(6,14,24,0.88)] backdrop-blur-xl md:hidden">
+      <header className="shrink-0 border-b border-slate-200 bg-white md:hidden">
         <div className="mx-auto flex w-full max-w-md items-center justify-between px-4 pb-3 pt-[max(0.9rem,env(safe-area-inset-top))]">
           {[
             '/home',
@@ -210,7 +198,9 @@ const MainLayout: React.FC = () => {
           ].includes(pathname) ? (
             <div className="size-10 shrink-0" aria-hidden="true" />
           ) : (
-            <button
+            <Button variant="outline"
+              type="button"
+              size="icon"
               onClick={() => {
                 if (window.history.length > 1) {
                   navigate(-1);
@@ -218,33 +208,27 @@ const MainLayout: React.FC = () => {
                 }
                 navigate('/home');
               }}
-              className="flex size-10 items-center justify-center rounded-full border border-[rgba(73,133,214,0.16)] bg-[rgba(17,31,48,0.86)] text-slate-200"
+              className="rounded-full border-slate-200 bg-white text-slate-700"
               aria-label="Volver"
             >
               <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-            </button>
+            </Button>
           )}
 
           <div className="min-w-0 flex-1 px-3 text-center">
-            <h1 className="truncate text-[1.15rem] font-bold text-white">{pageMeta.title}</h1>
+            <h1 className="truncate text-[1.05rem] font-semibold text-slate-900">{pageMeta.title}</h1>
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={toggleTheme}
-              className="flex size-10 items-center justify-center rounded-full border border-[rgba(73,133,214,0.16)] bg-[rgba(17,31,48,0.86)] transition-colors"
-              aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-            >
-              <span className="material-symbols-outlined text-[20px] text-slate-100">
-                {theme === 'dark' ? 'light_mode' : 'dark_mode'}
-              </span>
-            </button>
             <ProfileDropdown />
           </div>
         </div>
       </header>
 
-      <main className={`mobile-screen flex-1 min-h-0 overflow-hidden ${mainPadding}`}>
+      <main
+        className="mobile-screen flex-1 min-h-0 overflow-hidden"
+        data-active-workout={activeWorkout ? 'true' : 'false'}
+      >
         <Outlet />
       </main>
 
@@ -255,108 +239,93 @@ const MainLayout: React.FC = () => {
 };
 
 const ProfileDropdown: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const { userData, loadUserData } = useStore();
 
   useEffect(() => {
     loadUserData();
   }, []);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
-
   const displayName =
     userData?.user_metadata?.full_name || userData?.email?.split('@')[0] || 'Usuario';
   const displayEmail = userData?.email || 'Modo Invitado';
+  const previewInitial = displayName.trim().charAt(0).toLocaleUpperCase('es') || 'U';
+  const isPreviewHarness = window.location.pathname === '/preview.html';
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex size-10 items-center justify-center overflow-hidden rounded-full border border-[rgba(73,133,214,0.2)] bg-[rgba(17,31,48,0.86)] text-white font-bold transition-transform hover:scale-105 active:scale-95"
-      >
-        <img
-          src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${displayName}`}
-          alt="Profile"
-          className="h-full w-full object-cover"
-        />
-      </button>
-
-      {isOpen && (
-        <div className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-[1.35rem] border border-[rgba(73,133,214,0.16)] bg-[rgba(10,20,34,0.98)] shadow-2xl">
-          <div className="border-b border-[rgba(73,133,214,0.1)] p-4">
-            <div className="flex items-center gap-3">
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`Abrir menú de ${displayName}`}
+          className="overflow-hidden rounded-full border border-slate-200 bg-slate-100 p-0 font-bold transition-transform hover:scale-105 active:scale-95"
+        >
+          {isPreviewHarness ? (
+            <span aria-hidden="true" className="flex size-full items-center justify-center text-slate-700">
+              {previewInitial}
+            </span>
+          ) : (
+            <img
+              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${displayName}`}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuLabel className="p-3">
+          <div className="flex items-center gap-3">
+            {isPreviewHarness ? (
+              <span aria-hidden="true" className="flex size-11 shrink-0 items-center justify-center rounded-full bg-blue-50 font-semibold text-blue-700">
+                {previewInitial}
+              </span>
+            ) : (
               <img
                 src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${displayName}`}
-                alt="Profile"
-                className="size-11 rounded-full"
+                alt=""
+                className="size-11 shrink-0 rounded-full"
               />
-              <div className="overflow-hidden">
-                <p className="truncate text-sm font-bold text-white">{displayName}</p>
-                <p className="truncate text-xs text-slate-400">{displayEmail}</p>
-              </div>
+            )}
+            <div className="min-w-0 overflow-hidden">
+              <p className="truncate text-sm font-bold text-slate-900">{displayName}</p>
+              <p className="truncate text-xs font-normal text-slate-500">{displayEmail}</p>
             </div>
           </div>
-
-          <div className="p-2">
-            <NavLink
-              to="/profile-data"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 rounded-2xl px-3 py-3 transition-colors hover:bg-[rgba(47,140,255,0.08)]"
-            >
-              <span className="material-symbols-outlined text-[20px] text-slate-400">
-                assignment_ind
-              </span>
-              <span className="text-sm font-medium text-white">Mis Datos</span>
-            </NavLink>
-
-            <NavLink
-              to="/settings"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 rounded-2xl px-3 py-3 transition-colors hover:bg-[rgba(47,140,255,0.08)]"
-            >
-              <span className="material-symbols-outlined text-[20px] text-slate-400">settings</span>
-              <span className="text-sm font-medium text-white">Configuración</span>
-            </NavLink>
-
-            <NavLink
-              to="/guide"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 rounded-2xl px-3 py-3 transition-colors hover:bg-[rgba(47,140,255,0.08)]"
-            >
-              <span className="material-symbols-outlined text-[20px] text-slate-400">help</span>
-              <span className="text-sm font-medium text-white">Ayuda</span>
-            </NavLink>
-          </div>
-
-          <div className="border-t border-[rgba(73,133,214,0.1)] p-2">
-            <button
-              onClick={async () => {
-                setIsOpen(false);
-                await supabase.auth.signOut();
-                window.location.href = '/';
-              }}
-              className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-red-400 transition-colors hover:bg-red-500/10"
-            >
-              <span className="material-symbols-outlined text-[20px]">logout</span>
-              <span className="text-sm font-medium">Cerrar Sesión</span>
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <NavLink to="/profile-data">
+            <span className="material-symbols-outlined text-[20px] text-slate-500">assignment_ind</span>
+            Mis Datos
+          </NavLink>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <NavLink to="/settings">
+            <span className="material-symbols-outlined text-[20px] text-slate-500">settings</span>
+            Configuración
+          </NavLink>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <NavLink to="/guide">
+            <span className="material-symbols-outlined text-[20px] text-slate-500">help</span>
+            Ayuda
+          </NavLink>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="text-red-700 focus:bg-red-50 focus:text-red-700"
+          onSelect={async () => {
+            await supabase.auth.signOut();
+            window.location.href = '/';
+          }}
+        >
+          <span className="material-symbols-outlined text-[20px]">logout</span>
+          Cerrar Sesión
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 

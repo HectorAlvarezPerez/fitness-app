@@ -40,6 +40,9 @@ const dispatchTouch = (target: Element, type: string, clientY?: number) => {
   Object.defineProperty(event, 'touches', {
     value: clientY === undefined ? [] : [{ clientY }],
   });
+  Object.defineProperty(event, 'changedTouches', {
+    value: clientY === undefined ? [] : [{ clientX: 0, clientY }],
+  });
 
   fireEvent(target, event);
   return event;
@@ -52,7 +55,7 @@ const renderSheet = () => {
     <ExerciseLibrarySheet isOpen onClose={onClose} onAddExercise={onAddExercise} />
   );
 
-  const dragHandle = view.container.querySelector('.touch-none');
+  const dragHandle = view.baseElement.querySelector('.touch-none');
   if (!dragHandle) {
     throw new Error('Expected the exercise-library drag handle to render');
   }
@@ -103,8 +106,26 @@ describe('ExerciseLibrarySheet touch dismissal', () => {
     const searchInput = screen.getByPlaceholderText('Buscar ejercicio...');
 
     dispatchTouch(searchInput, 'touchstart', 20);
-    const moveEvent = dispatchTouch(searchInput, 'touchmove', 121);
+    dispatchTouch(searchInput, 'touchmove', 121);
     dispatchTouch(searchInput, 'touchend');
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('allows scrolling the exercise list when it has remaining content', () => {
+    const { onClose } = renderSheet();
+    const list = document.querySelector('.mobile-scroll');
+    if (!list) throw new Error('Expected the exercise list to render');
+
+    Object.defineProperties(list, {
+      clientHeight: { configurable: true, value: 100 },
+      scrollHeight: { configurable: true, value: 300 },
+    });
+    (list as HTMLElement).style.overflowY = 'auto';
+
+    dispatchTouch(list, 'touchstart', 150);
+    const moveEvent = dispatchTouch(list, 'touchmove', 100);
+    dispatchTouch(list, 'touchend');
 
     expect(moveEvent.defaultPrevented).toBe(false);
     expect(onClose).not.toHaveBeenCalled();
@@ -128,5 +149,22 @@ describe('ExerciseLibrarySheet touch dismissal', () => {
     dispatchTouch(dragHandle, 'touchend');
 
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('closes when the modal backdrop is pressed', () => {
+    const { onClose } = renderSheet();
+    const overlay = document.querySelector('[class*="bg-slate-950/35"]');
+
+    if (!overlay) throw new Error('Expected the exercise-library backdrop to render');
+    fireEvent.click(overlay);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes when Escape is pressed', () => {
+    const second = renderSheet();
+    fireEvent.keyDown(screen.getByRole('dialog', { name: 'Biblioteca de ejercicios' }), {
+      key: 'Escape',
+    });
+    expect(second.onClose).toHaveBeenCalledTimes(1);
   });
 });

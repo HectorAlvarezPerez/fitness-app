@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ArrowRight, Clock3, Dumbbell, History, Play, Plus, Trophy } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { getActiveWorkoutPath } from '../lib/activeWorkout';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import logoUrl from '../assets/logo-fitness.png';
 
 const Home: React.FC = () => {
   const {
@@ -25,158 +30,153 @@ const Home: React.FC = () => {
     else setGreeting('Buenas noches');
   }, [loadUserData, loadWorkoutHistory, loadActiveWorkout]);
 
-  const lastWorkout = workoutHistory.length > 0 ? workoutHistory[0] : null;
+  const lastWorkout = workoutHistory[0] ?? null;
   const displayName =
     userData?.user_metadata?.full_name || userData?.email?.split('@')[0] || 'Atleta';
 
   return (
-    <div className="mobile-page overflow-y-auto">
-      <section className="mobile-hero">
-        <p className="mobile-kicker">{greeting}</p>
-        <h1 className="mobile-title">
-          Hola, <span className="text-[#4ea0ff]">{displayName}</span>
-        </h1>
-        <p className="mobile-subtitle">
-          Todo lo importante de tu entrenamiento concentrado en un panel más claro y rápido.
-        </p>
+    <div className="mobile-page h-full overflow-y-auto">
+      <section className="mb-5 flex items-end justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-slate-500">{greeting}</p>
+          <h1 className="mt-1 text-[1.75rem] font-bold tracking-tight text-slate-950">
+            Hola, {displayName}
+          </h1>
+          <p className="mt-1 text-sm text-slate-600">¿Listo para entrenar hoy?</p>
+        </div>
+        <div className="mb-1 flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100">
+          <img src={logoUrl} alt="Fitness" className="size-full object-cover" />
+        </div>
       </section>
 
-      <div className="space-y-4">
-        {activeWorkout && (
-          <div className="mobile-card overflow-hidden p-5">
-            <div className="mb-3 flex items-start justify-between gap-3">
+      {activeWorkout ? (
+        <Card className="mb-4 border-blue-200 bg-blue-50/70">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="mobile-kicker">En curso</p>
-                <h2 className="mt-2 text-2xl font-bold text-white">{activeWorkout.routineName}</h2>
-                <p className="mt-2 text-sm text-slate-400">
-                  Continúa exactamente donde lo dejaste.
-                </p>
+                <Badge className="mb-2 bg-blue-100 text-blue-800 hover:bg-blue-100">En curso</Badge>
+                <h2 className="text-lg font-bold text-slate-950">{activeWorkout.routineName}</h2>
+                <p className="mt-1 text-sm text-slate-600">Continúa donde lo dejaste.</p>
               </div>
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[rgba(47,140,255,0.16)]">
-                <span className="material-symbols-outlined text-[28px] text-[#4ea0ff]">
-                  fitness_center
-                </span>
-              </div>
+              <Dumbbell className="mt-1 size-5 text-blue-700" aria-hidden="true" />
             </div>
-
-            <Link
-              to={getActiveWorkoutPath(activeWorkout.routineId)}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#2f8cff] to-[#1e6de5] px-5 py-4 text-sm font-bold text-white shadow-lg shadow-[#2f8cff]/25"
-            >
-              <span>Continuar entrenamiento</span>
-              <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-            </Link>
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-3">
-          <Link to="/routine" className="mobile-card p-4">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[rgba(47,140,255,0.14)]">
-              <span className="material-symbols-outlined text-[24px] text-[#4ea0ff]">
-                format_list_bulleted
-              </span>
-            </div>
-            <h3 className="text-lg font-bold text-white">Rutinas</h3>
-            <p className="mt-1 text-sm leading-5 text-slate-400">
-              Tus planes, carpetas y accesos directos.
-            </p>
-          </Link>
-
-          <Link to="/history" className="mobile-card p-4">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[rgba(47,140,255,0.14)]">
-              <span className="material-symbols-outlined text-[24px] text-[#4ea0ff]">
-                history
-              </span>
-            </div>
-            <h3 className="text-lg font-bold text-white">Historial</h3>
-            <p className="mt-1 text-sm leading-5 text-slate-400">
-              Revisa duración, volumen y PRs.
-            </p>
-          </Link>
-        </div>
-
-        <div className="mobile-card p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <p className="mobile-kicker">Accesos rápidos</p>
-              <h3 className="mt-2 text-xl font-bold text-white">Explora la app</h3>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Link to="/dashboard" className="mobile-card-soft p-4">
-              <span className="material-symbols-outlined text-[22px] text-[#4ea0ff]">
-                bar_chart
-              </span>
-              <p className="mt-3 font-semibold text-white">Stats</p>
-              <p className="mt-1 text-xs text-slate-400">Resumen y músculo</p>
-            </Link>
-            <Link to="/progress" className="mobile-card-soft p-4">
-              <span className="material-symbols-outlined text-[22px] text-[#4ea0ff]">
-                monitoring
-              </span>
-              <p className="mt-3 font-semibold text-white">Progreso</p>
-              <p className="mt-1 text-xs text-slate-400">Evolución corporal</p>
-            </Link>
-            <Link to="/exercises" className="mobile-card-soft p-4">
-              <span className="material-symbols-outlined text-[22px] text-[#4ea0ff]">
-                list_alt
-              </span>
-              <p className="mt-3 font-semibold text-white">Ejercicios</p>
-              <p className="mt-1 text-xs text-slate-400">Biblioteca completa</p>
-            </Link>
-            <Link to="/pr" className="mobile-card-soft p-4">
-              <span className="material-symbols-outlined text-[22px] text-[#4ea0ff]">
-                military_tech
-              </span>
-              <p className="mt-3 font-semibold text-white">PRs</p>
-              <p className="mt-1 text-xs text-slate-400">Tus mejores marcas</p>
-            </Link>
-          </div>
-        </div>
-
-        {lastWorkout && (
-          <div className="mobile-card p-5">
-            <div className="mb-4 flex items-center justify-between gap-3">
+            <Button asChild className="mt-4 w-full">
+              <Link to={getActiveWorkoutPath(activeWorkout.routineId)}>
+                <Play className="size-4" aria-hidden="true" />
+                Continuar entrenamiento
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="mb-4 overflow-hidden border-0 bg-blue-600 text-white">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="mobile-kicker">Último entreno</p>
-                <h3 className="mt-2 text-xl font-bold text-white">{lastWorkout.routine_name}</h3>
+                <p className="text-sm font-medium text-blue-100">Tu próximo paso</p>
+                <h2 className="mt-1 text-xl font-bold">Entrena a tu ritmo</h2>
               </div>
-              <span className="rounded-full bg-[rgba(47,140,255,0.12)] px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-[#4ea0ff]">
-                {new Date(lastWorkout.completed_at).toLocaleDateString('es-ES', {
-                  day: 'numeric',
-                  month: 'short',
-                })}
-              </span>
+              <Dumbbell className="size-8 text-blue-100" aria-hidden="true" />
             </div>
+            <Button asChild variant="secondary" className="mt-4 w-full">
+              <Link to="/routine">
+                <Play className="size-4" aria-hidden="true" />
+                Elegir una rutina
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
-            <div className="grid grid-cols-3 gap-3">
-              <div className="mobile-card-soft p-3">
-                <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-slate-500">
-                  Volumen
-                </p>
-                <p className="mt-2 text-lg font-bold text-white">
-                  {lastWorkout.total_volume ? `${(lastWorkout.total_volume / 1000).toFixed(1)}k` : '0'}
+      <div className="mb-4 grid grid-cols-2 gap-3">
+        <Button asChild variant="outline" className="h-auto min-h-[4.5rem] justify-start gap-3 px-3">
+          <Link to="/routine">
+            <span className="flex size-9 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+              <Dumbbell className="size-5" aria-hidden="true" />
+            </span>
+            <span className="text-left">
+              <span className="block font-semibold">Rutinas</span>
+              <span className="block text-xs font-normal text-slate-500">Tus planes</span>
+            </span>
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="h-auto min-h-[4.5rem] justify-start gap-3 px-3">
+          <Link to="/history">
+            <span className="flex size-9 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+              <History className="size-5" aria-hidden="true" />
+            </span>
+            <span className="text-left">
+              <span className="block font-semibold">Historial</span>
+              <span className="block text-xs font-normal text-slate-500">Sesiones pasadas</span>
+            </span>
+          </Link>
+        </Button>
+      </div>
+
+      {lastWorkout ? (
+        <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle>Último entrenamiento</CardTitle>
+            <Trophy className="size-4 text-blue-700" aria-hidden="true" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-semibold text-slate-900">{lastWorkout.routine_name}</p>
+                <p className="mt-1 text-sm text-slate-500">
+                  {new Date(lastWorkout.completed_at).toLocaleDateString('es-ES', {
+                    day: 'numeric',
+                    month: 'long',
+                  })}
                 </p>
               </div>
-              <div className="mobile-card-soft p-3">
-                <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-slate-500">
-                  Tiempo
+              <Badge variant="secondary" className="shrink-0">
+                <Clock3 className="mr-1 size-3" aria-hidden="true" />
+                {lastWorkout.duration_minutes || 0} min
+              </Badge>
+            </div>
+            <div className="mt-4 grid grid-cols-3 divide-x divide-slate-200 rounded-lg bg-slate-50 py-3 text-center">
+              <div>
+                <p className="text-xs text-slate-500">Volumen</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {lastWorkout.total_volume ? `${(lastWorkout.total_volume / 1000).toFixed(1)}k` : '0'} kg
                 </p>
-                <p className="mt-2 text-lg font-bold text-white">{lastWorkout.duration_minutes || 0}m</p>
               </div>
-              <div className="mobile-card-soft p-3">
-                <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-slate-500">
-                  Ejercicios
+              <div>
+                <p className="text-xs text-slate-500">Tiempo</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {lastWorkout.duration_minutes || 0} min
                 </p>
-                <p className="mt-2 text-lg font-bold text-white">
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Ejercicios</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
                   {lastWorkout.exercises_completed?.length || 0}
                 </p>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+            <Button asChild variant="link" className="mt-3 h-9 px-0">
+              <Link to="/history">
+                Ver historial <ArrowRight className="size-4" aria-hidden="true" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="flex items-start gap-3 p-4">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+              <Plus className="size-4" aria-hidden="true" />
+            </span>
+            <div>
+              <h2 className="font-semibold text-slate-900">Tu progreso aparecerá aquí</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Completa una sesión para ver tu actividad reciente.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

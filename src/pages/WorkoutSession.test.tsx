@@ -20,6 +20,7 @@ const h = vi.hoisted(() => {
       search: '',
     },
     navigateMock: vi.fn(),
+    dragEnds: [] as Array<(event: any) => void>,
   };
 });
 
@@ -69,7 +70,7 @@ vi.mock('../components/ConfirmDialog', () => ({
 }));
 
 vi.mock('@dnd-kit/core', () => ({
-  DndContext: ({ children }: any) => <>{children}</>,
+  DndContext: ({ children, onDragEnd }: any) => { h.dragEnds.push(onDragEnd); return <>{children}</>; },
   closestCenter: vi.fn(),
   KeyboardSensor: class {},
   PointerSensor: class {},
@@ -191,6 +192,7 @@ beforeEach(() => {
   h.route.search = '';
   h.navigateMock.mockReset();
   h.useStoreMock.mockClear();
+  h.dragEnds = [];
   h.store.current = createStoreState();
   Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
     configurable: true,
@@ -398,27 +400,20 @@ describe('post-finish originating-template choice', () => {
 });
 
 describe('accessible live exercise controls', () => {
-  it('offers labeled focusable buttons for delete and ID-based move up/down', () => {
+  it('offers a focusable drag handle and persists ID-based exercise drops', () => {
     render(<WorkoutSession />);
-
-    const moveLastUp = screen.getByRole('button', {
-      name: 'Mover Exercise c arriba',
-    });
-    const moveFirstDown = screen.getByRole('button', {
-      name: 'Mover Exercise a abajo',
-    });
-    const deleteLast = screen.getByRole('button', {
-      name: 'Eliminar Exercise c',
-    });
-
-    moveLastUp.focus();
-    expect(moveLastUp).toHaveFocus();
-    fireEvent.click(moveLastUp);
-    fireEvent.click(moveFirstDown);
+    const dragLast = screen.getByRole('button', { name: 'Arrastrar Exercise c' });
+    const deleteLast = screen.getByRole('button', { name: 'Eliminar Exercise c' });
+    dragLast.focus();
+    expect(dragLast).toHaveFocus();
+    fireEvent.click(dragLast);
+    expect(screen.getAllByText('Exercise c').length).toBeGreaterThan(0);
+    const reorder = h.dragEnds[0];
+    act(() => reorder({ active: { id: 'c' }, over: { id: 'a' } }));
+    expect(h.store.current.reorderActiveWorkoutExercises).toHaveBeenCalledWith('c', 'a');
+    act(() => { reorder({ active: { id: 'c' }, over: null }); reorder({ active: { id: 'a' }, over: { id: 'a' } }); });
+    expect(h.store.current.reorderActiveWorkoutExercises).toHaveBeenCalledTimes(1);
     fireEvent.click(deleteLast);
-
-    expect(h.store.current.reorderActiveWorkoutExercises).toHaveBeenNthCalledWith(1, 'c', 'b');
-    expect(h.store.current.reorderActiveWorkoutExercises).toHaveBeenNthCalledWith(2, 'a', 'b');
     expect(h.store.current.removeActiveWorkoutExercise).toHaveBeenCalledWith('c');
   });
 

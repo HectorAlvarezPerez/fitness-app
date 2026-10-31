@@ -1,19 +1,33 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import {
+  BarChart3,
+  Dumbbell,
+  History,
+  Home,
+  ListChecks,
+  MoreHorizontal,
+  Settings,
+  TrendingUp,
+  Trophy,
+  UserRound,
+  X,
+} from 'lucide-react';
+import { Button } from './ui/button';
 
 const primaryItems = [
-  { path: '/home', label: 'Inicio', icon: 'home' },
-  { path: '/routine', label: 'Rutinas', icon: 'format_list_bulleted' },
-  { path: '/history', label: 'Historial', icon: 'history' },
-  { path: '/profile-data', label: 'Perfil', icon: 'account_circle' },
+  { path: '/home', label: 'Inicio', Icon: Home },
+  { path: '/routine', label: 'Rutinas', Icon: Dumbbell },
+  { path: '/history', label: 'Historial', Icon: History },
+  { path: '/profile-data', label: 'Perfil', Icon: UserRound },
 ];
 
 const moreItems = [
-  { path: '/dashboard', label: 'Estadísticas', icon: 'bar_chart' },
-  { path: '/progress', label: 'Progreso', icon: 'monitoring' },
-  { path: '/pr', label: 'PRs', icon: 'military_tech' },
-  { path: '/exercises', label: 'Ejercicios', icon: 'list_alt' },
-  { path: '/settings', label: 'Ajustes', icon: 'settings' },
+  { path: '/dashboard', label: 'Estadísticas', Icon: BarChart3 },
+  { path: '/progress', label: 'Progreso', Icon: TrendingUp },
+  { path: '/pr', label: 'PRs', Icon: Trophy },
+  { path: '/exercises', label: 'Ejercicios', Icon: ListChecks },
+  { path: '/settings', label: 'Ajustes', Icon: Settings },
 ];
 
 const matchesPath = (pathname: string, path: string) =>
@@ -26,115 +40,89 @@ const MobileNav: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const isMoreActive = moreItems.some((item) => matchesPath(pathname, item.path));
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsOpen(false);
+    };
+
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [isOpen]);
+
   return (
     <>
       {isOpen && (
-        <button
+        <Button variant="ghost"
           type="button"
           aria-label="Cerrar menú"
-          className="fixed inset-0 z-40 bg-[rgba(2,8,15,0.55)] backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-40 bg-slate-950/20 md:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
-        <div className="mx-auto max-w-md px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <nav aria-label="Navegación principal" className="fixed inset-x-0 bottom-0 z-50 md:hidden">
+        <div className="mx-auto max-w-lg px-2 pb-[max(0.35rem,env(safe-area-inset-bottom))]">
           {isOpen && (
-            <div className="mb-3 rounded-[1.4rem] border border-[rgba(73,133,214,0.16)] bg-[rgba(9,18,31,0.98)] p-2 shadow-2xl">
-              {moreItems.map((item) => {
-                const active = matchesPath(pathname, item.path);
-                return (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setIsOpen(false)}
-                    className={`flex items-center gap-3 rounded-2xl px-4 py-3 transition-colors ${
-                      active
-                        ? 'bg-[rgba(47,140,255,0.12)] text-[#4ea0ff]'
-                        : 'text-slate-200 hover:bg-[rgba(47,140,255,0.08)]'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
-                    <span className="text-sm font-semibold">{item.label}</span>
-                  </NavLink>
-                );
-              })}
+            <div className="mb-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+              <div className="grid grid-cols-2 gap-1">
+                {moreItems.map(({ path, label, Icon }) => {
+                  const active = matchesPath(pathname, path);
+                  return (
+                    <NavLink
+                      key={path}
+                      to={path}
+                      onClick={() => setIsOpen(false)}
+                      className={`flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium ${
+                        active ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <Icon className="size-4 shrink-0" aria-hidden="true" />
+                      <span>{label}</span>
+                    </NavLink>
+                  );
+                })}
+              </div>
             </div>
           )}
 
-          <div className="rounded-[1.75rem] border border-[rgba(73,133,214,0.16)] bg-[rgba(7,16,27,0.9)] px-2 py-2 shadow-[0_22px_44px_rgba(2,8,15,0.45)] backdrop-blur-xl">
-            <div className="flex items-end justify-between">
-              {primaryItems.map((item) => {
-                const active = matchesPath(pathname, item.path);
-                return (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    className="group flex min-w-[4.6rem] flex-1 flex-col items-center gap-1 px-1 py-2"
-                  >
-                    <div
-                      className={`relative flex h-11 w-11 items-center justify-center rounded-2xl transition-all ${
-                        active ? 'bg-[rgba(47,140,255,0.14)]' : 'bg-transparent'
-                      }`}
-                    >
-                      <span
-                        className={`material-symbols-outlined text-[22px] transition-all ${
-                          active ? 'text-[#2f8cff]' : 'text-slate-500'
-                        }`}
-                        style={{
-                          fontVariationSettings: active
-                            ? "'FILL' 1, 'wght' 500"
-                            : "'FILL' 0, 'wght' 400",
-                        }}
-                      >
-                        {item.icon}
-                      </span>
-                      {active && (
-                        <span className="absolute -top-1 right-1 h-2.5 w-2.5 rounded-full bg-[#2f8cff] ring-4 ring-[rgba(7,16,27,0.9)]" />
-                      )}
-                    </div>
-                    <span
-                      className={`text-[10px] font-bold uppercase tracking-[0.16em] ${
-                        active ? 'text-[#2f8cff]' : 'text-slate-500'
-                      }`}
-                    >
-                      {item.label}
-                    </span>
-                  </NavLink>
-                );
-              })}
-
-              <button
-                type="button"
-                onClick={() => setIsOpen((current) => !current)}
-                className="group flex min-w-[4.6rem] flex-1 flex-col items-center gap-1 px-1 py-2"
-              >
-                <div
-                  className={`relative flex h-11 w-11 items-center justify-center rounded-2xl transition-all ${
-                    isMoreActive || isOpen ? 'bg-[rgba(47,140,255,0.14)]' : 'bg-transparent'
+          <div className="grid grid-cols-5 rounded-2xl border border-slate-200 bg-white/95 p-1 shadow-sm backdrop-blur">
+            {primaryItems.map(({ path, label, Icon }) => {
+              const active = matchesPath(pathname, path);
+              return (
+                <NavLink
+                  key={path}
+                  to={path}
+                  aria-current={active ? 'page' : undefined}
+                  className={`flex min-w-0 min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[10px] font-medium leading-none ${
+                    active ? 'text-blue-700' : 'text-slate-500'
                   }`}
                 >
                   <span
-                    className={`material-symbols-outlined text-[22px] ${
-                      isMoreActive || isOpen ? 'text-[#2f8cff]' : 'text-slate-500'
+                    className={`flex size-7 items-center justify-center rounded-lg ${
+                      active ? 'bg-blue-50' : ''
                     }`}
-                    style={{
-                      fontVariationSettings:
-                        isMoreActive || isOpen ? "'FILL' 1, 'wght' 500" : "'FILL' 0, 'wght' 400",
-                    }}
                   >
-                    {isOpen ? 'close' : 'more_horiz'}
+                    <Icon className="size-[18px]" strokeWidth={active ? 2.4 : 1.9} aria-hidden="true" />
                   </span>
-                </div>
-                <span
-                  className={`text-[10px] font-bold uppercase tracking-[0.16em] ${
-                    isMoreActive || isOpen ? 'text-[#2f8cff]' : 'text-slate-500'
-                  }`}
-                >
-                  Más
-                </span>
-              </button>
-            </div>
+                  <span className="truncate">{label}</span>
+                </NavLink>
+              );
+            })}
+            <Button
+              type="button"
+              variant="ghost"
+              className={`min-h-12 flex-col gap-0.5 rounded-xl px-0.5 text-[10px] font-medium ${
+                isMoreActive || isOpen ? 'text-blue-700' : 'text-slate-500'
+              }`}
+              aria-expanded={isOpen}
+              aria-label={isOpen ? 'Cerrar menú Más' : 'Abrir menú Más'}
+              onClick={() => setIsOpen((current) => !current)}
+            >
+              {isOpen ? <X className="size-[18px]" /> : <MoreHorizontal className="size-[18px]" />}
+              <span>Más</span>
+            </Button>
           </div>
         </div>
       </nav>

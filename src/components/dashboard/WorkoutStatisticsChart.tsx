@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useStore } from '../../store/useStore';
+import { Button } from '../ui/button';
+import { NativeSelect } from '../ui/native-select';
 
 type Metric = 'duration' | 'reps' | 'volume';
 type TimeRange = 'week' | 'month' | '3months' | 'year';
@@ -134,36 +136,34 @@ const WorkoutStatisticsChart: React.FC = () => {
     <div className="mobile-card flex h-full flex-col">
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
-            Rendimiento
-          </p>
-          <h3 className="mt-1 text-lg font-semibold text-white">Estadísticas</h3>
+          <h3 className="mt-1 text-lg font-semibold text-slate-900">Estadísticas</h3>
         </div>
 
-        <div className="flex self-start rounded-full border border-white/10 bg-white/5 p-1 md:self-auto">
+        <div className="flex self-start rounded-full border border-slate-200 bg-slate-50 p-1 md:self-auto">
           {(['duration', 'reps', 'volume'] as const).map((m) => (
-            <button
+            <Button variant="ghost"
               key={m}
+              aria-pressed={metric === m}
               onClick={() => setMetric(m)}
-              className={`rounded-full px-3 py-1.5 text-sm font-medium transition-all capitalize ${
+              className={`min-h-11 rounded-full px-3 py-1.5 text-sm font-medium transition-all capitalize ${
                 metric === m
                   ? 'bg-white text-slate-950 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               {m === 'duration' ? 'Duración' : m === 'reps' ? 'Reps' : 'Volumen'}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
 
       <div className="mb-8 flex items-end justify-between">
         <div>
-          <p className="flex items-baseline gap-2 text-4xl font-semibold text-white">
+          <p className="flex items-baseline gap-2 text-4xl font-semibold text-slate-900">
             {getTotalForPeriod()}
-            <span className="text-lg font-normal text-slate-400">{getUnitLabel()}</span>
+            <span className="text-lg font-normal text-slate-500">{getUnitLabel()}</span>
           </p>
-          <p className="text-sm text-slate-400 capitalize">
+          <p className="text-sm text-slate-500 capitalize">
             {range === 'week'
               ? 'Esta semana'
               : range === 'month'
@@ -175,45 +175,42 @@ const WorkoutStatisticsChart: React.FC = () => {
         </div>
 
         <div className="relative">
-          <select
+          <NativeSelect
             value={range}
             onChange={(e) => setRange(e.target.value as TimeRange)}
-            className="appearance-none rounded-full border border-white/10 bg-white/5 py-2.5 pl-4 pr-10 text-sm font-medium text-slate-200 outline-none transition-colors focus:border-primary"
+            className="min-h-11 appearance-none rounded-full border border-slate-200 bg-slate-50 py-2.5 pl-4 pr-10 text-sm font-medium text-slate-700 outline-none transition-colors focus:border-primary"
           >
             <option value="week">Última semana</option>
             <option value="month">Último mes</option>
             <option value="3months">Últimos 3 meses</option>
             <option value="year">Último año</option>
-          </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
-            <span className="material-symbols-outlined text-[20px]">expand_more</span>
-          </div>
+          </NativeSelect>
         </div>
       </div>
 
       <div className="min-h-0 w-full flex-1">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={processData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#284256" opacity={0.45} />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" opacity={0.8} />
             <XAxis
               dataKey="name"
-              tick={{ fontSize: 11, fill: '#94a3b8' }}
+              tick={{ fontSize: 11, fill: '#64748b' }}
               tickLine={false}
               axisLine={false}
               dy={10}
             />
-            <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: '#64748b' }} tickLine={false} axisLine={false} />
             <Tooltip
-              cursor={{ fill: 'rgba(236, 73, 19, 0.1)', radius: 4 }}
+              cursor={{ fill: 'rgba(37, 99, 235, 0.08)', radius: 4 }}
               contentStyle={{
-                backgroundColor: '#0f2231',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: '16px',
+                backgroundColor: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '12px',
                 padding: '12px',
-                boxShadow: '0 16px 30px rgba(0, 0, 0, 0.28)',
+                boxShadow: '0 4px 12px rgba(15, 23, 42, 0.08)',
               }}
-              labelStyle={{ color: '#94a3b8', marginBottom: '4px', fontSize: '12px' }}
-              itemStyle={{ color: '#fff', fontSize: '14px', fontWeight: 'bold' }}
+              labelStyle={{ color: '#64748b', marginBottom: '4px', fontSize: '12px' }}
+              itemStyle={{ color: '#0f172a', fontSize: '14px', fontWeight: 'bold' }}
               formatter={(value: number) => [
                 `${value} ${getUnitLabel()}`,
                 metric === 'duration' ? 'Duración' : metric === 'reps' ? 'Repeticiones' : 'Volumen',

@@ -8,7 +8,7 @@ const AppGuide: React.FC = () => {
       description:
         'Crea y organiza tus propias rutinas. Selecciona ejercicios, estructura bloques y deja listas tus sesiones.',
       icon: 'fitness_center',
-      accent: 'bg-blue-500/15 text-blue-200',
+      accent: 'bg-blue-50 text-blue-700',
       to: '/routine',
       cta: 'Ir a Rutinas',
     },
@@ -17,7 +17,7 @@ const AppGuide: React.FC = () => {
       description:
         'Registra series en tiempo real, cronometra descansos y ajusta pesos sobre la marcha sin salir del flujo.',
       icon: 'timer',
-      accent: 'bg-amber-500/15 text-amber-200',
+      accent: 'bg-amber-50 text-amber-700',
       to: '/routine',
       cta: 'Empezar ahora',
     },
@@ -26,7 +26,7 @@ const AppGuide: React.FC = () => {
       description:
         'Consulta volumen, frecuencia y evolución para entender si tu entrenamiento realmente está avanzando.',
       icon: 'equalizer',
-      accent: 'bg-cyan-500/15 text-cyan-200',
+      accent: 'bg-cyan-50 text-cyan-700',
       to: '/dashboard',
       cta: 'Ver estadísticas',
     },
@@ -35,7 +35,7 @@ const AppGuide: React.FC = () => {
       description:
         'Detecta nuevas marcas y revisa tus mejores levantamientos para mantener una progresión clara.',
       icon: 'workspace_premium',
-      accent: 'bg-emerald-500/15 text-emerald-200',
+      accent: 'bg-emerald-50 text-emerald-700',
       to: '/dashboard',
       cta: 'Abrir panel',
     },
@@ -47,7 +47,7 @@ const AppGuide: React.FC = () => {
         <section className="mobile-hero">
           <div className="mobile-kicker">Guía rápida</div>
           <h1 className="mobile-title max-w-xl">
-            Todo lo que puedes hacer dentro de <span className="text-white">Fitness App</span>
+            Todo lo que puedes hacer dentro de <span className="text-slate-900">Fitness App</span>
           </h1>
           <p className="mobile-subtitle max-w-2xl">
             La app está pensada para que el usuario pueda crear, ejecutar y revisar su progreso
@@ -62,7 +62,7 @@ const AppGuide: React.FC = () => {
             </Link>
             <Link
               to="/dashboard"
-              className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white/88 transition-colors hover:bg-white/10"
+              className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-100"
             >
               Ver progreso
             </Link>
@@ -78,8 +78,8 @@ const AppGuide: React.FC = () => {
                 <span className="material-symbols-outlined text-[26px]">{section.icon}</span>
               </div>
               <div className="space-y-2">
-                <h2 className="text-xl font-semibold text-white">{section.title}</h2>
-                <p className="text-sm leading-6 text-slate-300">{section.description}</p>
+                <h2 className="text-xl font-semibold text-slate-900">{section.title}</h2>
+                <p className="text-sm leading-6 text-slate-600">{section.description}</p>
               </div>
               <Link
                 to={section.to}
@@ -98,8 +98,8 @@ const AppGuide: React.FC = () => {
               <span className="material-symbols-outlined text-[28px]">lightbulb</span>
             </div>
             <div className="space-y-2">
-              <h3 className="text-xl font-semibold text-white">Primer paso recomendado</h3>
-              <p className="max-w-2xl text-sm leading-6 text-slate-300">
+              <h3 className="text-xl font-semibold text-slate-900">Primer paso recomendado</h3>
+              <p className="max-w-2xl text-sm leading-6 text-slate-600">
                 Empieza por la sección de rutinas. Si el usuario entiende esa pantalla, el resto de
                 la app se vuelve mucho más intuitivo porque todo el flujo gira alrededor de ella.
               </p>

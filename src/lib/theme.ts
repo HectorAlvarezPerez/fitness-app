@@ -16,26 +16,20 @@ export const getStoredTheme = (): ThemeMode | null => {
 };
 
 export const resolveTheme = (): ThemeMode => {
-  const stored = getStoredTheme();
-  if (stored) return stored;
-
-  if (typeof window !== 'undefined' && window.matchMedia) {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-
-  return 'dark';
+  return 'light';
 };
 
-export const applyTheme = (theme: ThemeMode) => {
+export const applyTheme = (_theme: ThemeMode) => {
   if (typeof document === 'undefined') return;
 
   const root = document.documentElement;
-  root.classList.toggle('dark', theme === 'dark');
-  root.setAttribute('data-theme', theme);
+  const lightTheme: ThemeMode = 'light';
+  root.classList.remove('dark');
+  root.setAttribute('data-theme', lightTheme);
 
   if (typeof window !== 'undefined') {
     try {
-      window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+      window.localStorage.setItem(THEME_STORAGE_KEY, lightTheme);
     } catch {
       // Ignore localStorage write errors
     }

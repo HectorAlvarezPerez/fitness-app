@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
+import { Button } from '../ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '../ui/dialog';
 
 const WorkoutCalendar: React.FC = () => {
   const { workoutHistory, savedRoutines } = useStore();
@@ -86,22 +94,31 @@ const WorkoutCalendar: React.FC = () => {
     const isClickable = !hasWorkout && !isFuture;
 
     days.push(
-      <div key={day} className="relative flex h-10 w-10 items-center justify-center">
-        <div
+      <div key={day} className="relative flex h-11 w-full items-center justify-center">
+        <Button
+          variant="ghost"
+          type="button"
+          disabled={!isClickable}
           onClick={isClickable ? () => handleDayClick(day) : undefined}
-          className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-all ${
+          className={`flex h-11 min-h-11 w-full items-center justify-center rounded-full p-0 text-sm font-medium transition-all ${
             hasWorkout
-              ? 'bg-primary text-white shadow-md shadow-primary/30'
+              ? 'bg-primary text-white shadow-sm shadow-primary/10'
               : isToday
-                ? 'bg-white/12 text-white font-semibold ring-1 ring-primary/40'
+                ? 'bg-slate-100 text-slate-900 font-semibold ring-1 ring-primary/40'
                 : isFuture
                   ? 'text-slate-600'
-                  : 'cursor-pointer text-slate-300 hover:bg-white/10 hover:text-white'
+                  : 'cursor-pointer text-slate-600 hover:bg-slate-100 hover:text-slate-900'
           }`}
+          aria-label={dayDate.toLocaleDateString('es-ES', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          })}
           title={isClickable ? 'Registrar entrenamiento' : undefined}
         >
           {day}
-        </div>
+        </Button>
       </div>
     );
   }
@@ -132,33 +149,34 @@ const WorkoutCalendar: React.FC = () => {
   return (
     <div className="mobile-card">
       <div className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Agenda</p>
-        <h3 className="mt-1 text-lg font-semibold text-white">Calendario</h3>
+        <h3 className="mt-1 text-lg font-semibold text-slate-900">Calendario</h3>
       </div>
 
       <div className="mb-6 flex items-center justify-between">
-        <button
+        <Button variant="ghost"
+          aria-label="Mes anterior"
           onClick={handlePrevMonth}
-          className="flex size-10 items-center justify-center rounded-full border border-white/10 bg-white/5 transition-colors hover:bg-white/10"
+          className="flex size-11 min-w-11 items-center justify-center rounded-full border border-slate-200 bg-slate-50 transition-colors hover:bg-slate-100"
         >
-          <span className="material-symbols-outlined text-slate-300">chevron_left</span>
-        </button>
-        <div className="text-lg font-semibold capitalize text-white">
+          <span className="material-symbols-outlined text-slate-600">chevron_left</span>
+        </Button>
+        <div className="text-lg font-semibold capitalize text-slate-900">
           {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
         </div>
-        <button
+        <Button variant="ghost"
+          aria-label="Mes siguiente"
           onClick={handleNextMonth}
-          className="flex size-10 items-center justify-center rounded-full border border-white/10 bg-white/5 transition-colors hover:bg-white/10"
+          className="flex size-11 min-w-11 items-center justify-center rounded-full border border-slate-200 bg-slate-50 transition-colors hover:bg-slate-100"
         >
-          <span className="material-symbols-outlined text-slate-300">chevron_right</span>
-        </button>
+          <span className="material-symbols-outlined text-slate-600">chevron_right</span>
+        </Button>
       </div>
 
       <div className="mb-2 grid grid-cols-7 gap-1 text-center">
         {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((day) => (
           <div
             key={day}
-            className="flex h-10 w-10 items-center justify-center text-xs font-semibold text-slate-500"
+            className="flex h-10 w-full items-center justify-center text-xs font-semibold text-slate-500"
           >
             {day}
           </div>
@@ -167,79 +185,67 @@ const WorkoutCalendar: React.FC = () => {
 
       <div className="grid grid-cols-7 place-items-center gap-1">{days}</div>
 
-      {selectedDate && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-          onClick={() => setSelectedDate(null)}
-        >
-          <div
-            className="mx-4 w-full max-w-sm rounded-[28px] border border-white/10 bg-[#0f2231] p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">Registrar entrenamiento</h3>
-              <button
-                onClick={() => setSelectedDate(null)}
-                className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/5"
-              >
-                <span className="material-symbols-outlined text-slate-300">close</span>
-              </button>
-            </div>
-
-            <p className="mb-4 text-sm text-slate-400">
+      <Dialog
+        open={Boolean(selectedDate)}
+        onOpenChange={(open) => !open && setSelectedDate(null)}
+      >
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-sm overflow-y-auto p-6">
+          <DialogHeader className="mb-1">
+            <DialogTitle>Registrar entrenamiento</DialogTitle>
+          </DialogHeader>
+            <DialogDescription className="mb-2 flex items-center gap-1">
               <span className="material-symbols-outlined mr-1 align-text-bottom text-base">
                 calendar_month
               </span>
               {formattedSelectedDate}
-            </p>
+            </DialogDescription>
 
             <div className="max-h-64 space-y-2 overflow-y-auto">
-              <button
+              <Button variant="ghost"
                 onClick={handleSelectFreeWorkout}
-                className="w-full rounded-2xl border border-white/10 bg-white/5 p-3 text-left transition-colors hover:border-primary"
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-left transition-colors hover:border-primary"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
                     <span className="material-symbols-outlined text-primary">add</span>
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-white">Entrenamiento libre</div>
-                    <div className="text-xs text-slate-400">Añade ejercicios manualmente</div>
+                    <div className="text-sm font-semibold text-slate-900">Entrenamiento libre</div>
+                    <div className="text-xs text-slate-500">Añade ejercicios manualmente</div>
                   </div>
                 </div>
-              </button>
+              </Button>
 
               {savedRoutines.map((routine) => (
-                <button
+                <Button variant="ghost"
                   key={routine.id}
                   onClick={() => handleSelectRoutine(routine.id)}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 p-3 text-left transition-colors hover:border-primary"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-left transition-colors hover:border-primary"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-cyan-500/10">
-                      <span className="material-symbols-outlined text-cyan-300">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-cyan-50">
+                      <span className="material-symbols-outlined text-cyan-700">
                         fitness_center
                       </span>
                     </div>
                     <div>
-                      <div className="text-sm font-semibold text-white">{routine.name}</div>
-                      <div className="text-xs text-slate-400">
+                      <div className="text-sm font-semibold text-slate-900">{routine.name}</div>
+                      <div className="text-xs text-slate-500">
                         {routine.exercises?.length || 0} ejercicios
                       </div>
                     </div>
                   </div>
-                </button>
+                </Button>
               ))}
 
               {savedRoutines.length === 0 && (
-                <p className="py-2 text-center text-xs text-slate-400">
+                <p className="py-2 text-center text-xs text-slate-500">
                   No tienes rutinas guardadas
                 </p>
               )}
             </div>
-          </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

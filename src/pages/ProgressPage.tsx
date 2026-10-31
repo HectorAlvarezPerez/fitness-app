@@ -17,13 +17,16 @@ import {
   Legend,
 } from 'recharts';
 import { accumulateMuscleSeriesDistribution } from '../lib/muscleStats';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { NativeSelect } from '../components/ui/native-select';
+import { Textarea } from '../components/ui/textarea';
 import {
   formatCardioDuration,
   formatPace,
   getCardioProgressPoints,
   summarizeCardioProgress,
 } from '../lib/trainingMetrics';
-
 export default function ProgressPage() {
   const {
     workoutHistory,
@@ -249,27 +252,29 @@ export default function ProgressPage() {
     <div className="h-full overflow-y-auto">
       <div className="mobile-page flex max-w-4xl flex-col gap-6 pb-28">
         <header className="mobile-hero">
-          <p className="mobile-kicker">Progress</p>
           <h1 className="mobile-title mb-2">Progreso Físico</h1>
-          <div className="flex gap-3 border-b border-[rgba(73,133,214,0.12)]">
-            <button
+          <div className="flex flex-wrap gap-x-3 gap-y-1 border-b border-slate-200">
+            <Button variant="ghost"
+              aria-pressed={activeTab === 'heatmap'}
               onClick={() => setActiveTab('heatmap')}
-              className={`pb-3 px-1 font-bold text-sm transition-colors ${activeTab === 'heatmap' ? 'text-[#4ea0ff] border-b-2 border-[#2f8cff]' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`pb-3 px-1 font-bold text-sm transition-colors ${activeTab === 'heatmap' ? 'text-[#4ea0ff] border-b-2 border-[#2f8cff]' : 'text-slate-500 hover:text-slate-600'}`}
             >
               Mapa de Calor
-            </button>
-            <button
+            </Button>
+            <Button variant="ghost"
+              aria-pressed={activeTab === 'measurements'}
               onClick={() => setActiveTab('measurements')}
-              className={`pb-3 px-1 font-bold text-sm transition-colors ${activeTab === 'measurements' ? 'text-[#4ea0ff] border-b-2 border-[#2f8cff]' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`pb-3 px-1 font-bold text-sm transition-colors ${activeTab === 'measurements' ? 'text-[#4ea0ff] border-b-2 border-[#2f8cff]' : 'text-slate-500 hover:text-slate-600'}`}
             >
               Medidas Corporales
-            </button>
-            <button
+            </Button>
+            <Button variant="ghost"
+              aria-pressed={activeTab === 'cardio'}
               onClick={() => setActiveTab('cardio')}
-              className={`pb-3 px-1 font-bold text-sm transition-colors ${activeTab === 'cardio' ? 'text-[#4ea0ff] border-b-2 border-[#2f8cff]' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`pb-3 px-1 font-bold text-sm transition-colors ${activeTab === 'cardio' ? 'text-[#4ea0ff] border-b-2 border-[#2f8cff]' : 'text-slate-500 hover:text-slate-600'}`}
             >
               Cardio
-            </button>
+            </Button>
           </div>
         </header>
 
@@ -277,12 +282,12 @@ export default function ProgressPage() {
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Week Selector */}
             <div className="mobile-card flex items-center justify-between p-4">
-              <button
+              <Button variant="ghost"
                 onClick={() => setSelectedWeekOffset((prev) => prev - 1)}
                 className="rounded-lg p-2 transition-colors hover:bg-[rgba(47,140,255,0.08)]"
               >
                 <span className="material-symbols-outlined">chevron_left</span>
-              </button>
+              </Button>
               <div className="text-center">
                 <p className="font-bold text-lg">
                   {startOfSelectedWeek.toLocaleDateString('es-ES', {
@@ -295,23 +300,23 @@ export default function ProgressPage() {
                     month: 'short',
                   })}
                 </p>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-500">
                   {selectedWeekOffset === 0
                     ? 'Esta Semana'
                     : `${Math.abs(selectedWeekOffset)} semana(s) ${selectedWeekOffset < 0 ? 'atrás' : 'adelante'}`}
                 </p>
               </div>
-              <button
+              <Button variant="ghost"
                 onClick={() => setSelectedWeekOffset((prev) => prev + 1)}
                 disabled={selectedWeekOffset >= 0}
                 className={`rounded-lg p-2 transition-colors ${selectedWeekOffset >= 0 ? 'text-slate-600' : 'hover:bg-[rgba(47,140,255,0.08)]'}`}
               >
                 <span className="material-symbols-outlined">chevron_right</span>
-              </button>
+              </Button>
             </div>
 
             {/* Heatmap Area */}
-            <div className="mobile-card flex min-h-[400px] justify-center rounded-[1.75rem] p-8">
+            <div className="mobile-card flex min-h-[400px] min-w-0 justify-center rounded-[1.75rem] p-4 sm:p-8">
               {Object.keys(weeklyMuscleData.normalized).length === 0 ? (
                 <div className="flex flex-col items-center justify-center text-gray-400">
                   <span className="material-symbols-outlined text-4xl mb-2">fitness_center</span>
@@ -323,7 +328,7 @@ export default function ProgressPage() {
             </div>
 
             {/* Legend */}
-            <div className="flex items-center justify-center gap-4 text-sm text-slate-400">
+            <div className="flex items-center justify-center gap-4 text-sm text-slate-500">
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded-full bg-[#334155]"></div>
                 <span>Sin act.</span>
@@ -349,7 +354,7 @@ export default function ProgressPage() {
             {/* Muscle Distribution Pie Chart */}
             {musclePieData.length > 0 && (
               <div className="mobile-card p-6">
-                <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-white">
+                <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-slate-900">
                   <span className="material-symbols-outlined text-primary">pie_chart</span>
                   Distribución por Músculo
                 </h3>
@@ -393,15 +398,15 @@ export default function ProgressPage() {
                             className="w-3 h-3 rounded-full"
                             style={{ backgroundColor: entry.color }}
                           ></div>
-                          <span className="text-sm font-medium text-slate-200">{entry.name}</span>
+                          <span className="text-sm font-medium text-slate-700">{entry.name}</span>
                         </div>
-                        <span className="text-sm font-bold text-white">
+                        <span className="text-sm font-bold text-slate-900">
                           {entry.value.toFixed(1)} series
                         </span>
                       </div>
                     ))}
                     {musclePieData.length === 0 && (
-                      <p className="py-4 text-center text-sm text-slate-400">
+                      <p className="py-4 text-center text-sm text-slate-500">
                         No hay datos para mostrar
                       </p>
                     )}
@@ -414,12 +419,12 @@ export default function ProgressPage() {
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="mobile-card p-6">
               <div className="mb-5 flex items-center gap-3">
-                <div className="flex size-11 items-center justify-center rounded-2xl bg-cyan-400/12 text-cyan-200">
+                <div className="flex size-11 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700">
                   <span className="material-symbols-outlined">directions_run</span>
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-white">Progresión de cardio</h2>
-                  <p className="text-sm text-slate-400">
+                  <h2 className="text-lg font-bold text-slate-900">Progresión de cardio</h2>
+                  <p className="text-sm text-slate-500">
                     Registra cada sesión desde la rutina para comparar volumen e intensidad.
                   </p>
                 </div>
@@ -427,24 +432,24 @@ export default function ProgressPage() {
 
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 <div className="mobile-card-soft p-3">
-                  <p className="text-xs text-slate-400">Sesiones</p>
-                  <p className="mt-1 text-xl font-bold text-white">{cardioSummary.sessions}</p>
+                  <p className="text-xs text-slate-500">Sesiones</p>
+                  <p className="mt-1 text-xl font-bold text-slate-900">{cardioSummary.sessions}</p>
                 </div>
                 <div className="mobile-card-soft p-3">
-                  <p className="text-xs text-slate-400">Distancia total</p>
-                  <p className="mt-1 text-xl font-bold text-white">
+                  <p className="text-xs text-slate-500">Distancia total</p>
+                  <p className="mt-1 text-xl font-bold text-slate-900">
                     {cardioSummary.distanceKm.toFixed(2)} km
                   </p>
                 </div>
                 <div className="mobile-card-soft p-3">
-                  <p className="text-xs text-slate-400">Tiempo total</p>
-                  <p className="mt-1 text-xl font-bold text-white">
+                  <p className="text-xs text-slate-500">Tiempo total</p>
+                  <p className="mt-1 text-xl font-bold text-slate-900">
                     {formatCardioDuration(cardioSummary.durationSeconds)}
                   </p>
                 </div>
                 <div className="mobile-card-soft p-3">
-                  <p className="text-xs text-slate-400">Ritmo medio</p>
-                  <p className="mt-1 text-xl font-bold text-white">
+                  <p className="text-xs text-slate-500">Ritmo medio</p>
+                  <p className="mt-1 text-xl font-bold text-slate-900">
                     {formatPace(cardioSummary.averagePaceSecondsPerKm)}
                   </p>
                 </div>
@@ -452,12 +457,12 @@ export default function ProgressPage() {
             </div>
 
             <div className="mobile-card p-6">
-              <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-white">
+              <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-slate-900">
                 <span className="material-symbols-outlined text-primary">show_chart</span>
                 Distancia por sesión
               </h3>
               {cardioChartData.length === 0 ? (
-                <div className="flex min-h-[260px] items-center justify-center text-center text-sm text-slate-400">
+                <div className="flex min-h-[260px] items-center justify-center text-center text-sm text-slate-500">
                   Todavía no hay sesiones de cardio registradas.
                 </div>
               ) : (
@@ -505,7 +510,7 @@ export default function ProgressPage() {
 
             {cardioPoints.length > 0 && (
               <div className="mobile-card p-6">
-                <h3 className="mb-4 text-lg font-bold text-white">Últimas sesiones</h3>
+                <h3 className="mb-4 text-lg font-bold text-slate-900">Últimas sesiones</h3>
                 <div className="space-y-2">
                   {[...cardioPoints]
                     .reverse()
@@ -516,12 +521,12 @@ export default function ProgressPage() {
                         className="mobile-card-soft flex flex-wrap items-center justify-between gap-2 p-3 text-sm"
                       >
                         <div>
-                          <p className="font-semibold text-white">{point.exerciseName}</p>
-                          <p className="text-xs text-slate-400">
+                          <p className="font-semibold text-slate-900">{point.exerciseName}</p>
+                          <p className="text-xs text-slate-500">
                             {new Date(point.date).toLocaleDateString('es-ES')}
                           </p>
                         </div>
-                        <div className="flex flex-wrap gap-3 text-xs text-slate-300">
+                        <div className="flex flex-wrap gap-3 text-xs text-slate-600">
                           <span>{formatCardioDuration(point.durationSeconds)}</span>
                           {point.distanceKm !== undefined && (
                             <span>{point.distanceKm.toFixed(2)} km</span>
@@ -546,55 +551,55 @@ export default function ProgressPage() {
           // --- MEASUREMENTS CONTENT ---
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Sub-tabs for Measurements */}
-            <div className="flex w-fit rounded-2xl border border-white/10 bg-white/5 p-1">
-              <button
+            <div className="flex w-fit flex-wrap rounded-2xl border border-slate-200 bg-slate-50 p-1">
+              <Button variant="ghost"
+                aria-pressed={measurementTab === 'chart'}
                 onClick={() => setMeasurementTab('chart')}
-                className={`rounded-xl px-4 py-2 text-sm font-bold transition-all ${measurementTab === 'chart' ? 'bg-primary text-white' : 'text-slate-400 hover:text-white'}`}
+                className={`min-h-11 rounded-xl px-4 py-2 text-sm font-bold transition-all ${measurementTab === 'chart' ? 'bg-primary text-white' : 'text-slate-500 hover:text-slate-900'}`}
               >
                 <span className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[18px]">show_chart</span>
                   Gráficos
                 </span>
-              </button>
-              <button
+              </Button>
+              <Button variant="ghost"
+                aria-pressed={measurementTab === 'history'}
                 onClick={() => setMeasurementTab('history')}
-                className={`rounded-xl px-4 py-2 text-sm font-bold transition-all ${measurementTab === 'history' ? 'bg-primary text-white' : 'text-slate-400 hover:text-white'}`}
+                className={`min-h-11 rounded-xl px-4 py-2 text-sm font-bold transition-all ${measurementTab === 'history' ? 'bg-primary text-white' : 'text-slate-500 hover:text-slate-900'}`}
               >
                 <span className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[18px]">history</span>
                   Historial
                 </span>
-              </button>
-              <button
+              </Button>
+              <Button variant="ghost"
+                aria-pressed={measurementTab === 'add'}
                 onClick={() => setMeasurementTab('add')}
-                className={`rounded-xl px-4 py-2 text-sm font-bold transition-all ${measurementTab === 'add' ? 'bg-primary text-white' : 'text-slate-400 hover:text-white'}`}
+                className={`min-h-11 rounded-xl px-4 py-2 text-sm font-bold transition-all ${measurementTab === 'add' ? 'bg-primary text-white' : 'text-slate-500 hover:text-slate-900'}`}
               >
                 <span className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[18px]">add</span>
                   Nuevo Registro
                 </span>
-              </button>
+              </Button>
             </div>
 
             {measurementTab === 'chart' && (
               <div className="mobile-card p-6">
                 <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-lg font-bold text-white">Histórico</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Histórico</h3>
                   <div className="relative">
-                    <select
+                    <NativeSelect
                       value={selectedMetric}
                       onChange={(e) => setSelectedMetric(e.target.value as any)}
-                      className="appearance-none rounded-full border border-white/10 bg-white/5 py-2.5 pl-4 pr-10 text-sm font-bold text-white outline-none"
+                      className="appearance-none rounded-full border border-slate-200 bg-slate-50 py-2.5 pl-4 pr-10 text-sm font-bold text-slate-900 outline-none"
                     >
                       {metricOptions.map((opt) => (
                         <option key={opt.key} value={opt.key}>
                           {opt.label}
                         </option>
                       ))}
-                    </select>
-                    <span className="material-symbols-outlined pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-sm text-slate-500">
-                      expand_more
-                    </span>
+                    </NativeSelect>
                   </div>
                 </div>
                 <div className="h-[300px] w-full">
@@ -646,13 +651,13 @@ export default function ProgressPage() {
             {measurementTab === 'history' && (
               <div className="mobile-card overflow-hidden">
                 {bodyMeasurements.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400">
+                  <div className="p-8 text-center text-slate-500">
                     No hay registros todavía. Añade tu primer registro de medidas.
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                      <thead className="bg-[#07131d] text-xs uppercase text-slate-400">
+                      <thead className="bg-white text-xs uppercase text-slate-500">
                         <tr>
                           <th className="px-6 py-3">Fecha</th>
                           <th className="px-6 py-3">Peso</th>
@@ -666,7 +671,7 @@ export default function ProgressPage() {
                         {bodyMeasurements.map((m) => (
                           <tr
                             key={m.id}
-                            className="border-b border-white/10 bg-transparent text-slate-200"
+                            className="border-b border-slate-200 bg-transparent text-slate-700"
                           >
                             <td className="px-6 py-4 font-medium whitespace-nowrap">
                               {new Date(m.date).toLocaleDateString()}
@@ -678,12 +683,12 @@ export default function ProgressPage() {
                               {m.biceps_right ? `${m.biceps_right} cm` : '-'}
                             </td>
                             <td className="px-6 py-4 text-right">
-                              <button
+                              <Button variant="ghost"
                                 onClick={() => deleteBodyMeasurement(m.id)}
-                                className="font-medium text-red-300 transition-colors hover:text-red-200"
+                                className="font-medium text-red-600 transition-colors hover:text-red-700"
                               >
                                 Eliminar
-                              </button>
+                              </Button>
                             </td>
                           </tr>
                         ))}
@@ -698,186 +703,186 @@ export default function ProgressPage() {
               <form onSubmit={handleSubmitMeasurement} className="mobile-card space-y-6 p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="col-span-full">
-                    <label className="text-sm font-bold text-slate-300">Fecha</label>
-                    <input
+                    <label className="text-sm font-bold text-slate-600">Fecha</label>
+                    <Input
                       type="date"
                       name="date"
                       value={formData.date}
                       onChange={handleInputChange}
-                      className="mt-1 w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                       required
                     />
                   </div>
 
                   {/* Basics */}
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-300">Peso (kg)</label>
-                    <input
+                    <label className="text-sm font-bold text-slate-600">Peso (kg)</label>
+                    <Input
                       type="number"
                       step="0.1"
                       name="weight"
                       value={formData.weight || ''}
                       onChange={handleInputChange}
-                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-300">Cintura (cm)</label>
-                    <input
+                    <label className="text-sm font-bold text-slate-600">Cintura (cm)</label>
+                    <Input
                       type="number"
                       step="0.1"
                       name="waist"
                       value={formData.waist || ''}
                       onChange={handleInputChange}
-                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-300">Pecho (cm)</label>
-                    <input
+                    <label className="text-sm font-bold text-slate-600">Pecho (cm)</label>
+                    <Input
                       type="number"
                       step="0.1"
                       name="chest"
                       value={formData.chest || ''}
                       onChange={handleInputChange}
-                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-300">Cadera (cm)</label>
-                    <input
+                    <label className="text-sm font-bold text-slate-600">Cadera (cm)</label>
+                    <Input
                       type="number"
                       step="0.1"
                       name="hips"
                       value={formData.hips || ''}
                       onChange={handleInputChange}
-                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
 
                   {/* Arms */}
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-300">Bíceps Izq (cm)</label>
-                    <input
+                    <label className="text-sm font-bold text-slate-600">Bíceps Izq (cm)</label>
+                    <Input
                       type="number"
                       step="0.1"
                       name="biceps_left"
                       value={formData.biceps_left || ''}
                       onChange={handleInputChange}
-                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-300">Bíceps Der (cm)</label>
-                    <input
+                    <label className="text-sm font-bold text-slate-600">Bíceps Der (cm)</label>
+                    <Input
                       type="number"
                       step="0.1"
                       name="biceps_right"
                       value={formData.biceps_right || ''}
                       onChange={handleInputChange}
-                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-300">Antebrazo Izq (cm)</label>
-                    <input
+                    <label className="text-sm font-bold text-slate-600">Antebrazo Izq (cm)</label>
+                    <Input
                       type="number"
                       step="0.1"
                       name="forearm_left"
                       value={formData.forearm_left || ''}
                       onChange={handleInputChange}
-                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-300">Antebrazo Der (cm)</label>
-                    <input
+                    <label className="text-sm font-bold text-slate-600">Antebrazo Der (cm)</label>
+                    <Input
                       type="number"
                       step="0.1"
                       name="forearm_right"
                       value={formData.forearm_right || ''}
                       onChange={handleInputChange}
-                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
 
                   {/* Legs */}
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-300">Muslo Izq (cm)</label>
-                    <input
+                    <label className="text-sm font-bold text-slate-600">Muslo Izq (cm)</label>
+                    <Input
                       type="number"
                       step="0.1"
                       name="thigh_left"
                       value={formData.thigh_left || ''}
                       onChange={handleInputChange}
-                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-300">Muslo Der (cm)</label>
-                    <input
+                    <label className="text-sm font-bold text-slate-600">Muslo Der (cm)</label>
+                    <Input
                       type="number"
                       step="0.1"
                       name="thigh_right"
                       value={formData.thigh_right || ''}
                       onChange={handleInputChange}
-                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-300">Gemelo Izq (cm)</label>
-                    <input
+                    <label className="text-sm font-bold text-slate-600">Gemelo Izq (cm)</label>
+                    <Input
                       type="number"
                       step="0.1"
                       name="calf_left"
                       value={formData.calf_left || ''}
                       onChange={handleInputChange}
-                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-300">Gemelo Der (cm)</label>
-                    <input
+                    <label className="text-sm font-bold text-slate-600">Gemelo Der (cm)</label>
+                    <Input
                       type="number"
                       step="0.1"
                       name="calf_right"
                       value={formData.calf_right || ''}
                       onChange={handleInputChange}
-                      className="w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-primary"
                       placeholder="0.0"
                     />
                   </div>
 
                   <div className="col-span-full">
-                    <label className="text-sm font-bold text-slate-300">Notas Adicionales</label>
-                    <textarea
+                    <label className="text-sm font-bold text-slate-600">Notas Adicionales</label>
+                    <Textarea
                       name="notes"
                       value={formData.notes || ''}
                       onChange={handleInputChange}
-                      className="mt-1 w-full rounded-xl border border-white/10 bg-[#07131d] px-4 py-3 text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                       rows={3}
                       placeholder="Ej. Medidas tomadas en ayunas..."
                     />
                   </div>
                 </div>
                 <div className="flex justify-end pt-4">
-                  <button
+                  <Button
                     type="submit"
-                    className="bg-primary text-white font-bold py-3 px-8 rounded-xl hover:bg-opacity-90 transition-all shadow-lg shadow-primary/30"
+                    className="bg-primary text-white font-bold py-3 px-8 rounded-xl hover:bg-opacity-90 transition-all shadow-sm shadow-primary/10"
                   >
                     Guardar Medidas
-                  </button>
+                  </Button>
                 </div>
               </form>
             )}

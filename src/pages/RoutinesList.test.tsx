@@ -7,11 +7,29 @@ const h = vi.hoisted(() => ({
   store: { current: {} as any },
   reorderFolders: vi.fn(),
   installTrainingPlan: vi.fn(),
+  folderDragEnd: null as null | ((event: any) => void),
 }));
 
 vi.mock('../store/useStore', () => ({
   useStore: () => h.store.current,
 }));
+
+vi.mock('@dnd-kit/core', () => ({
+  DndContext: ({ children, onDragEnd }: any) => { h.folderDragEnd = onDragEnd; return <>{children}</>; },
+  closestCenter: vi.fn(), KeyboardSensor: class {}, PointerSensor: class {}, TouchSensor: class {},
+  useSensor: vi.fn(() => ({})), useSensors: vi.fn((...sensors) => sensors),
+}));
+vi.mock('@dnd-kit/sortable', () => ({
+  arrayMove: (items: any[], from: number, to: number) => {
+    const next = [...items]; const [moved] = next.splice(from, 1); next.splice(to, 0, moved); return next;
+  },
+  SortableContext: ({ children }: any) => <>{children}</>,
+  sortableKeyboardCoordinates: vi.fn(), useSortable: vi.fn(() => ({
+    attributes: {}, listeners: {}, setNodeRef: vi.fn(), transform: null,
+    transition: undefined, isDragging: false,
+  })), verticalListSortingStrategy: {},
+}));
+vi.mock('@dnd-kit/utilities', () => ({ CSS: { Transform: { toString: () => undefined } } }));
 
 import RoutinesList from './RoutinesList';
 
@@ -67,78 +85,64 @@ const deferred = <T,>() => {
   return { promise, resolve };
 };
 
-describe('routine folder order controls', () => {
-  it('exposes labeled controls and disables movement beyond list boundaries', () => {
-    renderPage();
+describe('routine folder drag ordering', () => {
+  const drop = (active: string, over: string | null) =>
+    h.folderDragEnd?.({ active: { id: active }, over: over ? { id: over } : null });
 
-    expect(screen.getByRole('button', { name: 'Mover Fuerza arriba' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Mover Fuerza abajo' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Mover Cardio arriba' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Mover Cardio abajo' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Mover Movilidad abajo' })).toBeDisabled();
+  it('shows labeled keyboard-focusable handles without toggling the folder', () => {
+    renderPage();
+    const handle = screen.getByRole('button', { name: 'Arrastrar Cardio' });
+    handle.focus();
+    expect(handle).toHaveFocus();
+    expect(screen.getAllByText('Carpeta vacía')).toHaveLength(3);
+    fireEvent.click(handle);
+    expect(screen.getAllByText('Carpeta vacía')).toHaveLength(3);
   });
 
-  it('moves a folder by its visible position without toggling the folder contents', async () => {
+  it('persists an ID-based move across list positions', async () => {
     renderPage();
-    expect(screen.getAllByText('Carpeta vacía')).toHaveLength(3);
+    await act(async () => drop('c', 'a'));
+    expect(h.reorderFolders).toHaveBeenCalledWith(['c', 'a', 'b']);
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Mover Cardio arriba' }));
-
-    await waitFor(() => expect(h.reorderFolders).toHaveBeenCalledWith(['b', 'a', 'c']));
-    expect(screen.getAllByText('Carpeta vacía')).toHaveLength(3);
+  it('ignores canceled and same-item drops', async () => {
+    renderPage();
+    await act(async () => { drop('a', null); drop('b', 'b'); });
+    expect(h.reorderFolders).not.toHaveBeenCalled();
   });
 
   it('keeps a collapsed folder collapsed when the ordered folder state changes', () => {
     const view = renderPage();
     fireEvent.click(screen.getByRole('heading', { name: 'Cardio' }));
     expect(screen.getAllByText('Carpeta vacía')).toHaveLength(2);
-
     h.store.current.routineFolders = [
-      folder('b', 'Cardio', 1),
-      folder('a', 'Fuerza', 2),
-      folder('c', 'Movilidad', 3),
+      folder('b', 'Cardio', 1), folder('a', 'Fuerza', 2), folder('c', 'Movilidad', 3),
     ];
-    view.rerender(
-      <MemoryRouter>
-        <RoutinesList />
-      </MemoryRouter>
-    );
-
+    view.rerender(<MemoryRouter><RoutinesList /></MemoryRouter>);
     expect(screen.getAllByText('Carpeta vacía')).toHaveLength(2);
   });
 
-  it('shows retryable feedback after a failed reorder and clears it after success', async () => {
+  it('shows an error after a failed drop and clears it after success', async () => {
     h.reorderFolders.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
     renderPage();
-    const moveCardioUp = screen.getByRole('button', { name: 'Mover Cardio arriba' });
-
-    fireEvent.click(moveCardioUp);
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'No se pudo guardar el nuevo orden de las carpetas. Vuelve a intentarlo.'
-    );
-    expect(moveCardioUp).toBeEnabled();
-
-    fireEvent.click(moveCardioUp);
-    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+    await act(async () => drop('b', 'a'));
+    expect(screen.getByRole('alert')).toHaveTextContent('No se pudo guardar el nuevo orden');
+    await act(async () => drop('b', 'a'));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(h.reorderFolders).toHaveBeenCalledTimes(2);
   });
 
-  it('disables reorder controls and ignores overlapping moves while saving', async () => {
+  it('disables handles and ignores overlapping drops while saving', async () => {
     const pending = deferred<boolean>();
     h.reorderFolders.mockReturnValueOnce(pending.promise);
     renderPage();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Mover Cardio arriba' }));
-
-    const reorderControls = screen.getAllByRole('button', { name: /Mover .+ (arriba|abajo)/ });
-    reorderControls.forEach((control) => expect(control).toBeDisabled());
-    fireEvent.click(screen.getByRole('button', { name: 'Mover Fuerza abajo' }));
+    await act(async () => { drop('b', 'a'); });
+    screen.getAllByRole('button', { name: /Arrastrar (Fuerza|Cardio|Movilidad)/ })
+      .forEach((handle) => expect(handle).toBeDisabled());
+    await act(async () => drop('a', 'c'));
     expect(h.reorderFolders).toHaveBeenCalledTimes(1);
-
     await act(async () => pending.resolve(true));
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Mover Fuerza abajo' })).toBeEnabled()
-    );
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Arrastrar Cardio' })).toBeEnabled());
   });
 });
 

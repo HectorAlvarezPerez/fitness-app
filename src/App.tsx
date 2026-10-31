@@ -25,6 +25,7 @@ import { initTheme } from './lib/theme';
 import { supabase } from './lib/supabaseClient';
 import { deleteUserDataCache, readUserDataCache, writeUserDataCache } from './lib/userDataCache';
 import { useStore, type CachedUserData, type LoadResult } from './store/useStore';
+import { Button } from './components/ui/button';
 
 type BootstrapStatus = 'resolving' | 'signed-out' | 'checking' | 'error' | 'ready';
 type RetryState = 'idle' | 'retrying' | 'failed';
@@ -68,16 +69,17 @@ const AuthenticatedRouteGate: React.FC<{
         {refreshError && (
           <div
             role="alert"
-            className="flex items-center justify-center gap-4 bg-amber-950 px-4 py-3 text-sm text-amber-100"
+            className="flex flex-wrap items-center justify-center gap-3 border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
           >
             <span>No se pudieron actualizar tus datos</span>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={onRefreshRetry}
-              className="rounded-full border border-amber-300 px-4 py-2 font-semibold"
             >
               Reintentar actualización
-            </button>
+            </Button>
           </div>
         )}
         <Outlet />
@@ -87,32 +89,33 @@ const AuthenticatedRouteGate: React.FC<{
 
   if (status === 'error') {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#050d15] px-6 text-white">
+      <main className="flex min-h-screen items-center justify-center bg-white px-6 text-slate-900">
         <div role="alert" className="max-w-md text-center">
           <h1 className="text-2xl font-semibold">No se pudieron cargar tus datos</h1>
-          <p className="mt-3 text-sm text-slate-400">Comprueba tu conexión e inténtalo de nuevo.</p>
+          <p className="mt-3 text-sm text-slate-600">Comprueba tu conexión e inténtalo de nuevo.</p>
           {retryState === 'failed' && (
-            <p className="mt-3 text-sm text-amber-200">
+            <p className="mt-3 text-sm text-amber-700">
               Sigue sin conectar con el servidor. Prueba de nuevo en unos segundos o recarga la app.
             </p>
           )}
-          <button
+          <Button
             type="button"
+            className="mt-6"
             onClick={onRetry}
             disabled={retryState === 'retrying'}
-            className="mt-6 rounded-full bg-primary px-6 py-3 text-sm font-semibold disabled:opacity-60"
           >
             {retryState === 'retrying' ? 'Reintentando…' : 'Reintentar'}
-          </button>
+          </Button>
           {retryState === 'failed' && (
             <div>
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                className="mt-3"
                 onClick={() => window.location.reload()}
-                className="mt-3 rounded-full border border-slate-500 px-6 py-3 text-sm font-semibold"
               >
                 Recargar la app
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -123,9 +126,9 @@ const AuthenticatedRouteGate: React.FC<{
   return (
     <main
       role="status"
-      className="flex min-h-screen items-center justify-center bg-[#050d15] px-6 text-white"
+      className="flex min-h-screen items-center justify-center bg-white px-6 text-slate-900"
     >
-      <p className="text-sm text-slate-300">Preparando tus datos...</p>
+      <p className="text-sm text-slate-600">Preparando tus datos...</p>
     </main>
   );
 };
@@ -592,11 +595,11 @@ export const AppRoutes: React.FC = () => {
             <Route
               path="*"
               element={
-                <div className="flex min-h-screen items-center justify-center bg-black text-white">
+                <div className="flex min-h-screen items-center justify-center bg-white px-6 text-slate-900">
                   <div className="text-center">
-                    <h1 className="text-4xl font-bold text-red-500 mb-4">404</h1>
-                    <p className="text-xl">Route not found</p>
-                    <p className="text-sm text-gray-500 mt-2">
+                    <h1 className="mb-3 text-4xl font-bold text-blue-700">404</h1>
+                    <p className="text-xl font-semibold">No encontramos esta pantalla</p>
+                    <p className="mt-2 text-sm text-slate-500">
                       Current Path: {window.location.hash}
                     </p>
                   </div>
